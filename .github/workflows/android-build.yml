@@ -35,7 +35,7 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=app/my-release-key.keystore \
+            -Pandroid.injected.signing.store.file=my-release-key.keystore \
             -Pandroid.injected.signing.store.password=A00000000 \
             -Pandroid.injected.signing.key.alias=my-key-alias \
             -Pandroid.injected.signing.key.password=A00000000
