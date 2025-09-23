@@ -105,7 +105,7 @@ android {
         keyPassword 'android'
     }
     release {
-        storeFile file('./my-release-key.keystore')
+        storeFile file('my-release-key.keystore')
         storePassword project.findProperty("A00000000") ?: ""
         keyAlias project.findProperty("KEY_ALIAS") ?: ""
         keyPassword project.findProperty("A00000000") ?: ""
