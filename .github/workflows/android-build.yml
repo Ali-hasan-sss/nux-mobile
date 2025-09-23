@@ -1,10 +1,10 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   build:
@@ -14,31 +14,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Setup Java
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
+          distribution: "temurin"
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Grant execute permission for Gradlew
+        run: chmod +x android/gradlew
 
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Build APK
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon --build-cache
+      - name: Build Release APK
+        run: cd android && ./gradlew assembleRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v3
         with:
-          name: app-release.apk
+          name: app-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
