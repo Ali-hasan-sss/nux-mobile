@@ -1,0 +1,129 @@
+{
+  "auth": {
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "loginButton": "Einloggen",
+    "registerButton": "Registrieren",
+    "forgotPassword": "Passwort vergessen?",
+    "noAccount": "Noch kein Konto?",
+    "hasAccount": "Bereits ein Konto?",
+    "agreeToTerms": "Ich stimme der Datenschutzrichtlinie und den Nutzungsbedingungen zu",
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "termsOfUse": "Nutzungsbedingungen"
+  },
+  "home": {
+    "title": "Treueprogramm",
+    "scanCode": "Code scannen",
+    "scanCodeDesc": "Restaurant QR-Code scannen",
+    "payDrink": "Mit Getränkepunkten bezahlen",
+    "payDrinkDesc": "{{points}} Punkte verfügbar",
+    "payMeal": "Mit Mahlzeitpunkten bezahlen",
+    "payMealDesc": "{{points}} Punkte verfügbar",
+    "payWallet": "Mit Geldbörse bezahlen",
+    "payWalletDesc": "${{balance}} verfügbar"
+  },
+  "promotions": {
+    "title": "Angebote",
+    "search": "Angebote durchsuchen...",
+    "filters": "Filter",
+    "food": "Essen",
+    "drinks": "Getränke",
+    "nearby": "In der Nähe",
+    "newest": "Neueste",
+    "popular": "Beliebt",
+    "noPromotions": "Keine Angebote verfügbar",
+    "validUntil": "Gültig bis {{date}}",
+    "restaurantLocation": "Restaurant-Standort"
+  },
+  "purchase": {
+    "title": "Kaufen",
+    "recharge": "Geldbörse aufladen",
+    "rechargeDesc": "Geld zur Geldbörse hinzufügen",
+    "gift": "Einem Freund schenken",
+    "giftDesc": "Punkte oder Guthaben an Freunde senden",
+    "giftOptions": "Geschenkoptionen",
+    "walletBalance": "Geldbörsen-Guthaben",
+    "drinkPoints": "Getränkepunkte",
+    "mealPoints": "Mahlzeitpunkte",
+    "scanOrUpload": "QR-Code scannen oder Bild hochladen",
+    "amount": "Betrag",
+    "send": "Geschenk senden",
+    "receiveFromFriend": "Von Freund erhalten",
+    "scanFriendCode": "Scanne den Code deines Freundes, um Guthaben zu erhalten"
+  },
+  "account": {
+    "title": "Konto",
+    "profile": "Profil",
+    "name": "Name",
+    "phone": "Telefonnummer",
+    "email": "E-Mail",
+    "updatePassword": "Passwort aktualisieren",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmNewPassword": "Neues Passwort bestätigen",
+    "myQRCode": "Mein QR-Code",
+    "qrCodeDesc": "Zeige diesen Code, um Geschenke zu erhalten",
+    "save": "Änderungen speichern",
+    "logout": "Abmelden"
+  },
+  "drawer": {
+    "accountSettings": "Kontoeinstellungen",
+    "theme": "Design",
+    "language": "Sprache",
+    "termsOfUse": "Nutzungsbedingungen",
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "aboutApp": "Über die App",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "camera": {
+    "scanQR": "QR-Code scannen",
+    "placeCodeInFrame": "QR-Code in den Rahmen platzieren",
+    "cancel": "Abbrechen"
+  },
+  "payment": {
+    "selectPaymentMethod": "Zahlungsmethode wählen",
+    "currentBalance": "Aktuelles Guthaben",
+    "paymentAmount": "Zahlungsbetrag",
+    "slideToConfirm": "Zum Bestätigen wischen",
+    "paymentSuccessful": "Zahlung erfolgreich",
+    "insufficientBalance": "Unzureichendes Guthaben"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "noNotifications": "Keine Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren"
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "save": "Speichern",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "close": "Schließen",
+    "apply": "Anwenden",
+    "clear": "Löschen",
+    "and": "und"
+  },
+  "restaurant": {
+    "mealsCode": "Mahlzeiten-Code",
+    "drinksCode": "Getränke-Code",
+    "createAd": "Anzeige erstellen",
+    "adImage": "Anzeigenbild",
+    "uploadImage": "Bild hochladen",
+    "adTitle": "Anzeigentitel",
+    "adTitlePlaceholder": "Anzeigentitel eingeben...",
+    "adDetails": "Anzeigendetails",
+    "adDetailsPlaceholder": "Anzeigenbeschreibung eingeben...",
+    "adType": "Anzeigentyp",
+    "scans": "Scans",
+    "recentScans": "Aktuelle Scans",
+    "planManagement": "Plan-Verwaltung",
+    "upgradePlan": "Plan upgraden"
+  }
+}

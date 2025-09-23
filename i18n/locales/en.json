@@ -1,0 +1,129 @@
+{
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "loginButton": "Sign In",
+    "registerButton": "Sign Up",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "agreeToTerms": "I agree to the Privacy Policy and Terms of Use",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use"
+  },
+  "home": {
+    "title": "Loyalty Rewards",
+    "scanCode": "Scan Code",
+    "scanCodeDesc": "Scan restaurant QR code",
+    "payDrink": "Pay with Drink Points",
+    "payDrinkDesc": "{{points}} points available",
+    "payMeal": "Pay with Meal Points", 
+    "payMealDesc": "{{points}} points available",
+    "payWallet": "Pay with Wallet",
+    "payWalletDesc": "${{balance}} available"
+  },
+  "promotions": {
+    "title": "Promotions",
+    "search": "Search promotions...",
+    "filters": "Filters",
+    "food": "Food",
+    "drinks": "Drinks",
+    "nearby": "Nearby",
+    "newest": "Newest",
+    "popular": "Popular",
+    "noPromotions": "No promotions available",
+    "validUntil": "Valid until {{date}}",
+    "restaurantLocation": "Restaurant Location"
+  },
+  "purchase": {
+    "title": "Purchase",
+    "recharge": "Recharge Wallet",
+    "rechargeDesc": "Add money to your wallet",
+    "gift": "Gift a Friend",
+    "giftDesc": "Send points or balance to friends",
+    "giftOptions": "Gift Options",
+    "walletBalance": "Wallet Balance",
+    "drinkPoints": "Drink Points",
+    "mealPoints": "Meal Points",
+    "scanOrUpload": "Scan QR Code or Upload Image",
+    "amount": "Amount",
+    "send": "Send Gift",
+    "receiveFromFriend": "Receive from Friend",
+    "scanFriendCode": "Scan your friend's code to receive balance"
+  },
+  "account": {
+    "title": "Account",
+    "profile": "Profile",
+    "name": "Name",
+    "phone": "Phone Number",
+    "email": "Email",
+    "updatePassword": "Update Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "myQRCode": "My QR Code",
+    "qrCodeDesc": "Show this code to receive gifts",
+    "save": "Save Changes",
+    "logout": "Logout"
+  },
+  "drawer": {
+    "accountSettings": "Account Settings",
+    "theme": "Theme",
+    "language": "Language",
+    "termsOfUse": "Terms of Use",
+    "privacyPolicy": "Privacy Policy",
+    "aboutApp": "About App",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "camera": {
+    "scanQR": "Scan QR Code",
+    "placeCodeInFrame": "Place QR code within the frame",
+    "cancel": "Cancel"
+  },
+  "payment": {
+    "selectPaymentMethod": "Select Payment Method",
+    "currentBalance": "Current Balance",
+    "paymentAmount": "Payment Amount",
+    "slideToConfirm": "Slide to Confirm",
+    "paymentSuccessful": "Payment Successful",
+    "insufficientBalance": "Insufficient Balance"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications",
+    "markAllRead": "Mark all as read"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "close": "Close",
+    "apply": "Apply",
+    "clear": "Clear",
+    "and": "and"
+  },
+  "restaurant": {
+    "mealsCode": "Meals Code",
+    "drinksCode": "Drinks Code",
+    "createAd": "Create Ad",
+    "adImage": "Ad Image",
+    "uploadImage": "Upload Image",
+    "adTitle": "Ad Title",
+    "adTitlePlaceholder": "Enter ad title...",
+    "adDetails": "Ad Details",
+    "adDetailsPlaceholder": "Enter ad description...",
+    "adType": "Ad Type",
+    "scans": "Scans",
+    "recentScans": "Recent Scans",
+    "planManagement": "Plan Management",
+    "upgradePlan": "Upgrade Plan"
+  }
+}

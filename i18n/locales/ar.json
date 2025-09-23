@@ -1,0 +1,129 @@
+{
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "loginButton": "دخول",
+    "registerButton": "إنشاء حساب",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟",
+    "agreeToTerms": "أوافق على سياسة الخصوصية وشروط الاستخدام",
+    "privacyPolicy": "سياسة الخصوصية",
+    "termsOfUse": "شروط الاستخدام"
+  },
+  "home": {
+    "title": "مكافآت الولاء",
+    "scanCode": "مسح الرمز",
+    "scanCodeDesc": "امسح رمز QR الخاص بالمطعم",
+    "payDrink": "ادفع بنقاط المشروبات",
+    "payDrinkDesc": "{{points}} نقطة متاحة",
+    "payMeal": "ادفع بنقاط الوجبات",
+    "payMealDesc": "{{points}} نقطة متاحة",
+    "payWallet": "ادفع من المحفظة",
+    "payWalletDesc": "${{balance}} متاح"
+  },
+  "promotions": {
+    "title": "العروض",
+    "search": "البحث في العروض...",
+    "filters": "المرشحات",
+    "food": "طعام",
+    "drinks": "مشروبات",
+    "nearby": "قريب",
+    "newest": "الأحدث",
+    "popular": "الأكثر شعبية",
+    "noPromotions": "لا توجد عروض متاحة",
+    "validUntil": "صالح حتى {{date}}",
+    "restaurantLocation": "موقع المطعم"
+  },
+  "purchase": {
+    "title": "شراء",
+    "recharge": "إعادة شحن المحفظة",
+    "rechargeDesc": "أضف أموال إلى محفظتك",
+    "gift": "هدية لصديق",
+    "giftDesc": "أرسل نقاط أو رصيد للأصدقاء",
+    "giftOptions": "خيارات الهدية",
+    "walletBalance": "رصيد المحفظة",
+    "drinkPoints": "نقاط المشروبات",
+    "mealPoints": "نقاط الوجبات",
+    "scanOrUpload": "امسح رمز QR أو ارفع صورة",
+    "amount": "المبلغ",
+    "send": "إرسال الهدية",
+    "receiveFromFriend": "استقبال من صديق",
+    "scanFriendCode": "امسح رمز صديقك لاستقبال الرصيد"
+  },
+  "account": {
+    "title": "الحساب",
+    "profile": "الملف الشخصي",
+    "name": "الاسم",
+    "phone": "رقم الهاتف",
+    "email": "البريد الإلكتروني",
+    "updatePassword": "تحديث كلمة المرور",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmNewPassword": "تأكيد كلمة المرور الجديدة",
+    "myQRCode": "رمز QR الخاص بي",
+    "qrCodeDesc": "اعرض هذا الرمز لاستقبال الهدايا",
+    "save": "حفظ التغييرات",
+    "logout": "تسجيل الخروج"
+  },
+  "drawer": {
+    "accountSettings": "إعدادات الحساب",
+    "theme": "المظهر",
+    "language": "اللغة",
+    "termsOfUse": "شروط الاستخدام",
+    "privacyPolicy": "سياسة الخصوصية",
+    "aboutApp": "حول التطبيق",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "النظام"
+  },
+  "camera": {
+    "scanQR": "مسح رمز QR",
+    "placeCodeInFrame": "ضع رمز QR داخل الإطار",
+    "cancel": "إلغاء"
+  },
+  "payment": {
+    "selectPaymentMethod": "اختر طريقة الدفع",
+    "currentBalance": "الرصيد الحالي",
+    "paymentAmount": "مبلغ الدفع",
+    "slideToConfirm": "اسحب للتأكيد",
+    "paymentSuccessful": "تم الدفع بنجاح",
+    "insufficientBalance": "رصيد غير كافي"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "noNotifications": "لا توجد إشعارات",
+    "markAllRead": "تحديد الكل كمقروء"
+  },
+  "common": {
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "save": "حفظ",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجح",
+    "close": "إغلاق",
+    "apply": "تطبيق",
+    "clear": "مسح",
+    "and": "و"
+  },
+  "restaurant": {
+    "mealsCode": "رمز الوجبات",
+    "drinksCode": "رمز المشروبات",
+    "createAd": "إنشاء إعلان",
+    "adImage": "صورة الإعلان",
+    "uploadImage": "رفع صورة",
+    "adTitle": "عنوان الإعلان",
+    "adTitlePlaceholder": "أدخل عنوان الإعلان...",
+    "adDetails": "تفاصيل الإعلان",
+    "adDetailsPlaceholder": "أدخل وصف الإعلان...",
+    "adType": "نوع الإعلان",
+    "scans": "المسح الضوئي",
+    "recentScans": "المسح الأخير",
+    "planManagement": "إدارة الخطة",
+    "upgradePlan": "ترقية الخطة"
+  }
+}
