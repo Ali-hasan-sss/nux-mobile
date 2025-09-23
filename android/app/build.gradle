@@ -98,13 +98,20 @@ android {
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
+    debug {
+        storeFile file('debug.keystore')
+        storePassword 'android'
+        keyAlias 'androiddebugkey'
+        keyPassword 'android'
     }
+    release {
+        storeFile file('./my-release-key.keystore')
+        storePassword project.findProperty("A00000000") ?: ""
+        keyAlias project.findProperty("KEY_ALIAS") ?: ""
+        keyPassword project.findProperty("A00000000") ?: ""
+    }
+}
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -119,6 +126,10 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
+             signingConfig signingConfigs.release
+             minifyEnabled true
+             shrinkResources true
+             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
     packagingOptions {
