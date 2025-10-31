@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build Type'
+        description: "Build Type"
         required: true
-        default: 'release'
+        default: "release"
         type: choice
         options:
           - release
@@ -18,7 +18,7 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 🏗 Checkout code
         uses: actions/checkout@v4
@@ -27,13 +27,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: 🏗 Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: 📦 Install dependencies
         run: npm ci
@@ -41,11 +41,11 @@ jobs:
       - name: 🔨 Generate native code with Expo Prebuild
         run: npx expo prebuild --platform android --clean
 
-      - name: 📝 Create keystore (for unsigned builds)
+      - name: 📝 Create debug keystore
         if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == '' }}
         run: |
-          cd android/app
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p android/app
+          keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: 📝 Setup release keystore
         if: ${{ github.event.inputs.build_type == 'release' }}
@@ -85,4 +85,3 @@ jobs:
           echo "🎉 APK built successfully!"
           echo "📥 Download your APK from the Actions artifacts tab"
           ls -lh android/app/build/outputs/apk/*/*.apk
-
