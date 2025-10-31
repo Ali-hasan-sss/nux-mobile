@@ -19,11 +19,13 @@ https://github.com/Ali-hasan-sss/nux-mobile/settings/secrets/actions
 **الوصف:** ملف keystore محول إلى base64
 
 **كيفية الحصول عليه:**
+
 - افتح ملف `nux-keystore-base64.txt` بالـ Notepad
 - انسخ **كل** المحتوى (نص طويل جداً)
 - الصقه في GitHub Secret
 
 **في GitHub:**
+
 - **Name:** `ANDROID_KEYSTORE_BASE64`
 - **Value:** [المحتوى من الملف]
 
@@ -34,6 +36,7 @@ https://github.com/Ali-hasan-sss/nux-mobile/settings/secrets/actions
 **الوصف:** كلمة سر الـ keystore
 
 **في GitHub:**
+
 - **Name:** `KEYSTORE_PASSWORD`
 - **Value:** `NUX2025secure`
 
@@ -44,6 +47,7 @@ https://github.com/Ali-hasan-sss/nux-mobile/settings/secrets/actions
 **الوصف:** اسم المفتاح داخل الـ keystore
 
 **في GitHub:**
+
 - **Name:** `KEY_ALIAS`
 - **Value:** `nux-key`
 
@@ -54,6 +58,7 @@ https://github.com/Ali-hasan-sss/nux-mobile/settings/secrets/actions
 **الوصف:** كلمة سر المفتاح
 
 **في GitHub:**
+
 - **Name:** `KEY_PASSWORD`
 - **Value:** `NUX2025secure`
 
@@ -101,4 +106,3 @@ git push origin main
 ```
 
 سيبدأ البناء تلقائياً! 🎉
-

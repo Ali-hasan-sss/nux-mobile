@@ -5,6 +5,7 @@
 تم إنشاء **keystore جديد** متوافق مع أدوات البناء.
 
 السبب: الـ keystore القديم كان PKCS12 وسبب خطأ:
+
 ```
 Tag number over 30 is not supported
 ```
@@ -28,6 +29,7 @@ Tag number over 30 is not supported
 ### ⚠️ مهم جداً: يجب تحديث ANDROID_KEYSTORE_BASE64
 
 1. **اذهب إلى:**
+
    ```
    https://github.com/Ali-hasan-sss/nux-mobile/settings/secrets/actions
    ```
@@ -51,6 +53,7 @@ Tag number over 30 is not supported
 ## ✅ باقي Secrets لا تحتاج تحديث
 
 هذه لا تزال صحيحة:
+
 - ✅ `KEYSTORE_PASSWORD`: `NUX2025secure`
 - ✅ `KEY_ALIAS`: `nux-key`
 - ✅ `KEY_PASSWORD`: `NUX2025secure`
@@ -69,6 +72,7 @@ Tag number over 30 is not supported
 ## ⏱️ البناء سينجح هذه المرة!
 
 بعد تحديث الـ Secret، البناء سيكتمل بنجاح وستحصل على:
+
 - ✅ **app-release.apk** جاهز
 - ✅ حجم صغير (~40 MB)
 - ✅ يعمل مباشرة بدون Metro bundler
@@ -78,4 +82,3 @@ Tag number over 30 is not supported
 ## 📝 ملاحظة
 
 احتفظ بالـ keystore الجديد (`nux-release.keystore`) في مكان آمن!
-
