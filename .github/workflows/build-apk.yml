@@ -44,13 +44,16 @@ jobs:
         run: |
           mkdir -p android/app
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          ls -la android/app/release.keystore
 
       - name: 🔨 Build Release APK
         run: |
           cd android
           chmod +x ./gradlew
+          # Use absolute path for keystore
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/android/app/release.keystore"
           ./gradlew assembleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file=app/release.keystore \
+            -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
