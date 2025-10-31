@@ -24,18 +24,14 @@ import { router, useFocusEffect } from "expo-router";
 import { PaymentModal } from "@/components/PaymentModal";
 import {
   RestaurantSelector,
-  mockRestaurants,
   Restaurant,
 } from "@/components/RestaurantSelector";
-import {
-  setSelectedRestaurant,
-  setRestaurants,
-} from "@/store/slices/restaurantSlice";
+import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import {
   fetchUserBalances,
   setSelectedRestaurantBalance,
 } from "@/store/slices/balanceSlice";
-import QRCode from "react-native-qrcode-svg";
+import { RestaurantQRCodes } from "@/components/RestaurantQRCodes";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -115,109 +111,46 @@ export default function HomeScreen() {
     dispatch(setSelectedRestaurantBalance(restaurant.id));
   };
 
-  // Restaurant QR codes
-  const restaurantCodes = {
-    meals: JSON.stringify({
-      type: "meal",
-      restaurantId: selectedRestaurant?.id || "1",
-      restaurantName: selectedRestaurant?.name || "Restaurant",
-    }),
-    drinks: JSON.stringify({
-      type: "drink",
-      restaurantId: selectedRestaurant?.id || "1",
-      restaurantName: selectedRestaurant?.name || "Restaurant",
-    }),
-  };
   return (
     <>
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
       >
-        {showWelcome && (
+        {showWelcome && !isRestaurant && (
           <LinearGradient
             colors={colors.gradient}
             style={styles.welcomeSection}
           >
-            <Text style={styles.welcomeText}>Welcome back!</Text>
+            <Text style={styles.welcomeText}>{t("home.welcomeBack")}</Text>
             <Text style={styles.subtitle}>{t("home.title")}</Text>
           </LinearGradient>
         )}
 
         <View style={styles.content}>
           {isRestaurant ? (
-            <View style={styles.restaurantSection}>
-              <Text style={[styles.restaurantTitle, { color: colors.text }]}>
-                {selectedRestaurant?.name || "My Restaurant"}
-              </Text>
-
-              <View style={styles.qrCodesContainer}>
-                <View
-                  style={[
-                    styles.qrCodeCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <View style={styles.qrCodeHeader}>
-                    <UtensilsCrossed size={24} color={colors.primary} />
-                    <Text style={[styles.qrCodeTitle, { color: colors.text }]}>
-                      {t("restaurant.mealsCode")}
-                    </Text>
-                  </View>
-                  <View style={styles.qrCodeWrapper}>
-                    <QRCode
-                      value={restaurantCodes.meals}
-                      size={120}
-                      color={colors.text}
-                      backgroundColor={colors.background}
-                    />
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.qrCodeCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <View style={styles.qrCodeHeader}>
-                    <Coffee size={24} color={colors.secondary} />
-                    <Text style={[styles.qrCodeTitle, { color: colors.text }]}>
-                      {t("restaurant.drinksCode")}
-                    </Text>
-                  </View>
-                  <View style={styles.qrCodeWrapper}>
-                    <QRCode
-                      value={restaurantCodes.drinks}
-                      size={120}
-                      color={colors.text}
-                      backgroundColor={colors.background}
-                    />
-                  </View>
-                </View>
-              </View>
-            </View>
+            <RestaurantQRCodes />
           ) : (
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handleScanCode}
-            >
-              <Camera size={32} color="white" />
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.primaryButtonText}>
-                  {t("home.scanCode")}
-                </Text>
-                <Text style={styles.primaryButtonDesc}>
-                  {t("home.scanCodeDesc")}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          {!isRestaurant && (
             <>
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handleScanCode}
+              >
+                <Camera size={32} color="white" />
+                <View style={styles.buttonTextContainer}>
+                  <Text style={styles.primaryButtonText}>
+                    {t("home.scanCode")}
+                  </Text>
+                  <Text style={styles.primaryButtonDesc}>
+                    {t("home.scanCodeDesc")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Error/Balance Cards */}
               {error.balances ? (
                 <View
                   style={[
@@ -229,7 +162,7 @@ export default function HomeScreen() {
                   ]}
                 >
                   <Text style={[styles.errorTitle, { color: colors.error }]}>
-                    خطأ في تحميل البيانات
+                    {t("home.errorLoadingData")}
                   </Text>
                   <Text
                     style={[styles.errorDesc, { color: colors.textSecondary }]}
@@ -243,7 +176,9 @@ export default function HomeScreen() {
                     ]}
                     onPress={loadBalances}
                   >
-                    <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+                    <Text style={styles.retryButtonText}>
+                      {t("home.retry")}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : restaurantsWithBalances.length > 0 ? (
@@ -271,92 +206,93 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               )}
-            </>
-          )}
 
-          {!isRestaurant && (
-            <View style={styles.paymentButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentButton,
-                  {
-                    backgroundColor: selectedRestaurant
-                      ? colors.surface
-                      : colors.surface + "50",
-                    opacity: selectedRestaurant ? 1 : 0.5,
-                  },
-                ]}
-                onPress={selectedRestaurant ? handlePayWithWallet : undefined}
-                disabled={!selectedRestaurant}
-              >
-                <View
+              {/* Payment Buttons */}
+              <View style={styles.paymentButtons}>
+                <TouchableOpacity
                   style={[
-                    styles.iconContainer,
-                    { backgroundColor: colors.success + "20" },
-                  ]}
-                >
-                  <View
-                    style={{
-                      borderRadius: 12,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Wallet size={24} color={colors.success} />
-                    <Text style={{ color: colors.success }}>
-                      {currentBalance.walletBalance.toFixed(2)} $
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      borderRadius: 12,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <UtensilsCrossed size={24} color={colors.primary} />
-                    <Text style={{ color: colors.success }}>
-                      {currentBalance.mealPoints}{" "}
-                      <Star size={16} color={colors.success} />
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      borderRadius: 12,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Coffee size={24} color={colors.secondary} />
-                    <Text style={{ color: colors.success }}>
-                      {currentBalance.drinkPoints}{" "}
-                      <Star size={16} color={colors.success} />
-                    </Text>
-                  </View>
-                </View>
-                <Text
-                  style={[
-                    styles.paymentButtonText,
+                    styles.paymentButton,
                     {
-                      color: selectedRestaurant
-                        ? colors.text
-                        : colors.textSecondary,
+                      backgroundColor: selectedRestaurant
+                        ? colors.surface
+                        : colors.surface + "50",
+                      opacity: selectedRestaurant ? 1 : 0.5,
                     },
                   ]}
+                  onPress={selectedRestaurant ? handlePayWithWallet : undefined}
+                  disabled={!selectedRestaurant}
                 >
-                  {selectedRestaurant ? t("home.payWallet") : "اختر مطعم أولاً"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      { backgroundColor: colors.success + "20" },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        borderRadius: 12,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Wallet size={24} color={colors.success} />
+                      <Text style={{ color: colors.success }}>
+                        {currentBalance.walletBalance.toFixed(2)} $
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        borderRadius: 12,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <UtensilsCrossed size={24} color={colors.primary} />
+                      <Text style={{ color: colors.success }}>
+                        {currentBalance.mealPoints}{" "}
+                        <Star size={16} color={colors.success} />
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        borderRadius: 12,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Coffee size={24} color={colors.secondary} />
+                      <Text style={{ color: colors.success }}>
+                        {currentBalance.drinkPoints}{" "}
+                        <Star size={16} color={colors.success} />
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.paymentButtonText,
+                      {
+                        color: selectedRestaurant
+                          ? colors.text
+                          : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {selectedRestaurant
+                      ? t("home.payWallet")
+                      : t("home.selectRestaurantFirst")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
         </View>
       </ScrollView>

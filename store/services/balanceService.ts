@@ -73,7 +73,9 @@ class BalanceService {
 
       // For development, provide more specific error messages
       if (__DEV__ && error.response?.status === 403) {
-        const locationError = new Error("You must be at the restaurant location to scan this QR");
+        const locationError = new Error(
+          "You must be at the restaurant location to scan this QR"
+        );
         (locationError as any).response = error.response;
         throw locationError;
       }
@@ -106,6 +108,12 @@ class BalanceService {
     giftData: PaymentData & { qrCode: string }
   ): Promise<PaymentApiResponse> {
     try {
+      console.log(
+        "🎁 Sending gift request to:",
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLIENT.GIFT}`
+      );
+      console.log("🎁 Gift data:", giftData);
+
       const response = await authApi.post(
         API_CONFIG.ENDPOINTS.CLIENT.GIFT,
         giftData
@@ -116,8 +124,22 @@ class BalanceService {
       }
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Failed to gift points:", error);
+
+      // Log more details about the error
+      if (error.response) {
+        console.error("❌ Gift error response:", {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      } else if (error.request) {
+        console.error("❌ No response received for gift:", error.request);
+      } else {
+        console.error("❌ Error setting up gift request:", error.message);
+      }
+
       throw error;
     }
   }

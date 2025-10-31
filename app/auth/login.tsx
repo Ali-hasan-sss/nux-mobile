@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,22 +8,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-} from 'react-native';
-import { Link, router } from 'expo-router';
-import { useDispatch } from 'react-redux';
-import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Mail, Lock } from 'lucide-react-native';
-import { useTheme } from '@/hooks/useTheme';
-import { Checkbox } from '@/components/Checkbox';
-import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
-import { TermsOfUseModal } from '@/components/TermsOfUseModal';
-import { loginUser } from '@/store/slices/authSlice';
-import type { AppDispatch } from '@/store/store';
+} from "react-native";
+import { Link, router } from "expo-router";
+import { useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
+import { Mail, Lock } from "lucide-react-native";
+import { useTheme } from "@/hooks/useTheme";
+import { Checkbox } from "@/components/Checkbox";
+import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
+import { TermsOfUseModal } from "@/components/TermsOfUseModal";
+import { loginUser } from "@/store/slices/authSlice";
+import { getProfile } from "@/store/slices/profileSlice";
+import type { AppDispatch } from "@/store/store";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
@@ -34,24 +35,30 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(t('common.error'), 'Please fill in all fields');
+      Alert.alert(t("common.error"), "Please fill in all fields");
       return;
     }
 
     if (!agreedToTerms) {
       Alert.alert(
-        t('common.error'),
-        'Please agree to the terms and conditions'
+        t("common.error"),
+        "Please agree to the terms and conditions"
       );
       return;
     }
 
     setLoading(true);
     try {
-      await dispatch(loginUser({ email, password })).unwrap(); // unwrap يعطيك الـ error إذا فشل
-      router.replace('/(tabs)');
+      // تسجيل الدخول
+      await dispatch(loginUser({ email, password })).unwrap();
+
+      // جلب بيانات المستخدم بعد نجاح تسجيل الدخول
+      console.log("🔄 Fetching user profile after login...");
+      await dispatch(getProfile()).unwrap();
+
+      router.replace("/(tabs)");
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message || 'Login failed');
+      Alert.alert(t("common.error"), error.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -61,12 +68,12 @@ export default function LoginScreen() {
     <>
       <LinearGradient colors={colors.gradient} style={styles.container}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
           <View style={styles.content}>
             <Text style={[styles.title, { color: colors.text }]}>
-              {t('home.title')}
+              {t("home.title")}
             </Text>
 
             <View style={[styles.form, { backgroundColor: colors.surface }]}>
@@ -74,7 +81,7 @@ export default function LoginScreen() {
                 <Mail size={20} color={colors.textSecondary} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('auth.email')}
+                  placeholder={t("auth.email")}
                   placeholderTextColor={colors.textSecondary}
                   value={email}
                   onChangeText={setEmail}
@@ -87,7 +94,7 @@ export default function LoginScreen() {
                 <Lock size={20} color={colors.textSecondary} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('auth.password')}
+                  placeholder={t("auth.password")}
                   placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
@@ -103,18 +110,18 @@ export default function LoginScreen() {
                 <Text
                   style={[styles.checkboxText, { color: colors.textSecondary }]}
                 >
-                  {t('auth.agreeToTerms').split(' ').slice(0, 4).join(' ')}{' '}
+                  {t("auth.agreeToTerms").split(" ").slice(0, 4).join(" ")}{" "}
                   <TouchableOpacity
                     onPress={() => setPrivacyModalVisible(true)}
                   >
                     <Text style={[styles.linkText, { color: colors.primary }]}>
-                      {t('auth.privacyPolicy')}
+                      {t("auth.privacyPolicy")}
                     </Text>
-                  </TouchableOpacity>{' '}
-                  {t('common.and')}{' '}
+                  </TouchableOpacity>{" "}
+                  {t("common.and")}{" "}
                   <TouchableOpacity onPress={() => setTermsModalVisible(true)}>
                     <Text style={[styles.linkText, { color: colors.primary }]}>
-                      {t('auth.termsOfUse')}
+                      {t("auth.termsOfUse")}
                     </Text>
                   </TouchableOpacity>
                 </Text>
@@ -133,7 +140,7 @@ export default function LoginScreen() {
                 disabled={loading || !agreedToTerms}
               >
                 <Text style={styles.buttonText}>
-                  {loading ? t('common.loading') : t('auth.loginButton')}
+                  {loading ? t("common.loading") : t("auth.loginButton")}
                 </Text>
               </TouchableOpacity>
 
@@ -142,9 +149,9 @@ export default function LoginScreen() {
                   <Text
                     style={[styles.linkText, { color: colors.textSecondary }]}
                   >
-                    {t('auth.noAccount')}
+                    {t("auth.noAccount")}
                     <Text style={[styles.link, { color: colors.primary }]}>
-                      {' ' + t('auth.register')}
+                      {" " + t("auth.register")}
                     </Text>
                   </Text>
                 </TouchableOpacity>
@@ -176,30 +183,30 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 40,
-    color: 'white',
+    color: "white",
   },
   form: {
     padding: 24,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
     marginBottom: 20,
     paddingBottom: 8,
   },
@@ -212,29 +219,29 @@ const styles = StyleSheet.create({
   button: {
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   buttonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   linkContainer: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
     fontSize: 14,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   link: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginTop: 16,
     gap: 8,
   },

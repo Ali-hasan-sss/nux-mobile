@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,27 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import QRCode from "react-native-qrcode-svg";
-import { User, Phone, Mail, Lock, Save, Crown } from "lucide-react-native";
+import {
+  User,
+  Phone,
+  Mail,
+  Lock,
+  Save,
+  Crown,
+  Trash2,
+  Edit,
+} from "lucide-react-native";
 import { RootState } from "@/store/store";
-import { updateProfile } from "@/store/slices/authSlice";
-import { updatePhoneNumber, generateQRCode } from "@/store/slices/userSlice";
+import { updatePhoneNumber } from "@/store/slices/userSlice";
+import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
+import { EditRestaurantModal } from "@/components/EditRestaurantModal";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 
 export default function AccountScreen() {
   const { t } = useTranslation();
@@ -24,57 +36,199 @@ export default function AccountScreen() {
   const auth = useSelector((state: RootState) => state.auth);
   const user = useSelector((state: RootState) => state.user);
 
-  const isRestaurant = auth.user?.accountType === "restaurant";
+  // Profile management
+  const {
+    profile,
+    isLoading,
+    error,
+    updateLoading,
+    passwordChangeLoading,
+    deleteLoading,
+    fetchProfile,
+    updateUserProfile,
+    changeUserPassword,
+    deleteUserAccount,
+    clearProfileError,
+  } = useProfile();
 
-  const [name, setName] = useState(auth.user?.name || "");
-  const [email, setEmail] = useState(auth.user?.email || "");
+  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState(user.phoneNumber);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [editRestaurantModalVisible, setEditRestaurantModalVisible] =
+    useState(false);
+  const [upgradePlanModalVisible, setUpgradePlanModalVisible] = useState(false);
 
-  React.useEffect(() => {
-    if (!isRestaurant) {
-      // Generate QR code when component mounts (only for users)
-      const qrData = JSON.stringify({
-        userId: auth.user?.id,
-        email: auth.user?.email,
-      });
-      dispatch(generateQRCode(qrData));
+  // Load profile on component mount
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      fetchProfile();
     }
-  }, [auth.user, dispatch]);
+  }, [auth.isAuthenticated, fetchProfile]);
 
-  const handleSaveProfile = () => {
-    if (auth.user) {
-      dispatch(updateProfile({ name, email }));
-      dispatch(updatePhoneNumber(phone));
-      Alert.alert(t("common.success"), "Profile updated successfully");
+  // Update form fields when profile is loaded
+  useEffect(() => {
+    if (profile) {
+      console.log(
+        "👤 Profile loaded in account:",
+        JSON.stringify(profile, null, 2)
+      );
+      console.log("👤 QR Code in account:", profile.qrCode);
+      console.log("👤 QR Code exists:", !!profile.qrCode);
+      console.log("👤 QR Code length:", profile.qrCode?.length || 0);
+
+      setName(profile.fullName || "");
+      setEmail(profile.email || "");
+    }
+  }, [profile]);
+
+  // QR Code is now fetched from profile API
+
+  // Clear errors when component unmounts
+  useEffect(() => {
+    return () => {
+      clearProfileError();
+    };
+  }, [clearProfileError]);
+
+  const handleSaveProfile = async () => {
+    try {
+      if (!name.trim() || !email.trim()) {
+        Alert.alert(t("common.error"), "Please fill in all required fields");
+        return;
+      }
+
+      const result = await updateUserProfile({
+        fullName: name.trim(),
+        email: email.trim(),
+      });
+
+      if (result.type.endsWith("/fulfilled")) {
+        Alert.alert(t("common.success"), t("account.profileUpdated"));
+        dispatch(updatePhoneNumber(phone));
+      } else {
+        Alert.alert(
+          t("common.error"),
+          (result.payload as string) || "Failed to update profile"
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        t("common.error"),
+        error.message || "Failed to update profile"
+      );
     }
   };
 
-  const handleUpdatePassword = () => {
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      Alert.alert(t("common.error"), "Please fill in all password fields");
-      return;
-    }
+  const handleUpdatePassword = async () => {
+    try {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        Alert.alert(t("common.error"), "Please fill in all password fields");
+        return;
+      }
 
-    if (newPassword !== confirmNewPassword) {
-      Alert.alert(t("common.error"), "New passwords do not match");
-      return;
-    }
+      if (newPassword !== confirmNewPassword) {
+        Alert.alert(t("common.error"), "New passwords do not match");
+        return;
+      }
 
-    // Handle password update
-    Alert.alert(t("common.success"), "Password updated successfully");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmNewPassword("");
+      if (newPassword.length < 6) {
+        Alert.alert(
+          t("common.error"),
+          "Password must be at least 6 characters"
+        );
+        return;
+      }
+
+      const result = await changeUserPassword({
+        currentPassword,
+        newPassword,
+      });
+
+      if (result.type.endsWith("/fulfilled")) {
+        Alert.alert(t("common.success"), "Password updated successfully");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      } else {
+        Alert.alert(
+          t("common.error"),
+          (result.payload as string) || "Failed to update password"
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        t("common.error"),
+        error.message || "Failed to update password"
+      );
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      if (!deletePassword) {
+        Alert.alert(
+          t("common.error"),
+          "Please enter your password to delete account"
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Delete Account",
+        "Are you sure you want to delete your account? This action cannot be undone.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              const result = await deleteUserAccount({
+                password: deletePassword,
+              });
+
+              if (result.type.endsWith("/fulfilled")) {
+                Alert.alert(
+                  "Account Deleted",
+                  "Your account has been deleted successfully",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        // Navigate to login or clear auth state
+                        // This would typically be handled by the auth system
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  t("common.error"),
+                  (result.payload as string) || "Failed to delete account"
+                );
+              }
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        t("common.error"),
+        error.message || "Failed to delete account"
+      );
+    }
   };
 
   const handleUpgradePlan = () => {
-    Alert.alert(
-      t("restaurant.upgradePlan"),
-      "Upgrade plan feature coming soon!"
-    );
+    setUpgradePlanModalVisible(true);
   };
   return (
     <ScrollView
@@ -129,11 +283,24 @@ export default function AccountScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: updateLoading ? 0.7 : 1,
+              },
+            ]}
             onPress={handleSaveProfile}
+            disabled={updateLoading}
           >
-            <Save size={20} color="white" />
-            <Text style={styles.saveButtonText}>{t("account.save")}</Text>
+            {updateLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Save size={20} color="white" />
+            )}
+            <Text style={styles.saveButtonText}>
+              {updateLoading ? "Saving..." : t("account.save")}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -179,12 +346,25 @@ export default function AccountScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.secondary }]}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: colors.secondary,
+                opacity: passwordChangeLoading ? 0.7 : 1,
+              },
+            ]}
             onPress={handleUpdatePassword}
+            disabled={passwordChangeLoading}
           >
-            <Lock size={20} color="white" />
+            {passwordChangeLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Lock size={20} color="white" />
+            )}
             <Text style={styles.saveButtonText}>
-              {t("account.updatePassword")}
+              {passwordChangeLoading
+                ? "Updating..."
+                : t("account.updatePassword")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -197,7 +377,19 @@ export default function AccountScreen() {
             <TouchableOpacity
               style={[
                 styles.upgradeButton,
-                { backgroundColor: colors.secondary },
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={() => setEditRestaurantModalVisible(true)}
+            >
+              <Edit size={20} color="white" />
+              <Text style={styles.upgradeButtonText}>
+                {t("restaurant.editInfo")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.upgradeButton,
+                { backgroundColor: colors.secondary, marginTop: 12 },
               ]}
               onPress={handleUpgradePlan}
             >
@@ -219,9 +411,9 @@ export default function AccountScreen() {
             </Text>
 
             <View style={styles.qrContainer}>
-              {user.qrCode ? (
+              {profile?.qrCode && profile.qrCode.trim() !== "" ? (
                 <QRCode
-                  value={user.qrCode}
+                  value={profile.qrCode}
                   size={200}
                   color={colors.text}
                   backgroundColor={colors.background}
@@ -239,14 +431,74 @@ export default function AccountScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    QR Code
+                    {isLoading ? "Loading..." : "No QR Code Available"}
                   </Text>
                 </View>
               )}
             </View>
           </View>
         )}
+
+        {/* Delete Account Section */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Danger Zone
+          </Text>
+          <Text
+            style={[styles.dangerDescription, { color: colors.textSecondary }]}
+          >
+            Once you delete your account, there is no going back. Please be
+            certain.
+          </Text>
+
+          <View style={styles.inputGroup}>
+            <Lock size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Enter your password to confirm deletion"
+              placeholderTextColor={colors.textSecondary}
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.deleteButton,
+              {
+                backgroundColor: colors.error,
+                opacity: deleteLoading ? 0.7 : 1,
+              },
+            ]}
+            onPress={handleDeleteAccount}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Trash2 size={20} color="white" />
+            )}
+            <Text style={styles.deleteButtonText}>
+              {deleteLoading ? "Deleting..." : "Delete Account"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Edit Restaurant Modal */}
+      {isRestaurant && (
+        <>
+          <EditRestaurantModal
+            visible={editRestaurantModalVisible}
+            onClose={() => setEditRestaurantModalVisible(false)}
+          />
+          <UpgradePlanModal
+            visible={upgradePlanModalVisible}
+            onClose={() => setUpgradePlanModalVisible(false)}
+          />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -309,6 +561,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dangerDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 8,
+  },
+  deleteButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",

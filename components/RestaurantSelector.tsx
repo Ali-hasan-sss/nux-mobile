@@ -276,6 +276,7 @@ const styles = StyleSheet.create({
   },
   restaurantList: {
     maxHeight: 400,
+    paddingVertical: 20,
   },
   restaurantItem: {
     flexDirection: "row",

@@ -1,15 +1,24 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from "axios";
+import { CrossPlatformStorage } from "../store/services/crossPlatformStorage";
 
+const DOMAIN = "https://back.nuxapp.de";
 const api = axios.create({
-  baseURL: 'https://nux-backend.onrender.com/api',
+  baseURL: `${DOMAIN}/api`,
   timeout: 10000,
 });
+// const api = axios.create({
+//   baseURL: "http://localhost:5000/api",
+//   timeout: 10000,
+// });
 
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const tokens = await CrossPlatformStorage.getTokens();
+    if (tokens?.accessToken) {
+      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+    }
+  } catch (error) {
+    console.error("❌ Failed to get token for request:", error);
   }
   return config;
 });

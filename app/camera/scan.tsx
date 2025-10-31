@@ -81,6 +81,7 @@ export default function ScanScreen() {
     null
   );
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCamera, setShowCamera] = useState(true);
   const [toast, setToast] = useState<{
     visible: boolean;
     type: "success" | "error";
@@ -220,6 +221,9 @@ export default function ScanScreen() {
     hasScanned.current = true;
     setIsScanning(false);
     setScannedData(data);
+
+    // إخفاء الكاميرا فوراً وإظهار الـ loader
+    setShowCamera(false);
     setIsProcessing(true);
 
     // إيقاف انيميشن المسح
@@ -230,6 +234,8 @@ export default function ScanScreen() {
       if (!auth.isAuthenticated) {
         showToast("error", "يجب تسجيل الدخول أولاً");
         setIsProcessing(false);
+        setShowCamera(true);
+        setTimeout(() => router.back(), 2000);
         return;
       }
 
@@ -305,6 +311,7 @@ export default function ScanScreen() {
                   text: "إلغاء",
                   onPress: () => {
                     setIsProcessing(false);
+                    setShowCamera(true);
                     hasScanned.current = false;
                     setIsScanning(true);
                     setScannedData(null);
@@ -318,6 +325,7 @@ export default function ScanScreen() {
           } else {
             showToast("error", "يجب أن تكون داخل المطعم لمسح هذا الكود");
             setIsProcessing(false);
+            setShowCamera(true);
             hasScanned.current = false;
             setIsScanning(true);
             setScannedData(null);
@@ -365,6 +373,7 @@ export default function ScanScreen() {
       // إظهار Toast الخطأ وإعادة تعيين الحالة
       showToast("error", errorMessage);
       setIsProcessing(false);
+      setShowCamera(true);
       hasScanned.current = false;
       setIsScanning(true);
       setScannedData(null);
@@ -443,116 +452,145 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
-        onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
-        barcodeScannerSettings={{
-          barcodeTypes: ["qr"],
-        }}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={[
-                styles.closeButton,
-                { backgroundColor: colors.background },
-              ]}
-              onPress={() => router.back()}
-            >
-              <X size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.scanArea}>
-            <Animated.View
-              style={[
-                styles.scanFrame,
-                {
-                  transform: [{ scale: scanFrameScale }],
-                  opacity: scanFrameOpacity,
-                },
-              ]}
-            >
-              {/* Corner indicators */}
-              <Animated.View
-                style={[
-                  styles.corner,
-                  styles.topLeft,
-                  {
-                    transform: [{ scale: cornerScale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.corner,
-                  styles.topRight,
-                  {
-                    transform: [{ scale: cornerScale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.corner,
-                  styles.bottomLeft,
-                  {
-                    transform: [{ scale: cornerScale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.corner,
-                  styles.bottomRight,
-                  {
-                    transform: [{ scale: cornerScale }],
-                  },
-                ]}
-              />
-            </Animated.View>
-            <Text style={styles.instructionText}>
-              {isScanning
-                ? t("camera.placeCodeInFrame")
-                : isProcessing
-                ? "جاري معالجة الكود..."
-                : scannedData
-                ? "تم مسح الكود بنجاح!"
-                : "اضغط لإعادة المحاولة"}
+      {/* Loader Screen - يظهر بدلاً من الكاميرا أثناء المعالجة */}
+      {!showCamera && isProcessing && (
+        <View
+          style={[
+            styles.fullScreenLoader,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View style={styles.loaderContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.fullScreenLoaderText, { color: colors.text }]}>
+              جاري معالجة الكود...
             </Text>
-
-            {/* Loader */}
-            {isProcessing && (
-              <View style={styles.loaderContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={[styles.loaderText, { color: colors.text }]}>
-                  جاري معالجة الكود...
-                </Text>
-              </View>
-            )}
-
-            {!isScanning && !isProcessing && (
-              <TouchableOpacity
-                style={[
-                  styles.retryButton,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={() => {
-                  hasScanned.current = false;
-                  setIsScanning(true);
-                  setScannedData(null);
-
-                  // بدء انيميشن المسح مرة أخرى
-                  startScanAnimation();
-                }}
-              >
-                <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
-              </TouchableOpacity>
-            )}
+            <Text
+              style={[
+                styles.fullScreenLoaderSubtext,
+                { color: colors.textSecondary },
+              ]}
+            >
+              الرجاء الانتظار
+            </Text>
           </View>
         </View>
-      </CameraView>
+      )}
+
+      {/* Camera View - يظهر فقط عندما showCamera === true */}
+      {showCamera && (
+        <CameraView
+          style={styles.camera}
+          facing={facing}
+          onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+        >
+          <View style={styles.overlay}>
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: colors.background },
+                ]}
+                onPress={() => router.back()}
+              >
+                <X size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.scanArea}>
+              <Animated.View
+                style={[
+                  styles.scanFrame,
+                  {
+                    transform: [{ scale: scanFrameScale }],
+                    opacity: scanFrameOpacity,
+                  },
+                ]}
+              >
+                {/* Corner indicators */}
+                <Animated.View
+                  style={[
+                    styles.corner,
+                    styles.topLeft,
+                    {
+                      transform: [{ scale: cornerScale }],
+                    },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.corner,
+                    styles.topRight,
+                    {
+                      transform: [{ scale: cornerScale }],
+                    },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.corner,
+                    styles.bottomLeft,
+                    {
+                      transform: [{ scale: cornerScale }],
+                    },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.corner,
+                    styles.bottomRight,
+                    {
+                      transform: [{ scale: cornerScale }],
+                    },
+                  ]}
+                />
+              </Animated.View>
+              <Text style={styles.instructionText}>
+                {isScanning
+                  ? t("camera.placeCodeInFrame")
+                  : isProcessing
+                  ? "جاري معالجة الكود..."
+                  : scannedData
+                  ? "تم مسح الكود بنجاح!"
+                  : "اضغط لإعادة المحاولة"}
+              </Text>
+
+              {/* Loader */}
+              {isProcessing && (
+                <View style={styles.loaderContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.loaderText, { color: colors.text }]}>
+                    جاري معالجة الكود...
+                  </Text>
+                </View>
+              )}
+
+              {!isScanning && !isProcessing && (
+                <TouchableOpacity
+                  style={[
+                    styles.retryButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={() => {
+                    hasScanned.current = false;
+                    setIsScanning(true);
+                    setScannedData(null);
+                    setShowCamera(true);
+
+                    // بدء انيميشن المسح مرة أخرى
+                    startScanAnimation();
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </CameraView>
+      )}
 
       {/* Toast */}
       {toast.visible && (
@@ -715,6 +753,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
+    textAlign: "center",
+  },
+  fullScreenLoader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loaderContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  fullScreenLoaderText: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginTop: 20,
+    textAlign: "center",
+  },
+  fullScreenLoaderSubtext: {
+    fontSize: 16,
+    marginTop: 8,
     textAlign: "center",
   },
 });

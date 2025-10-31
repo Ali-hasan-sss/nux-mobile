@@ -1,47 +1,39 @@
-name: Build Android APK
+name: Build Android APK with EAS
 
 on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 🏗 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 🏗 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: "npm"
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
         with:
-          distribution: "temurin"
-          java-version: 17
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Grant execute permission for Gradlew
-        run: chmod +x android/gradlew
+      - name: 📦 Install dependencies
+        run: npm ci
 
-      - name: Build Release APK
+      - name: 🚀 Build Android APK
+        run: eas build --platform android --profile preview --non-interactive --no-wait
+
+      - name: 📱 Wait for build and download APK
         run: |
-          cd android
-          ./gradlew assembleRelease \
-           -Pandroid.injected.signing.store.file=app/my-release-key.keystore \
-           -Pandroid.injected.signing.store.password=A00000000 \
-           -Pandroid.injected.signing.key.alias=my-key-alias \
-           -Pandroid.injected.signing.key.password=A00000000
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          echo "Build started! You can monitor it at:"
+          echo "https://expo.dev/accounts/alihasan_123/projects/NUX/builds"

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,106 +8,110 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-} from 'react-native';
-import { useSelector } from 'react-redux';
-import { useTranslation } from 'react-i18next';
-import { Search, Filter, MapPin, Plus } from 'lucide-react-native';
-import { RootState } from '@/store/store';
-import { useTheme } from '@/hooks/useTheme';
-import { RestaurantMapModal } from '@/components/RestaurantMapModal';
-import { CreateAdModal } from '@/components/CreateAdModal';
-
-interface Promotion {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  validUntil: string;
-  discount: string;
-  restaurantName: string;
-  category: 'food' | 'drinks';
-  location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  };
-}
-
-const mockPromotions: Promotion[] = [
-  {
-    id: '1',
-    title: '20% Off Coffee',
-    description: 'Get 20% off your favorite coffee drinks',
-    image:
-      'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=400',
-    validUntil: '2025-02-28',
-    discount: '20%',
-    restaurantName: 'Café Central',
-    category: 'drinks',
-    location: {
-      latitude: 37.7749,
-      longitude: -122.4194,
-      address: '123 Coffee Street, San Francisco, CA',
-    },
-  },
-  {
-    id: '2',
-    title: 'Free Dessert',
-    description: 'Free dessert with any main course',
-    image:
-      'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=400',
-    validUntil: '2025-03-15',
-    discount: 'FREE',
-    restaurantName: 'Sweet Treats Bakery',
-    category: 'food',
-    location: {
-      latitude: 37.7849,
-      longitude: -122.4094,
-      address: '456 Dessert Avenue, San Francisco, CA',
-    },
-  },
-];
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
+import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { Search, Filter, MapPin, Plus } from "lucide-react-native";
+import { RootState, AppDispatch } from "@/store/store";
+import { useTheme } from "@/hooks/useTheme";
+import { RestaurantMapModal } from "@/components/RestaurantMapModal";
+import { CreateAdModal } from "@/components/CreateAdModal";
+import { RestaurantAdsView } from "@/components/RestaurantAdsView";
+import { useFocusEffect } from "expo-router";
+import {
+  fetchAds,
+  refreshAds,
+  setFilters,
+  clearFilters,
+} from "@/store/slices/adsSlice";
+import { Ad } from "@/store/types/adsTypes";
 
 export default function PromotionsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const auth = useSelector((state: RootState) => state.auth);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedFilters, setSelectedFilters] = React.useState<string[]>([]);
-  const [showFilters, setShowFilters] = React.useState(false);
-  const [mapModalVisible, setMapModalVisible] = React.useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] =
-    React.useState<Promotion | null>(null);
-  const [createAdModalVisible, setCreateAdModalVisible] = React.useState(false);
+  const dispatch = useDispatch<AppDispatch>();
 
-  const isRestaurant = auth.user?.accountType === 'restaurant';
-  const filters = [
-    { key: 'food', label: t('promotions.food') },
-    { key: 'drinks', label: t('promotions.drinks') },
-    { key: 'nearby', label: t('promotions.nearby') },
-    { key: 'newest', label: t('promotions.newest') },
-    { key: 'popular', label: t('promotions.popular') },
+  // Redux state
+  const auth = useSelector((state: RootState) => state.auth);
+  const { ads, pagination, loading, refreshing, error, filters } = useSelector(
+    (state: RootState) => state.ads
+  );
+
+  // Local state
+  const [searchQuery, setSearchQuery] = useState(filters.search || "");
+  const [selectedFilters, setSelectedFilters] = useState<string[]>(
+    filters.category ? [filters.category] : []
+  );
+  const [showFilters, setShowFilters] = useState(false);
+  const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Ad | null>(null);
+  const [createAdModalVisible, setCreateAdModalVisible] = useState(false);
+
+  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
+  const filterOptions = [
+    { key: "food", label: t("promotions.food") },
+    { key: "drink", label: t("promotions.drinks") },
   ];
 
-  const filteredPromotions = mockPromotions.filter((promotion) => {
-    const matchesSearch =
-      promotion.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      promotion.restaurantName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+  // Load ads from Redux
+  const loadAds = useCallback(
+    (page: number = 1, append: boolean = false) => {
+      const categoryFilter = selectedFilters.find(
+        (f) => f === "food" || f === "drink"
+      );
 
-    if (selectedFilters.length === 0) return matchesSearch;
+      const adsFilters = {
+        page,
+        pageSize: 10,
+        search: searchQuery.trim() || undefined,
+        category: categoryFilter || undefined,
+      };
 
-    return (
-      matchesSearch &&
-      selectedFilters.some((filter) => {
-        if (filter === 'food' || filter === 'drinks') {
-          return promotion.category === filter;
-        }
-        return true; // For other filters like nearby, newest, popular
-      })
+      dispatch(fetchAds({ filters: adsFilters, append }));
+    },
+    [searchQuery, selectedFilters, dispatch]
+  );
+
+  // Initial fetch and when filters/search change
+  useEffect(() => {
+    loadAds(1, false);
+  }, [searchQuery, selectedFilters]);
+
+  // Refresh on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      loadAds(1, false);
+    }, [])
+  );
+
+  // Handle refresh
+  const handleRefresh = () => {
+    const categoryFilter = selectedFilters.find(
+      (f) => f === "food" || f === "drink"
     );
-  });
+
+    const adsFilters = {
+      page: 1,
+      pageSize: 10,
+      search: searchQuery.trim() || undefined,
+      category: categoryFilter || undefined,
+    };
+
+    dispatch(refreshAds(adsFilters));
+  };
+
+  // Handle load more
+  const handleLoadMore = () => {
+    if (
+      !loading &&
+      pagination &&
+      pagination.currentPage < pagination.totalPages
+    ) {
+      loadAds(pagination.currentPage + 1, true);
+    }
+  };
 
   const toggleFilter = (filterKey: string) => {
     setSelectedFilters((prev) =>
@@ -117,52 +121,128 @@ export default function PromotionsScreen() {
     );
   };
 
-  const handleRestaurantLocation = (promotion: Promotion) => {
-    setSelectedRestaurant(promotion);
+  const handleRestaurantLocation = (ad: Ad) => {
+    setSelectedRestaurant(ad);
     setMapModalVisible(true);
   };
 
-  const renderPromotion = ({ item }: { item: Promotion }) => (
-    <TouchableOpacity
-      style={[styles.promotionCard, { backgroundColor: colors.surface }]}
-      onPress={() => handleRestaurantLocation(item)}
-    >
-      <Image source={{ uri: item.image }} style={styles.promotionImage} />
-      <View style={styles.promotionContent}>
-        <View
-          style={[styles.discountBadge, { backgroundColor: colors.secondary }]}
-        >
-          <Text style={styles.discountText}>{item.discount}</Text>
-        </View>
-        <View style={styles.restaurantHeader}>
-          <Text style={[styles.restaurantName, { color: colors.primary }]}>
-            {item.restaurantName}
-          </Text>
-          <TouchableOpacity onPress={() => handleRestaurantLocation(item)}>
-            <MapPin size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-        <Text style={[styles.promotionTitle, { color: colors.text }]}>
-          {item.title}
-        </Text>
-        <Text
-          style={[styles.promotionDescription, { color: colors.textSecondary }]}
-        >
-          {item.description}
-        </Text>
-        <Text style={[styles.validUntil, { color: colors.primary }]}>
-          {t('promotions.validUntil', { date: item.validUntil })}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderAd = ({ item }: { item: Ad }) => {
+    // Use image or logo as fallback
+    const imageUri =
+      item.image ||
+      item.restaurant.logo ||
+      "https://via.placeholder.com/400x160?text=No+Image";
 
+    return (
+      <TouchableOpacity
+        style={[styles.promotionCard, { backgroundColor: colors.surface }]}
+        onPress={() => handleRestaurantLocation(item)}
+      >
+        <Image source={{ uri: imageUri }} style={styles.promotionImage} />
+        <View style={styles.promotionContent}>
+          <View
+            style={[
+              styles.discountBadge,
+              { backgroundColor: colors.secondary },
+            ]}
+          >
+            <Text style={styles.discountText}>
+              {item.category === "food" ? "🍽️" : "☕"}
+            </Text>
+          </View>
+          <View style={styles.restaurantHeader}>
+            <Text style={[styles.restaurantName, { color: colors.primary }]}>
+              {item.restaurant.name}
+            </Text>
+            <TouchableOpacity onPress={() => handleRestaurantLocation(item)}>
+              <MapPin size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.promotionTitle, { color: colors.text }]}>
+            {item.title}
+          </Text>
+          <Text
+            style={[
+              styles.promotionDescription,
+              { color: colors.textSecondary },
+            ]}
+          >
+            {item.description}
+          </Text>
+          <Text style={[styles.validUntil, { color: colors.textSecondary }]}>
+            {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          {error || t("promotions.noPromotions")}
+        </Text>
+        {error && (
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={() => loadAds(1, false)}
+          >
+            <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // For restaurant owners - show their own ads
+  if (isRestaurant) {
+    return (
+      <>
+        <View
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t("restaurant.myAds")}
+            </Text>
+          </View>
+
+          <RestaurantAdsView />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.primary }]}
+          onPress={() => setCreateAdModalVisible(true)}
+        >
+          <Plus size={24} color="white" />
+        </TouchableOpacity>
+
+        <CreateAdModal
+          visible={createAdModalVisible}
+          onClose={() => setCreateAdModalVisible(false)}
+        />
+      </>
+    );
+  }
+
+  // For regular users - show all ads
   return (
     <>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
-            {t('promotions.title')}
+            {t("promotions.title")}
           </Text>
 
           <View
@@ -174,7 +254,7 @@ export default function PromotionsScreen() {
             <Search size={20} color={colors.textSecondary} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder={t('promotions.search')}
+              placeholder={t("promotions.search")}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -188,30 +268,32 @@ export default function PromotionsScreen() {
             <View style={styles.filtersContainer}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.filtersRow}>
-                  {filters.map((filter) => (
+                  {filterOptions.map((filterOpt) => (
                     <TouchableOpacity
-                      key={filter.key}
+                      key={filterOpt.key}
                       style={[
                         styles.filterChip,
                         {
-                          backgroundColor: selectedFilters.includes(filter.key)
+                          backgroundColor: selectedFilters.includes(
+                            filterOpt.key
+                          )
                             ? colors.primary
                             : colors.surface,
                         },
                       ]}
-                      onPress={() => toggleFilter(filter.key)}
+                      onPress={() => toggleFilter(filterOpt.key)}
                     >
                       <Text
                         style={[
                           styles.filterText,
                           {
-                            color: selectedFilters.includes(filter.key)
-                              ? 'white'
+                            color: selectedFilters.includes(filterOpt.key)
+                              ? "white"
                               : colors.text,
                           },
                         ]}
                       >
-                        {filter.label}
+                        {filterOpt.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -224,7 +306,7 @@ export default function PromotionsScreen() {
                       onPress={() => setSelectedFilters([])}
                     >
                       <Text style={styles.clearButtonText}>
-                        {t('common.clear')}
+                        {t("common.clear")}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -234,40 +316,48 @@ export default function PromotionsScreen() {
           )}
         </View>
 
-        <FlatList
-          data={filteredPromotions}
-          renderItem={renderPromotion}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading && ads.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              {t("common.loading")}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={ads}
+            renderItem={renderAd}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmpty}
+          />
+        )}
       </View>
 
-      {isRestaurant && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => setCreateAdModalVisible(true)}
-        >
-          <Plus size={24} color="white" />
-        </TouchableOpacity>
-      )}
       {selectedRestaurant && (
         <RestaurantMapModal
           visible={mapModalVisible}
           onClose={() => setMapModalVisible(false)}
           restaurant={{
-            name: selectedRestaurant.restaurantName,
-            latitude: selectedRestaurant.location.latitude,
-            longitude: selectedRestaurant.location.longitude,
-            address: selectedRestaurant.location.address,
+            name: selectedRestaurant.restaurant.name,
+            latitude: selectedRestaurant.restaurant.latitude,
+            longitude: selectedRestaurant.restaurant.longitude,
+            address: selectedRestaurant.restaurant.address,
           }}
         />
       )}
-
-      <CreateAdModal
-        visible={createAdModalVisible}
-        onClose={() => setCreateAdModalVisible(false)}
-      />
     </>
   );
 }
@@ -282,12 +372,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 16,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     borderRadius: 12,
     marginBottom: 12,
@@ -301,7 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   filtersRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     paddingRight: 20,
   },
@@ -312,7 +402,7 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   clearButton: {
     paddingHorizontal: 16,
@@ -320,9 +410,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   clearButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   list: {
     padding: 20,
@@ -331,22 +421,22 @@ const styles = StyleSheet.create({
   promotionCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
   },
   promotionImage: {
-    width: '100%',
+    width: "100%",
     height: 160,
   },
   promotionContent: {
     padding: 16,
   },
   discountBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -8,
     right: 16,
     paddingHorizontal: 12,
@@ -354,23 +444,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   discountText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   restaurantHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 8,
   },
   restaurantName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   promotionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   promotionDescription: {
@@ -379,21 +469,57 @@ const styles = StyleSheet.create({
   },
   validUntil: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   fab: {
-    position: 'absolute',
-    bottom: 20,
+    position: "absolute",
+    bottom: 120,
     right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+    minHeight: 300,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
