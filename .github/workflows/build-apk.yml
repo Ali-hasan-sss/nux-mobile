@@ -7,12 +7,11 @@ on:
     inputs:
       build_type:
         description: "Build Type"
-        required: true
+        required: false
         default: "release"
         type: choice
         options:
           - release
-          - debug
 
 jobs:
   build:
@@ -42,22 +41,11 @@ jobs:
         run: npx expo prebuild --platform android --clean
 
       - name: 📝 Setup release keystore
-        if: ${{ github.event.inputs.build_type == 'release' }}
         run: |
-          cd android/app
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          mkdir -p android/app
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
-      - name: 🔨 Build APK (Debug)
-        if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == '' }}
-        run: |
-          cd android
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
-        env:
-          EXPO_NO_DOTENV: 1
-
-      - name: 🔨 Build APK (Release)
-        if: ${{ github.event.inputs.build_type == 'release' }}
+      - name: 🔨 Build Release APK
         run: |
           cd android
           chmod +x ./gradlew
@@ -72,10 +60,8 @@ jobs:
       - name: 📦 Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-${{ github.event.inputs.build_type || 'debug' }}.apk
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
+          name: app-release.apk
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
       - name: ✅ Build complete

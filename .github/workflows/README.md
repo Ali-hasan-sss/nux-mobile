@@ -16,6 +16,7 @@
 ### الطريقة 2: بناء تلقائي
 
 البناء يعمل تلقائياً عند:
+
 - Push إلى `main` أو `master`
 - سيبني **debug APK** افتراضياً
 
@@ -59,6 +60,7 @@ base64 release.keystore > keystore.base64.txt
 اذهب إلى: **Settings** → **Secrets and variables** → **Actions**
 
 أضف:
+
 - `ANDROID_KEYSTORE_BASE64`: محتوى ملف keystore.base64.txt
 - `KEYSTORE_PASSWORD`: كلمة سر الـ keystore
 - `KEY_ALIAS`: اسم المفتاح (مثل: my-key-alias)
@@ -79,13 +81,16 @@ base64 release.keystore > keystore.base64.txt
 ## 🐛 حل المشاكل
 
 ### البناء فشل في `expo prebuild`
+
 - تأكد من أن `package.json` يحتوي على جميع dependencies
 
 ### البناء فشل في `assembleRelease`
+
 - تأكد من إضافة جميع Secrets المطلوبة
 - تأكد من صحة keystore password
 
 ### APK لا يعمل على الهاتف
+
 - استخدم debug build للاختبار
 - تأكد من تفعيل "Install from unknown sources"
 
@@ -96,4 +101,3 @@ base64 release.keystore > keystore.base64.txt
 - [Expo Prebuild Docs](https://docs.expo.dev/workflow/prebuild/)
 - [Android Signing Guide](https://developer.android.com/studio/publish/app-signing)
 - [GitHub Actions Docs](https://docs.github.com/en/actions)
-
