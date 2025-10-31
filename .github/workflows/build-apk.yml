@@ -41,12 +41,6 @@ jobs:
       - name: 🔨 Generate native code with Expo Prebuild
         run: npx expo prebuild --platform android --clean
 
-      - name: 📝 Create debug keystore
-        if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == '' }}
-        run: |
-          mkdir -p android/app
-          keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
       - name: 📝 Setup release keystore
         if: ${{ github.event.inputs.build_type == 'release' }}
         run: |
@@ -58,18 +52,22 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
+        env:
+          EXPO_NO_DOTENV: 1
 
       - name: 🔨 Build APK (Release)
         if: ${{ github.event.inputs.build_type == 'release' }}
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease \
+          ./gradlew assembleRelease --no-daemon \
             -Pandroid.injected.signing.store.file=app/release.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+        env:
+          EXPO_NO_DOTENV: 1
 
       - name: 📦 Upload APK artifact
         uses: actions/upload-artifact@v4
