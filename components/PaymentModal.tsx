@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  I18nManager,
 } from "react-native";
 import {
   GestureHandlerRootView,
@@ -121,6 +122,8 @@ export function PaymentModal({
       console.log(
         "🔄 Modal opened, resetting amount but preserving payment type"
       );
+      // Reset slider position on open
+      translateX.value = 0;
     }
   }, [visible]); // Remove refreshBalances from dependencies to prevent re-triggering
 
@@ -262,13 +265,26 @@ export function PaymentModal({
   const translateX = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
-    .enabled(!isProcessing) // Disable gesture during processing
+    .enabled(!isProcessing)
     .onUpdate((event) => {
-      // تمنع الخروج عن حدود الحاوية
-      translateX.value = Math.min(event.translationX, 220);
+      const max = 220;
+      if (I18nManager.isRTL) {
+        // Drag to left (negative). Clamp to [-max, 0]
+        const delta = Math.min(0, event.translationX);
+        const magnitude = Math.min(Math.abs(delta), max);
+        translateX.value = -magnitude;
+      } else {
+        // Drag to right (positive). Clamp to [0, max]
+        const delta = Math.max(0, event.translationX);
+        translateX.value = Math.min(delta, max);
+      }
     })
     .onEnd(() => {
-      if (translateX.value > 200) {
+      const threshold = 200;
+      const passed = I18nManager.isRTL
+        ? Math.abs(translateX.value) > threshold
+        : translateX.value > threshold;
+      if (passed) {
         runOnJS(handleSlideConfirm)();
       } else {
         translateX.value = withSpring(0);
@@ -433,7 +449,10 @@ export function PaymentModal({
                       key={index}
                       size={18}
                       color={colors.textSecondary}
-                      style={{ marginHorizontal: 4 }}
+                      style={{
+                        marginHorizontal: 4,
+                        transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }],
+                      }}
                     />
                   ))}
                 </View>
@@ -448,10 +467,18 @@ export function PaymentModal({
                           ? colors.primary + "50"
                           : colors.primary,
                         opacity: isProcessing ? 0.5 : 1,
+                        // Anchor start position per direction
+                        ...(I18nManager.isRTL
+                          ? { right: 4, left: undefined }
+                          : { left: 4, right: undefined }),
                       },
                     ]}
                   >
-                    <ArrowRight size={24} color="white" />
+                    <ArrowRight
+                      size={24}
+                      color="white"
+                      style={{ transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }}
+                    />
                   </Animated.View>
                 </GestureDetector>
               </View>

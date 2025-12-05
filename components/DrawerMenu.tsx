@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,14 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Alert,
+  Animated,
+  Easing,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { I18nManager } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch } from '@/store/store';
 import { useTranslation } from 'react-i18next';
 import {
   Settings,
@@ -31,7 +37,7 @@ interface DrawerMenuProps {
 }
 
 export function DrawerMenu({ onClose }: DrawerMenuProps) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const { mode } = useSelector((state: RootState) => state.theme);
@@ -39,13 +45,37 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
 
+  const slideX = useRef(new Animated.Value(-300)).current;
+
+  useEffect(() => {
+    Animated.timing(slideX, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [slideX]);
+
+  const handleCloseAnimated = () => {
+    Animated.timing(slideX, {
+      toValue: -300,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  };
+
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     dispatch(setTheme(newTheme));
   };
 
-  const handleLanguageChange = (language: string) => {
+  const handleLanguageChange = async (language: string) => {
     dispatch(setLanguage(language));
-    i18n.changeLanguage(language);
+    await i18n.changeLanguage(language);
+    await AsyncStorage.setItem('user-language', language);
+    // Direction is forced to LTR globally; no RTL toggling here
   };
 
   const handleLogout = () => {
@@ -55,11 +85,16 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
 
   return (
     <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.drawer, { backgroundColor: colors.background }]}>
+      <Pressable style={styles.backdrop} onPress={handleCloseAnimated} />
+      <Animated.View
+        style={[
+          styles.drawer,
+          { backgroundColor: colors.background, transform: [{ translateX: slideX }] },
+        ]}
+      >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.text }]}>Menu</Text>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={handleCloseAnimated}>
             <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -191,7 +226,7 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
           visible={termsModalVisible}
           onClose={() => setTermsModalVisible(false)}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }

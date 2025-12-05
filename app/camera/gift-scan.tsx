@@ -62,11 +62,9 @@ export default function GiftScanScreen() {
   }) => {
     if (scanned || isProcessing) return; // Prevent multiple scans
 
-    console.log("📱 QR Code scanned in camera:", data);
     setScanned(true);
     setScannedData(data);
 
-    // إخفاء الكاميرا فوراً وإظهار الـ loader
     setShowCamera(false);
     setIsProcessing(true);
 

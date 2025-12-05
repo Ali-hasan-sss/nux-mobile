@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  Image,
+} from "react-native";
 //import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Menu } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/hooks/useTheme";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSelector } from "react-redux";
@@ -14,7 +22,7 @@ export function CustomHeader() {
   // const insets = useSafeAreaInsets();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { unreadCount, loadUnreadCount } = useNotifications();
   const auth = useSelector((state: RootState) => state.auth);
 
@@ -41,7 +49,14 @@ export function CustomHeader() {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={
+          isDark
+            ? ["#1A1F3A", "#2D1B4E"]
+            : [colors.background, colors.background]
+        }
+        style={styles.container}
+      >
         <View
           style={[
             styles.header,
@@ -55,7 +70,11 @@ export function CustomHeader() {
             <Menu size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={[styles.logo, { color: colors.primary }]}>NUX</Text>
+          <Image
+            source={require("@/assets/images/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
           <TouchableOpacity
             style={styles.notificationButton}
@@ -76,11 +95,11 @@ export function CustomHeader() {
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       <Modal
         visible={drawerOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setDrawerOpen(false)}
       >
@@ -111,8 +130,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   logo: {
-    fontSize: 20,
-    fontWeight: "bold",
+    width: 80,
+    height: 40,
   },
   notificationButton: {
     position: "relative",

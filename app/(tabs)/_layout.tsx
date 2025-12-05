@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
 import { Home, Tag, ShoppingBag, User } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { Redirect } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { CustomHeader } from "@/components/CustomHeader";
@@ -12,8 +14,9 @@ export default function TabLayout() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   if (!isAuthenticated) {
     return <Redirect href="/auth/login" />;
@@ -26,7 +29,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: isDark ? "#1A1F3A" : colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingBottom:
@@ -42,6 +45,11 @@ export default function TabLayout() {
           bottom: 0,
           left: 0,
           right: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -52,21 +60,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs.home", "Home"),
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="promotions"
         options={{
-          title: "Promotions",
+          title: t("tabs.promotions", "Promotions"),
           tabBarIcon: ({ size, color }) => <Tag size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="purchase"
         options={{
-          title: "Purchase",
+          title: t("tabs.purchase", "Purchase"),
           tabBarIcon: ({ size, color }) => (
             <ShoppingBag size={size} color={color} />
           ),
@@ -75,7 +83,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: "Account",
+          title: t("tabs.account", "Account"),
           tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
         }}
       />

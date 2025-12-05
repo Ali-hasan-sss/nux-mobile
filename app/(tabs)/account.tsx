@@ -22,6 +22,7 @@ import {
   Trash2,
   Edit,
 } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
 import { updatePhoneNumber } from "@/store/slices/userSlice";
 import { useProfile } from "@/hooks/useProfile";
@@ -31,7 +32,7 @@ import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 
 export default function AccountScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
   const user = useSelector((state: RootState) => state.user);
@@ -74,14 +75,6 @@ export default function AccountScreen() {
   // Update form fields when profile is loaded
   useEffect(() => {
     if (profile) {
-      console.log(
-        "👤 Profile loaded in account:",
-        JSON.stringify(profile, null, 2)
-      );
-      console.log("👤 QR Code in account:", profile.qrCode);
-      console.log("👤 QR Code exists:", !!profile.qrCode);
-      console.log("👤 QR Code length:", profile.qrCode?.length || 0);
-
       setName(profile.fullName || "");
       setEmail(profile.email || "");
     }
@@ -231,280 +224,326 @@ export default function AccountScreen() {
     setUpgradePlanModalVisible(true);
   };
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollContent}
+    <LinearGradient
+      colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+      style={styles.container}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {t("account.title")}
-        </Text>
-      </View>
-
-      <View style={styles.content}>
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("account.profile")}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t("account.title")}
           </Text>
-
-          <View style={styles.inputGroup}>
-            <User size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.name")}
-              placeholderTextColor={colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Mail size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.email")}
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Phone size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.phone")}
-              placeholderTextColor={colors.textSecondary}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              {
-                backgroundColor: colors.primary,
-                opacity: updateLoading ? 0.7 : 1,
-              },
-            ]}
-            onPress={handleSaveProfile}
-            disabled={updateLoading}
-          >
-            {updateLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Save size={20} color="white" />
-            )}
-            <Text style={styles.saveButtonText}>
-              {updateLoading ? "Saving..." : t("account.save")}
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("account.updatePassword")}
-          </Text>
-
-          <View style={styles.inputGroup}>
-            <Lock size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.currentPassword")}
-              placeholderTextColor={colors.textSecondary}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Lock size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.newPassword")}
-              placeholderTextColor={colors.textSecondary}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Lock size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={t("account.confirmNewPassword")}
-              placeholderTextColor={colors.textSecondary}
-              value={confirmNewPassword}
-              onChangeText={setConfirmNewPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              {
-                backgroundColor: colors.secondary,
-                opacity: passwordChangeLoading ? 0.7 : 1,
-              },
-            ]}
-            onPress={handleUpdatePassword}
-            disabled={passwordChangeLoading}
-          >
-            {passwordChangeLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Lock size={20} color="white" />
-            )}
-            <Text style={styles.saveButtonText}>
-              {passwordChangeLoading
-                ? "Updating..."
-                : t("account.updatePassword")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {isRestaurant ? (
+        <View style={styles.content}>
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("restaurant.planManagement")}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.upgradeButton,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={() => setEditRestaurantModalVisible(true)}
-            >
-              <Edit size={20} color="white" />
-              <Text style={styles.upgradeButtonText}>
-                {t("restaurant.editInfo")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.upgradeButton,
-                { backgroundColor: colors.secondary, marginTop: 12 },
-              ]}
-              onPress={handleUpgradePlan}
-            >
-              <Crown size={20} color="white" />
-              <Text style={styles.upgradeButtonText}>
-                {t("restaurant.upgradePlan")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("account.myQRCode")}
-            </Text>
-            <Text
-              style={[styles.qrDescription, { color: colors.textSecondary }]}
-            >
-              {t("account.qrCodeDesc")}
+              {t("account.profile")}
             </Text>
 
-            <View style={styles.qrContainer}>
-              {profile?.qrCode && profile.qrCode.trim() !== "" ? (
-                <QRCode
-                  value={profile.qrCode}
-                  size={200}
-                  color={colors.text}
-                  backgroundColor={colors.background}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.qrPlaceholder,
-                    { backgroundColor: colors.background },
-                  ]}
+            <View style={styles.inputGroup}>
+              <User size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.name")}
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Mail size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.email")}
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Phone size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.phone")}
+                placeholderTextColor={colors.textSecondary}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <LinearGradient
+              colors={
+                isDark
+                  ? (colors as any).gradientButton || [
+                      colors.primary,
+                      colors.primary,
+                    ]
+                  : [colors.primary, colors.primary]
+              }
+              style={[styles.saveButton, { opacity: updateLoading ? 0.7 : 1 }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <TouchableOpacity
+                style={styles.saveButtonInner}
+                onPress={handleSaveProfile}
+                disabled={updateLoading}
+              >
+                {updateLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Save size={20} color="white" />
+                )}
+                <Text style={styles.saveButtonText}>
+                  {updateLoading ? "Saving..." : t("account.save")}
+                </Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {t("account.updatePassword")}
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Lock size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.currentPassword")}
+                placeholderTextColor={colors.textSecondary}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Lock size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.newPassword")}
+                placeholderTextColor={colors.textSecondary}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Lock size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("account.confirmNewPassword")}
+                placeholderTextColor={colors.textSecondary}
+                value={confirmNewPassword}
+                onChangeText={setConfirmNewPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <LinearGradient
+              colors={
+                isDark
+                  ? ["#FF6B9D", "#C471ED"]
+                  : [colors.secondary, colors.secondary]
+              }
+              style={[
+                styles.saveButton,
+                { opacity: passwordChangeLoading ? 0.7 : 1 },
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <TouchableOpacity
+                style={styles.saveButtonInner}
+                onPress={handleUpdatePassword}
+                disabled={passwordChangeLoading}
+              >
+                {passwordChangeLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Lock size={20} color="white" />
+                )}
+                <Text style={styles.saveButtonText}>
+                  {passwordChangeLoading
+                    ? "Updating..."
+                    : t("account.updatePassword")}
+                </Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+
+          {isRestaurant ? (
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t("restaurant.planManagement")}
+              </Text>
+              <LinearGradient
+                colors={
+                  isDark
+                    ? (colors as any).gradientButton || [
+                        colors.primary,
+                        colors.primary,
+                      ]
+                    : [colors.primary, colors.primary]
+                }
+                style={styles.upgradeButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <TouchableOpacity
+                  style={styles.upgradeButtonInner}
+                  onPress={() => setEditRestaurantModalVisible(true)}
                 >
-                  <Text
+                  <Edit size={20} color="white" />
+                  <Text style={styles.upgradeButtonText}>
+                    {t("restaurant.editInfo")}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+              <LinearGradient
+                colors={
+                  isDark
+                    ? ["#FF6B9D", "#C471ED"]
+                    : [colors.secondary, colors.secondary]
+                }
+                style={[styles.upgradeButton, { marginTop: 12 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <TouchableOpacity
+                  style={styles.upgradeButtonInner}
+                  onPress={handleUpgradePlan}
+                >
+                  <Crown size={20} color="white" />
+                  <Text style={styles.upgradeButtonText}>
+                    {t("restaurant.upgradePlan")}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t("account.myQRCode")}
+              </Text>
+              <Text
+                style={[styles.qrDescription, { color: colors.textSecondary }]}
+              >
+                {t("account.qrCodeDesc")}
+              </Text>
+
+              <View style={styles.qrContainer}>
+                {profile?.qrCode && profile.qrCode.trim() !== "" ? (
+                  <QRCode
+                    value={profile.qrCode}
+                    size={200}
+                    color={colors.text}
+                    backgroundColor={colors.background}
+                  />
+                ) : (
+                  <View
                     style={[
-                      styles.qrPlaceholderText,
-                      { color: colors.textSecondary },
+                      styles.qrPlaceholder,
+                      { backgroundColor: colors.background },
                     ]}
                   >
-                    {isLoading ? "Loading..." : "No QR Code Available"}
-                  </Text>
-                </View>
-              )}
+                    <Text
+                      style={[
+                        styles.qrPlaceholderText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {isLoading ? "Loading..." : "No QR Code Available"}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Delete Account Section */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Danger Zone
-          </Text>
-          <Text
-            style={[styles.dangerDescription, { color: colors.textSecondary }]}
-          >
-            Once you delete your account, there is no going back. Please be
-            certain.
-          </Text>
-
-          <View style={styles.inputGroup}>
-            <Lock size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your password to confirm deletion"
-              placeholderTextColor={colors.textSecondary}
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.deleteButton,
-              {
-                backgroundColor: colors.error,
-                opacity: deleteLoading ? 0.7 : 1,
-              },
-            ]}
-            onPress={handleDeleteAccount}
-            disabled={deleteLoading}
-          >
-            {deleteLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Trash2 size={20} color="white" />
-            )}
-            <Text style={styles.deleteButtonText}>
-              {deleteLoading ? "Deleting..." : "Delete Account"}
+          {/* Delete Account Section */}
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Danger Zone
             </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <Text
+              style={[
+                styles.dangerDescription,
+                { color: colors.textSecondary },
+              ]}
+            >
+              Once you delete your account, there is no going back. Please be
+              certain.
+            </Text>
 
-      {/* Edit Restaurant Modal */}
-      {isRestaurant && (
-        <>
-          <EditRestaurantModal
-            visible={editRestaurantModalVisible}
-            onClose={() => setEditRestaurantModalVisible(false)}
-          />
-          <UpgradePlanModal
-            visible={upgradePlanModalVisible}
-            onClose={() => setUpgradePlanModalVisible(false)}
-          />
-        </>
-      )}
-    </ScrollView>
+            <View style={styles.inputGroup}>
+              <Lock size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter your password to confirm deletion"
+                placeholderTextColor={colors.textSecondary}
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.deleteButton,
+                {
+                  backgroundColor: colors.error,
+                  opacity: deleteLoading ? 0.7 : 1,
+                },
+              ]}
+              onPress={handleDeleteAccount}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Trash2 size={20} color="white" />
+              )}
+              <Text style={styles.deleteButtonText}>
+                {deleteLoading ? "Deleting..." : "Delete Account"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Edit Restaurant Modal */}
+        {isRestaurant && (
+          <>
+            <EditRestaurantModal
+              visible={editRestaurantModalVisible}
+              onClose={() => setEditRestaurantModalVisible(false)}
+            />
+            <UpgradePlanModal
+              visible={upgradePlanModalVisible}
+              onClose={() => setUpgradePlanModalVisible(false)}
+            />
+          </>
+        )}
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
@@ -524,13 +563,13 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionTitle: {
     fontSize: 18,
@@ -552,12 +591,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   saveButton: {
+    borderRadius: 16,
+    marginTop: 8,
+    shadowColor: "#00D9FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
     gap: 8,
   },
   saveButtonText: {
@@ -575,9 +621,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginTop: 8,
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   deleteButtonText: {
     color: "white",
@@ -603,11 +654,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   upgradeButton: {
+    borderRadius: 16,
+    shadowColor: "#00D9FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  upgradeButtonInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
     gap: 8,
   },
   upgradeButtonText: {

@@ -23,6 +23,7 @@ import {
   Clock,
   Star,
 } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { router } from "expo-router";
@@ -40,7 +41,7 @@ import { RestaurantActivityTabs } from "@/components/RestaurantActivityTabs";
 export default function PurchaseScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const auth = useSelector((state: RootState) => state.auth);
   const { profile, fetchProfile } = useProfile();
   const selectedRestaurant = useSelector(
@@ -64,12 +65,10 @@ export default function PurchaseScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (auth.isAuthenticated) {
-        console.log("🔄 Refreshing balances on purchase screen focus");
         loadBalances();
 
         // Fetch profile only once if not already loaded
         if (!profileFetched.current && !profile) {
-          console.log("🔄 Fetching profile for QR code...");
           fetchProfile();
           profileFetched.current = true;
         }
@@ -77,16 +76,6 @@ export default function PurchaseScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [auth.isAuthenticated])
   );
-
-  // Log profile data when it changes
-  React.useEffect(() => {
-    if (profile) {
-      console.log("👤 Profile loaded:", JSON.stringify(profile, null, 2));
-      console.log("👤 QR Code from profile:", profile.qrCode);
-      console.log("👤 QR Code exists:", !!profile.qrCode);
-      console.log("👤 QR Code length:", profile.qrCode?.length || 0);
-    }
-  }, [profile]);
 
   const handleRecharge = () => {
     if (!selectedRestaurant) {
@@ -130,260 +119,290 @@ export default function PurchaseScreen() {
   // For restaurant owners - show activity tabs
   if (isRestaurant) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+        style={styles.container}
+      >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("restaurant.activity")}
           </Text>
         </View>
         <RestaurantActivityTabs />
-      </View>
+      </LinearGradient>
     );
   }
 
   // For regular users - show purchase options
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {t("purchase.title")}
-        </Text>
-      </View>
-
-      {error.balances ? (
-        <View
-          style={[
-            styles.errorCard,
-            {
-              backgroundColor: colors.error + "20",
-              borderColor: colors.error,
-            },
-          ]}
-        >
-          <Text style={[styles.errorTitle, { color: colors.error }]}>
-            {t("home.errorLoadingData")}
-          </Text>
-          <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>
-            {error.balances}
-          </Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: colors.error }]}
-            onPress={loadBalances}
-          >
-            <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : restaurantsWithBalances.length > 0 ? (
-        <RestaurantSelector
-          restaurants={restaurantsWithBalances}
-          onRestaurantChange={handleRestaurantChange}
-        />
-      ) : (
-        <View
-          style={[styles.noBalanceCard, { backgroundColor: colors.surface }]}
-        >
-          <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
-            {t("home.noBalances")}
-          </Text>
-          <Text style={[styles.noBalanceDesc, { color: colors.textSecondary }]}>
-            {t("home.noBalancesDesc")}
-          </Text>
-        </View>
-      )}
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+    <>
+      <LinearGradient
+        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+        style={styles.container}
       >
-        {selectedRestaurant && (
-          <View style={styles.balanceSection}>
-            <View style={styles.balanceRow}>
-              <View
-                style={[
-                  styles.balanceCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.balanceIcon,
-                    { backgroundColor: colors.primary + "20" },
-                  ]}
-                >
-                  <UtensilsCrossed size={24} color={colors.primary} />
-                </View>
-                <Text
-                  style={[styles.balanceLabel, { color: colors.textSecondary }]}
-                >
-                  {t("purchase.mealPoints")}
-                </Text>
-                <Text style={[styles.balanceValue, { color: colors.text }]}>
-                  {currentBalance.mealPoints}
-                </Text>
-              </View>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t("purchase.title")}
+          </Text>
+        </View>
 
-              <View
-                style={[
-                  styles.balanceCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.balanceIcon,
-                    { backgroundColor: colors.secondary + "20" },
-                  ]}
-                >
-                  <Coffee size={24} color={colors.secondary} />
-                </View>
-                <Text
-                  style={[styles.balanceLabel, { color: colors.textSecondary }]}
-                >
-                  {t("purchase.drinkPoints")}
-                </Text>
-                <Text style={[styles.balanceValue, { color: colors.text }]}>
-                  {currentBalance.drinkPoints}
-                </Text>
-              </View>
-            </View>
-
-            <View
-              style={[styles.walletCard, { backgroundColor: colors.surface }]}
+        {error.balances ? (
+          <View
+            style={[
+              styles.errorCard,
+              {
+                backgroundColor: colors.error + "20",
+                borderColor: colors.error,
+              },
+            ]}
+          >
+            <Text style={[styles.errorTitle, { color: colors.error }]}>
+              {t("home.errorLoadingData")}
+            </Text>
+            <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>
+              {error.balances}
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.error }]}
+              onPress={loadBalances}
             >
-              <View
-                style={[
-                  styles.balanceIcon,
-                  { backgroundColor: colors.success + "20" },
-                ]}
-              >
-                <Wallet size={24} color={colors.success} />
-              </View>
-              <View style={styles.walletContent}>
-                <Text
-                  style={[styles.balanceLabel, { color: colors.textSecondary }]}
-                >
-                  {t("purchase.walletBalance")}
-                </Text>
-                <Text style={[styles.walletValue, { color: colors.text }]}>
-                  ${currentBalance.walletBalance.toFixed(2)}
-                </Text>
-              </View>
-            </View>
+              <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : restaurantsWithBalances.length > 0 ? (
+          <RestaurantSelector
+            restaurants={restaurantsWithBalances}
+            onRestaurantChange={handleRestaurantChange}
+          />
+        ) : (
+          <View
+            style={[styles.noBalanceCard, { backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
+              {t("home.noBalances")}
+            </Text>
+            <Text
+              style={[styles.noBalanceDesc, { color: colors.textSecondary }]}
+            >
+              {t("home.noBalancesDesc")}
+            </Text>
           </View>
         )}
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.surface }]}
-          onPress={handleRecharge}
-        >
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: colors.primary + "20" },
-            ]}
-          >
-            <CreditCard size={32} color={colors.primary} />
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>
-              {t("purchase.recharge")}
-            </Text>
-            <Text
-              style={[styles.cardDescription, { color: colors.textSecondary }]}
-            >
-              {t("purchase.rechargeDesc")}
-            </Text>
-          </View>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.surface }]}
-          onPress={handleGiftFriend}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
         >
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: colors.secondary + "20" },
-            ]}
+          {selectedRestaurant && (
+            <View style={styles.balanceSection}>
+              <View style={styles.balanceRow}>
+                <View
+                  style={[
+                    styles.balanceCard,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.balanceIcon,
+                      { backgroundColor: colors.primary + "20" },
+                    ]}
+                  >
+                    <UtensilsCrossed size={24} color={colors.primary} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.balanceLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {t("purchase.mealPoints")}
+                  </Text>
+                  <Text style={[styles.balanceValue, { color: colors.text }]}>
+                    {currentBalance.mealPoints}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.balanceCard,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.balanceIcon,
+                      { backgroundColor: colors.secondary + "20" },
+                    ]}
+                  >
+                    <Coffee size={24} color={colors.secondary} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.balanceLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {t("purchase.drinkPoints")}
+                  </Text>
+                  <Text style={[styles.balanceValue, { color: colors.text }]}>
+                    {currentBalance.drinkPoints}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={[styles.walletCard, { backgroundColor: colors.surface }]}
+              >
+                <View
+                  style={[
+                    styles.balanceIcon,
+                    { backgroundColor: colors.success + "20" },
+                  ]}
+                >
+                  <Wallet size={24} color={colors.success} />
+                </View>
+                <View style={styles.walletContent}>
+                  <Text
+                    style={[
+                      styles.balanceLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {t("purchase.walletBalance")}
+                  </Text>
+                  <Text style={[styles.walletValue, { color: colors.text }]}>
+                    ${currentBalance.walletBalance.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.surface }]}
+            onPress={handleRecharge}
           >
-            <Gift size={32} color={colors.secondary} />
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>
-              {t("purchase.gift")}
-            </Text>
-            <Text
-              style={[styles.cardDescription, { color: colors.textSecondary }]}
-            >
-              {t("purchase.giftDesc")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <View style={[{ backgroundColor: colors.surface }]}>
-          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
             <View
               style={[
                 styles.iconContainer,
                 { backgroundColor: colors.primary + "20" },
               ]}
             >
-              <Camera size={32} color={colors.primary} />
+              <CreditCard size={32} color={colors.primary} />
             </View>
-            <View style={[{ backgroundColor: colors.surface }]}>
-              <Text style={[{ color: colors.text }]}>
-                {t("account.myQRCode")}
+            <View style={styles.cardContent}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>
+                {t("purchase.recharge")}
               </Text>
               <Text
-                style={[styles.qrDescription, { color: colors.textSecondary }]}
+                style={[
+                  styles.cardDescription,
+                  { color: colors.textSecondary },
+                ]}
               >
-                {t("account.qrCodeDesc")}
+                {t("purchase.rechargeDesc")}
               </Text>
             </View>
-            <View style={styles.qrContainer}>
-              {profile?.qrCode ? (
-                <>
-                  <QRCode
-                    value={profile.qrCode}
-                    size={200}
-                    color={colors.text}
-                    backgroundColor={colors.background}
-                  />
-                  <View style={styles.qrUserInfo}>
-                    {profile.fullName && (
-                      <Text style={[styles.qrUserName, { color: colors.text }]}>
-                        {profile.fullName}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.surface }]}
+            onPress={handleGiftFriend}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: colors.secondary + "20" },
+              ]}
+            >
+              <Gift size={32} color={colors.secondary} />
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>
+                {t("purchase.gift")}
+              </Text>
+              <Text
+                style={[
+                  styles.cardDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {t("purchase.giftDesc")}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <View style={[{ backgroundColor: colors.surface }]}>
+            <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: colors.primary + "20" },
+                ]}
+              >
+                <Camera size={32} color={colors.primary} />
+              </View>
+              <View style={[{ backgroundColor: colors.surface }]}>
+                <Text style={[{ color: colors.text }]}>
+                  {t("account.myQRCode")}
+                </Text>
+                <Text
+                  style={[
+                    styles.qrDescription,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {t("account.qrCodeDesc")}
+                </Text>
+              </View>
+              <View style={styles.qrContainer}>
+                {profile?.qrCode ? (
+                  <>
+                    <QRCode
+                      value={profile.qrCode}
+                      size={200}
+                      color={colors.text}
+                      backgroundColor={colors.background}
+                    />
+                    <View style={styles.qrUserInfo}>
+                      {profile.fullName && (
+                        <Text
+                          style={[styles.qrUserName, { color: colors.text }]}
+                        >
+                          {profile.fullName}
+                        </Text>
+                      )}
+                      <Text
+                        style={[
+                          styles.qrUserEmail,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {auth.user?.email || profile.email}
                       </Text>
-                    )}
+                    </View>
+                  </>
+                ) : (
+                  <View
+                    style={[
+                      styles.qrPlaceholder,
+                      { backgroundColor: colors.background },
+                    ]}
+                  >
                     <Text
                       style={[
-                        styles.qrUserEmail,
+                        styles.qrPlaceholderText,
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {auth.user?.email || profile.email}
+                      {t("common.loading")}...
                     </Text>
                   </View>
-                </>
-              ) : (
-                <View
-                  style={[
-                    styles.qrPlaceholder,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.qrPlaceholderText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("common.loading")}...
-                  </Text>
-                </View>
-              )}
+                )}
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
 
       {selectedRestaurant && (
         <>
@@ -402,7 +421,7 @@ export default function PurchaseScreen() {
           />
         </>
       )}
-    </View>
+    </>
   );
 }
 
@@ -437,24 +456,24 @@ const styles = StyleSheet.create({
   balanceCard: {
     flex: 1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   walletCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   balanceIcon: {
     width: 48,
@@ -492,21 +511,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   qrCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
     marginBottom: 16,
-    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   iconContainer: {
     width: 60,
@@ -614,14 +637,14 @@ const styles = StyleSheet.create({
   },
   noBalanceCard: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
     marginBottom: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   noBalanceTitle: {
     fontSize: 18,
@@ -636,15 +659,15 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
     marginBottom: 24,
     borderWidth: 1,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   errorTitle: {
     fontSize: 18,
@@ -661,7 +684,12 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   retryButtonText: {
     color: "white",

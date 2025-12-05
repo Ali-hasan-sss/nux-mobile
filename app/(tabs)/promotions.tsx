@@ -14,6 +14,7 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Search, Filter, MapPin, Plus } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootState, AppDispatch } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { RestaurantMapModal } from "@/components/RestaurantMapModal";
@@ -30,7 +31,7 @@ import { Ad } from "@/store/types/adsTypes";
 
 export default function PromotionsScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
 
   // Redux state
@@ -209,8 +210,9 @@ export default function PromotionsScreen() {
   if (isRestaurant) {
     return (
       <>
-        <View
-          style={[styles.container, { backgroundColor: colors.background }]}
+        <LinearGradient
+          colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+          style={styles.container}
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -219,14 +221,21 @@ export default function PromotionsScreen() {
           </View>
 
           <RestaurantAdsView />
-        </View>
+        </LinearGradient>
 
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => setCreateAdModalVisible(true)}
+        <LinearGradient
+          colors={isDark ? (colors as any).gradientButton || [colors.primary, colors.primary] : [colors.primary, colors.primary]}
+          style={styles.fab}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <Plus size={24} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.fabInner}
+            onPress={() => setCreateAdModalVisible(true)}
+          >
+            <Plus size={24} color="white" />
+          </TouchableOpacity>
+        </LinearGradient>
 
         <CreateAdModal
           visible={createAdModalVisible}
@@ -239,7 +248,10 @@ export default function PromotionsScreen() {
   // For regular users - show all ads
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+        style={styles.container}
+      >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("promotions.title")}
@@ -344,23 +356,23 @@ export default function PromotionsScreen() {
             ListEmptyComponent={renderEmpty}
           />
         )}
-      </View>
+        </LinearGradient>
 
-      {selectedRestaurant && (
-        <RestaurantMapModal
-          visible={mapModalVisible}
-          onClose={() => setMapModalVisible(false)}
-          restaurant={{
-            name: selectedRestaurant.restaurant.name,
-            latitude: selectedRestaurant.restaurant.latitude,
-            longitude: selectedRestaurant.restaurant.longitude,
-            address: selectedRestaurant.restaurant.address,
-          }}
-        />
-      )}
-    </>
-  );
-}
+        {selectedRestaurant && (
+          <RestaurantMapModal
+            visible={mapModalVisible}
+            onClose={() => setMapModalVisible(false)}
+            restaurant={{
+              name: selectedRestaurant.restaurant.name,
+              latitude: selectedRestaurant.restaurant.latitude,
+              longitude: selectedRestaurant.restaurant.longitude,
+              address: selectedRestaurant.restaurant.address,
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: {
@@ -379,9 +391,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
@@ -399,6 +416,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterText: {
     fontSize: 14,
@@ -420,13 +442,13 @@ const styles = StyleSheet.create({
   },
   promotionCard: {
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   promotionImage: {
     width: "100%",
@@ -478,13 +500,18 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    shadowColor: "#00D9FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  fabInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -515,7 +542,12 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   retryButtonText: {
     color: "white",

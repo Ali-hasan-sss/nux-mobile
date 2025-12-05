@@ -66,10 +66,7 @@ export default function ReceiveScanScreen() {
     setIsProcessing(true);
 
     try {
-      // يمكنك هنا إضافة المنطق لمعالجة استلام الرصيد
-      console.log("📱 Receiving balance from:", data);
 
-      // محاكاة عملية الاستلام
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       showToast("success", "تم استلام الرصيد بنجاح!");

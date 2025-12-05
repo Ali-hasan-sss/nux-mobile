@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { I18nManager } from "react-native";
 import { initializeLanguage } from "@/store/slices/languageSlice";
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -14,16 +15,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
     const initializeLanguageFromStorage = async () => {
       try {
         const savedLanguage = await AsyncStorage.getItem("user-language");
-        if (savedLanguage) {
-          console.log("🌐 Initializing language:", savedLanguage);
-          dispatch(initializeLanguage(savedLanguage));
-          await i18n.changeLanguage(savedLanguage);
-        } else {
-          console.log("🌐 No saved language, using default: en");
-          dispatch(initializeLanguage("en"));
+        const lang = savedLanguage || "en";
+        dispatch(initializeLanguage(lang));
+        await i18n.changeLanguage(lang);
+
+        // Force LTR for all languages
+        if (I18nManager.isRTL) {
+          I18nManager.allowRTL(false);
+          I18nManager.forceRTL(false);
+          // Note: requires app restart to fully apply on native
         }
       } catch (error) {
-        console.error("❌ Error initializing language:", error);
         dispatch(initializeLanguage("en"));
       }
     };

@@ -13,7 +13,7 @@ import { Link, router } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mail, Lock } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
@@ -25,6 +25,7 @@ import type { AppDispatch } from "@/store/store";
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
@@ -98,8 +99,15 @@ export default function LoginScreen() {
                   placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                 />
+                <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
+                  {showPassword ? (
+                    <EyeOff size={20} color={colors.textSecondary} />
+                  ) : (
+                    <Eye size={20} color={colors.textSecondary} />
+                  )}
+                </TouchableOpacity>
               </View>
 
               <View style={styles.checkboxContainer}>

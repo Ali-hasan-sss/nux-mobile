@@ -35,7 +35,7 @@ import { RestaurantQRCodes } from "@/components/RestaurantQRCodes";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
   const selectedRestaurant = useSelector(
@@ -62,7 +62,6 @@ export default function HomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (auth.isAuthenticated) {
-        console.log("🔄 Refreshing balances on screen focus");
         loadBalances();
       }
     }, [auth.isAuthenticated])
@@ -113,189 +112,189 @@ export default function HomeScreen() {
 
   return (
     <>
-      <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.scrollContent}
+      <LinearGradient
+        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
+        style={styles.container}
       >
-        {showWelcome && !isRestaurant && (
-          <LinearGradient
-            colors={colors.gradient}
-            style={styles.welcomeSection}
-          >
-            <Text style={styles.welcomeText}>{t("home.welcomeBack")}</Text>
-            <Text style={styles.subtitle}>{t("home.title")}</Text>
-          </LinearGradient>
-        )}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {showWelcome && !isRestaurant && (
+            <LinearGradient
+              colors={
+                isDark
+                  ? (colors as any).gradientAccent || colors.gradient
+                  : colors.gradient
+              }
+              style={styles.welcomeSection}
+            >
+              <Text style={styles.welcomeText}>{t("home.welcomeBack")}</Text>
+              <Text style={styles.subtitle}>{t("home.title")}</Text>
+            </LinearGradient>
+          )}
 
-        <View style={styles.content}>
-          {isRestaurant ? (
-            <RestaurantQRCodes />
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={handleScanCode}
-              >
-                <Camera size={32} color="white" />
-                <View style={styles.buttonTextContainer}>
-                  <Text style={styles.primaryButtonText}>
-                    {t("home.scanCode")}
-                  </Text>
-                  <Text style={styles.primaryButtonDesc}>
-                    {t("home.scanCodeDesc")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Error/Balance Cards */}
-              {error.balances ? (
-                <View
-                  style={[
-                    styles.errorCard,
-                    {
-                      backgroundColor: colors.error + "20",
-                      borderColor: colors.error,
-                    },
-                  ]}
+          <View style={styles.content}>
+            {isRestaurant ? (
+              <RestaurantQRCodes />
+            ) : (
+              <>
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? (colors as any).gradientButton || [
+                          colors.primary,
+                          colors.primary,
+                        ]
+                      : [colors.primary, colors.primary]
+                  }
+                  style={styles.primaryButton}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
                 >
-                  <Text style={[styles.errorTitle, { color: colors.error }]}>
-                    {t("home.errorLoadingData")}
-                  </Text>
-                  <Text
-                    style={[styles.errorDesc, { color: colors.textSecondary }]}
-                  >
-                    {error.balances}
-                  </Text>
                   <TouchableOpacity
-                    style={[
-                      styles.retryButton,
-                      { backgroundColor: colors.error },
-                    ]}
-                    onPress={loadBalances}
+                    style={styles.primaryButtonInner}
+                    onPress={handleScanCode}
                   >
-                    <Text style={styles.retryButtonText}>
-                      {t("home.retry")}
-                    </Text>
+                    <Camera size={32} color="white" />
+                    <View style={styles.buttonTextContainer}>
+                      <Text style={styles.primaryButtonText}>
+                        {t("home.scanCode")}
+                      </Text>
+                      <Text style={styles.primaryButtonDesc}>
+                        {t("home.scanCodeDesc")}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                </View>
-              ) : restaurantsWithBalances.length > 0 ? (
-                <RestaurantSelector
-                  restaurants={restaurantsWithBalances}
-                  onRestaurantChange={handleRestaurantChange}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.noBalanceCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
-                    {t("home.noBalances")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.noBalanceDesc,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("home.noBalancesDesc")}
-                  </Text>
-                </View>
-              )}
+                </LinearGradient>
 
-              {/* Payment Buttons */}
-              <View style={styles.paymentButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.paymentButton,
-                    {
-                      backgroundColor: selectedRestaurant
-                        ? colors.surface
-                        : colors.surface + "50",
-                      opacity: selectedRestaurant ? 1 : 0.5,
-                    },
-                  ]}
-                  onPress={selectedRestaurant ? handlePayWithWallet : undefined}
-                  disabled={!selectedRestaurant}
-                >
+                {/* Error/Balance Cards */}
+                {error.balances ? (
                   <View
                     style={[
-                      styles.iconContainer,
-                      { backgroundColor: colors.success + "20" },
-                    ]}
-                  >
-                    <View
-                      style={{
-                        borderRadius: 12,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Wallet size={24} color={colors.success} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.walletBalance.toFixed(2)} $
-                      </Text>
-                    </View>
-                    <View
-                      style={{
-                        borderRadius: 12,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <UtensilsCrossed size={24} color={colors.primary} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.mealPoints}{" "}
-                        <Star size={16} color={colors.success} />
-                      </Text>
-                    </View>
-                    <View
-                      style={{
-                        borderRadius: 12,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Coffee size={24} color={colors.secondary} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.drinkPoints}{" "}
-                        <Star size={16} color={colors.success} />
-                      </Text>
-                    </View>
-                  </View>
-                  <Text
-                    style={[
-                      styles.paymentButtonText,
+                      styles.errorCard,
                       {
-                        color: selectedRestaurant
-                          ? colors.text
-                          : colors.textSecondary,
+                        backgroundColor: colors.error + "20",
+                        borderColor: colors.error,
                       },
                     ]}
                   >
-                    {selectedRestaurant
-                      ? t("home.payWallet")
-                      : t("home.selectRestaurantFirst")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-      </ScrollView>
+                    <Text style={[styles.errorTitle, { color: colors.error }]}>
+                      {t("home.errorLoadingData")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.errorDesc,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {error.balances}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.retryButton,
+                        { backgroundColor: colors.error },
+                      ]}
+                      onPress={loadBalances}
+                    >
+                      <Text style={styles.retryButtonText}>
+                        {t("home.retry")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : restaurantsWithBalances.length > 0 ? (
+                  <RestaurantSelector
+                    restaurants={restaurantsWithBalances}
+                    onRestaurantChange={handleRestaurantChange}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.noBalanceCard,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.noBalanceTitle, { color: colors.text }]}
+                    >
+                      {t("home.noBalances")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.noBalanceDesc,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {t("home.noBalancesDesc")}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Payment Buttons */}
+                <View style={styles.paymentButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.paymentButton,
+                      {
+                        backgroundColor: selectedRestaurant
+                          ? colors.surface
+                          : colors.surface + "50",
+                        opacity: selectedRestaurant ? 1 : 0.5,
+                      },
+                    ]}
+                    onPress={
+                      selectedRestaurant ? handlePayWithWallet : undefined
+                    }
+                    disabled={!selectedRestaurant}
+                  >
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        { backgroundColor: colors.success + "20" },
+                      ]}
+                    >
+                      <View style={styles.balanceCol}>
+                        <Wallet size={24} color={colors.success} />
+                        <Text style={{ color: colors.success }}>
+                          {currentBalance.walletBalance.toFixed(2)} $
+                        </Text>
+                      </View>
+                      <View style={styles.balanceCol}>
+                        <UtensilsCrossed size={24} color={colors.primary} />
+                        <Text style={{ color: colors.success }}>
+                          {currentBalance.mealPoints}{" "}
+                          <Star size={16} color={colors.success} />
+                        </Text>
+                      </View>
+                      <View style={styles.balanceCol}>
+                        <Coffee size={24} color={colors.secondary} />
+                        <Text style={{ color: colors.success }}>
+                          {currentBalance.drinkPoints}{" "}
+                          <Star size={16} color={colors.success} />
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.paymentButtonText,
+                        {
+                          color: selectedRestaurant
+                            ? colors.text
+                            : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {selectedRestaurant
+                        ? t("home.payWallet")
+                        : t("home.selectRestaurantFirst")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </LinearGradient>
 
       {!isRestaurant && (
         <PaymentModal
@@ -311,6 +310,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
@@ -335,16 +337,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   primaryButton: {
+    borderRadius: 20,
+    marginBottom: 24,
+    shadowColor: "#00D9FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  primaryButtonInner: {
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   buttonTextContainer: {
     marginLeft: 16,
@@ -364,12 +368,12 @@ const styles = StyleSheet.create({
   },
   paymentButton: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   iconContainer: {
     width: "100%",
@@ -381,6 +385,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
+  },
+  balanceCol: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   paymentButtonText: {
     fontSize: 16,
@@ -430,14 +439,14 @@ const styles = StyleSheet.create({
   },
   noBalanceCard: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
     marginBottom: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   noBalanceTitle: {
     fontSize: 18,
@@ -452,15 +461,15 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
     marginBottom: 24,
     borderWidth: 1,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   errorTitle: {
     fontSize: 18,
@@ -477,7 +486,12 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   retryButtonText: {
     color: "white",

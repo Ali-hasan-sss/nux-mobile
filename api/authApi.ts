@@ -33,21 +33,9 @@ authApi.interceptors.request.use(
       const tokens = await CrossPlatformStorage.getTokens();
       if (tokens?.accessToken) {
         config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-        console.log(
-          "🔑 Token added to request:",
-          tokens.accessToken.substring(0, 20) + "..."
-        );
       } else {
         console.log("⚠️ No token available for request");
       }
-
-      // Add debugging info
-      console.log("📤 API Request:", {
-        method: config.method?.toUpperCase(),
-        url: config.url,
-        hasAuth: !!tokens?.accessToken,
-      });
-
       return config;
     } catch (error) {
       console.error("❌ Failed to get tokens for request:", error);
@@ -60,10 +48,7 @@ authApi.interceptors.request.use(
 // Response interceptor to handle token refresh
 authApi.interceptors.response.use(
   (response) => {
-    console.log("📥 API Response:", {
-      status: response.status,
-      url: response.config.url,
-    });
+    
     return response;
   },
   async (error) => {
@@ -80,8 +65,6 @@ authApi.interceptors.response.use(
       !originalRequest._retry &&
       !isAuthRoute
     ) {
-      console.log("🔄 Token expired, attempting refresh...");
-
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve) => {
@@ -121,7 +104,6 @@ authApi.interceptors.response.use(
         // Notify all queued requests
         onTokenRefreshed(accessToken);
 
-        console.log("✅ Token refreshed successfully");
         return authApi(originalRequest);
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
@@ -131,19 +113,12 @@ authApi.interceptors.response.use(
 
         // Dispatch logout action to clear Redux state
         // Note: This will be handled by the component that catches the error
-        console.log("🚪 Forcing logout due to refresh token failure");
 
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
-
-        console.error("❌ API Error:", {
-          status: error.response?.status,
-          message: error.response?.data?.message || error.message,
-          url: originalRequest?.url,
-        });
 
         // Handle network errors specifically
         if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {

@@ -47,10 +47,6 @@ const getCurrentLocation = async () => {
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy?.High || 6,
         });
-        console.log("📍 Real location:", {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
         return {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,

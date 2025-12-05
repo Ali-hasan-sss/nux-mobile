@@ -14,7 +14,7 @@ import { Link, router } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mail, Lock, User } from "lucide-react-native";
+import { Mail, Lock, User, Eye, EyeOff } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
@@ -27,6 +27,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
@@ -56,13 +58,10 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // التسجيل
       await dispatch(
         registerUser({ email, password, fullName: "New User" })
       ).unwrap();
 
-      // جلب بيانات المستخدم بعد نجاح التسجيل
-      console.log("🔄 Fetching user profile after registration...");
       await dispatch(getProfile()).unwrap();
 
       router.replace("/(tabs)");
@@ -108,8 +107,15 @@ export default function RegisterScreen() {
                     placeholderTextColor={colors.textSecondary}
                     value={password}
                     onChangeText={setPassword}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                   />
+                  <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
+                    {showPassword ? (
+                      <EyeOff size={20} color={colors.textSecondary} />
+                    ) : (
+                      <Eye size={20} color={colors.textSecondary} />
+                    )}
+                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -120,8 +126,17 @@ export default function RegisterScreen() {
                     placeholderTextColor={colors.textSecondary}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    secureTextEntry
+                    secureTextEntry={!showConfirmPassword}
                   />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword((p) => !p)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color={colors.textSecondary} />
+                    ) : (
+                      <Eye size={20} color={colors.textSecondary} />
+                    )}
+                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.checkboxContainer}>
