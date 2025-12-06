@@ -7,9 +7,10 @@ interface ThemeState {
   isDark: boolean;
 }
 
+// Dark gradient theme - always dark gradient, no light mode support
 const initialState: ThemeState = {
-  mode: "system",
-  isDark: false,
+  mode: "dark", // Always dark gradient
+  isDark: true, // Always dark gradient background
 };
 
 const themeSlice = createSlice({

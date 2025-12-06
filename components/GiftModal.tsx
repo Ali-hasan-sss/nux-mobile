@@ -6,10 +6,7 @@ import {
   StyleSheet,
   TextInput,
   Modal,
-  Alert,
   ActivityIndicator,
-  ToastAndroid,
-  Platform,
   DeviceEventEmitter,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -21,6 +18,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { useProfile } from "@/hooks/useProfile";
 import { giftPoints } from "@/store/slices/balanceSlice";
 import { useLocalSearchParams, router } from "expo-router";
+import { useAlert } from "@/contexts/AlertContext";
 
 interface GiftModalProps {
   visible: boolean;
@@ -39,6 +37,7 @@ export default function GiftModal({
   const { currentBalance, loadBalances } = useBalance();
   const { profile } = useProfile();
   const params = useLocalSearchParams();
+  const { showToast, showAlert } = useAlert();
 
   // State for gift form
   const [selectedGiftType, setSelectedGiftType] = useState<
@@ -122,7 +121,7 @@ export default function GiftModal({
 
   const handleScanForGift = () => {
     if (!giftAmount || parseFloat(giftAmount) <= 0) {
-      Alert.alert(t("common.error"), "Please enter a valid amount");
+      showToast({ message: "Please enter a valid amount", type: "error" });
       return;
     }
 
@@ -138,13 +137,16 @@ export default function GiftModal({
 
   const sendGift = async (overrideQrCode?: string) => {
     if (!giftAmount || parseFloat(giftAmount) <= 0) {
-      Alert.alert(t("common.error"), "Please enter a valid amount");
+      showToast({ message: "Please enter a valid amount", type: "error" });
       return;
     }
 
     const effectiveQr = ((overrideQrCode ?? scannedQRCode) || "").trim();
     if (!effectiveQr) {
-      Alert.alert(t("common.error"), "Invalid QR code. Please scan again.");
+      showToast({
+        message: "Invalid QR code. Please scan again.",
+        type: "error",
+      });
       return;
     }
 
@@ -171,10 +173,11 @@ export default function GiftModal({
 
     if (scannedQRCode === profile?.qrCode) {
       console.log("❌ User trying to gift to themselves - exact match!");
-      Alert.alert(
-        t("common.error"),
-        "You cannot gift to yourself. Please scan another user's QR code."
-      );
+      showToast({
+        message:
+          "You cannot gift to yourself. Please scan another user's QR code.",
+        type: "error",
+      });
       return;
     }
 
@@ -192,10 +195,11 @@ export default function GiftModal({
         console.log("❌ QR codes are similar:");
         console.log("❌ Scanned QR Code:", scannedQRCode);
         console.log("❌ Current User QR Code:", profile?.qrCode);
-        Alert.alert(
-          t("common.error"),
-          "This QR code appears to be yours. Please scan another user's QR code."
-        );
+        showToast({
+          message:
+            "This QR code appears to be yours. Please scan another user's QR code.",
+          type: "error",
+        });
         return;
       }
     }
@@ -224,12 +228,12 @@ export default function GiftModal({
     }
 
     if (amount > availableBalance) {
-      Alert.alert(
-        t("common.error"),
-        `Insufficient balance. Available: ${availableBalance} ${
+      showToast({
+        message: `Insufficient balance. Available: ${availableBalance} ${
           selectedGiftType === "wallet" ? "$" : "points"
-        }`
-      );
+        }`,
+        type: "error",
+      });
       return;
     }
 
@@ -256,11 +260,7 @@ export default function GiftModal({
       if (result.type.endsWith("/fulfilled")) {
         // Toast success
         const successMsg = "Gift sent successfully!";
-        if (Platform.OS === "android") {
-          ToastAndroid.show(successMsg, ToastAndroid.SHORT);
-        } else {
-          Alert.alert(t("common.success"), successMsg);
-        }
+        showToast({ message: successMsg, type: "success" });
         // Close modal and navigate to stable screen
         onClose();
         router.replace("/(tabs)/purchase");
@@ -276,18 +276,22 @@ export default function GiftModal({
         console.log("❌ Gift failed with error:", errorMessage);
 
         if (errorMessage.includes("Recipient not found")) {
-          Alert.alert(
-            t("common.error"),
-            "The scanned QR code does not belong to any user. Please scan a valid QR code."
-          );
+          showToast({
+            message:
+              "The scanned QR code does not belong to any user. Please scan a valid QR code.",
+            type: "error",
+          });
         } else {
-          Alert.alert(t("common.error"), errorMessage);
+          showToast({ message: errorMessage, type: "error" });
         }
         // Allow retry
         setAutoTriggered(false);
       }
     } catch (error: any) {
-      Alert.alert(t("common.error"), error.message || "Failed to send gift");
+      showToast({
+        message: error.message || "Failed to send gift",
+        type: "error",
+      });
       // Allow retry
       setAutoTriggered(false);
     } finally {

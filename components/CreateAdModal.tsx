@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { X, Upload, Camera } from "lucide-react-native";
@@ -17,8 +18,11 @@ import { useTheme } from "@/hooks/useTheme";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import api from "@/api/axiosInstance";
-import { fetchRestaurantAds } from "@/store/slices/adsSlice";
+import { fetchRestaurantAds, addAd } from "@/store/slices/adsSlice";
+import { CrossPlatformStorage } from "@/store/services/crossPlatformStorage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface CreateAdModalProps {
   visible: boolean;
@@ -29,6 +33,7 @@ export function CreateAdModal({ visible, onClose }: CreateAdModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -48,11 +53,26 @@ export function CreateAdModal({ visible, onClose }: CreateAdModalProps) {
       });
 
       if (!result.canceled) {
-        const uri = result.assets[0].uri;
-        setImageUri(uri);
+        const originalUri = result.assets[0].uri;
 
-        // Upload image immediately
-        await uploadImage(uri);
+        // Compress and resize image before uploading
+        const manipulatedImage = await ImageManipulator.manipulateAsync(
+          originalUri,
+          [
+            { resize: { width: 1920 } }, // Max width 1920px (Full HD)
+          ],
+          {
+            compress: 0.7, // Compress to 70% quality
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        );
+
+        console.log("🖼️ Manipulated image URI:", manipulatedImage.uri);
+
+        setImageUri(manipulatedImage.uri);
+
+        // Upload compressed image
+        await uploadImage(manipulatedImage.uri);
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -63,39 +83,67 @@ export function CreateAdModal({ visible, onClose }: CreateAdModalProps) {
   const uploadImage = async (uri: string) => {
     setUploading(true);
     try {
-      // Create FormData
+      // Get auth token
+      const tokens = await CrossPlatformStorage.getTokens();
+      const token = tokens?.accessToken;
+
+      // Extract filename and type from uri (same as EditRestaurantModal)
+      let filename = uri.split("/").pop() || "ad-image.jpg";
+      // Ensure filename has .jpg extension (ImageManipulator may not add it)
+      if (!filename.includes(".")) {
+        filename = filename + ".jpg";
+      } else {
+        // Replace any extension with .jpg since we convert to JPEG
+        const nameWithoutExt = filename.split(".")[0];
+        filename = nameWithoutExt + ".jpg";
+      }
+      const type = "image/jpeg"; // Always JPEG after ImageManipulator
+
+      console.log("📤 Uploading image:", filename, "Type:", type, "URI:", uri);
+
+      // Create FormData - React Native way (using uri directly)
       const formData = new FormData();
-
-      // Extract filename and type from uri
-      const filename = uri.split("/").pop() || "image.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
-
       formData.append("file", {
-        uri,
+        uri: Platform.OS === "ios" ? uri.replace("file://", "") : uri,
         name: filename,
-        type,
+        type: type,
       } as any);
-
       formData.append("entityType", "ad");
 
-      const response = await api.post("/uploadFile", formData, {
+      console.log("📦 FormData created");
+
+      // Upload using fetch API
+      const response = await fetch("https://back.nuxapp.de/api/uploadFile", {
+        method: "POST",
         headers: {
-          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+          // Don't set Content-Type - let React Native set it automatically with boundary
         },
+        body: formData,
       });
 
-      if (response.data.success) {
-        setUploadedImageUrl(response.data.data.url);
-        console.log("✅ Image uploaded:", response.data.data.url);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Upload failed:", errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Upload response:", data);
+
+      if (data.success) {
+        setUploadedImageUrl(data.data.url);
+        console.log("✅ Image uploaded:", data.data.url);
       } else {
-        throw new Error(response.data.message || "Upload failed");
+        throw new Error(data.message || "Upload failed");
       }
     } catch (error: any) {
       console.error("Error uploading image:", error);
       Alert.alert(
         t("common.error"),
-        error.response?.data?.message || "Failed to upload image"
+        error.message ||
+          error.response?.data?.message ||
+          "Failed to upload image"
       );
       setImageUri(null);
     } finally {
@@ -126,9 +174,14 @@ export function CreateAdModal({ visible, onClose }: CreateAdModalProps) {
       const response = await api.post("/restaurants/ads", adData);
 
       if (response.data.success) {
+        // Add the new ad directly to the list (optimistic update)
+        if (response.data.data) {
+          dispatch(addAd(response.data.data));
+        }
+
         Alert.alert(t("common.success"), t("restaurant.adCreated"));
 
-        // Refresh ads list
+        // Also refresh to ensure sync with server
         dispatch(fetchRestaurantAds());
 
         // Reset form and close
@@ -165,7 +218,13 @@ export function CreateAdModal({ visible, onClose }: CreateAdModalProps) {
     >
       <View style={styles.modalOverlay}>
         <View
-          style={[styles.modalContent, { backgroundColor: colors.background }]}
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom,
+            },
+          ]}
         >
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text style={[styles.title, { color: colors.text }]}>

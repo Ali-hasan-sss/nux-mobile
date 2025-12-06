@@ -8,12 +8,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from "react-native";
 import { Link, router } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
@@ -31,8 +32,9 @@ export default function LoginScreen() {
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const isRTL = i18n.language === "ar";
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -67,107 +69,217 @@ export default function LoginScreen() {
 
   return (
     <>
-      <LinearGradient colors={colors.gradient} style={styles.container}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.keyboardView}
-        >
-          <View style={styles.content}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {t("home.title")}
-            </Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        style={[styles.keyboardView, { backgroundColor: "transparent" }]}
+        enabled={Platform.OS === "ios"}
+      >
+        <View style={styles.content}>
+          <Image
+            source={require("@/assets/images/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
-            <View style={[styles.form, { backgroundColor: colors.surface }]}>
-              <View style={styles.inputContainer}>
-                <Mail size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder={t("auth.email")}
-                  placeholderTextColor={colors.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+          {/* Email Input Container */}
+          <View
+            style={[
+              styles.inputCard,
+              { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+            ]}
+          >
+              <Mail size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("auth.email")}
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-              <View style={styles.inputContainer}>
-                <Lock size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder={t("auth.password")}
-                  placeholderTextColor={colors.textSecondary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
-                  {showPassword ? (
-                    <EyeOff size={20} color={colors.textSecondary} />
-                  ) : (
-                    <Eye size={20} color={colors.textSecondary} />
-                  )}
-                </TouchableOpacity>
-              </View>
+          {/* Password Input Container */}
+          <View
+            style={[
+              styles.inputCard,
+              { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+            ]}
+          >
+              <Lock size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t("auth.password")}
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
+                {showPassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.checkboxContainer}>
-                <Checkbox
-                  checked={agreedToTerms}
-                  onPress={() => setAgreedToTerms(!agreedToTerms)}
-                />
-                <Text
-                  style={[styles.checkboxText, { color: colors.textSecondary }]}
-                >
-                  {t("auth.agreeToTerms").split(" ").slice(0, 4).join(" ")}{" "}
-                  <TouchableOpacity
-                    onPress={() => setPrivacyModalVisible(true)}
-                  >
-                    <Text style={[styles.linkText, { color: colors.primary }]}>
-                      {t("auth.privacyPolicy")}
-                    </Text>
-                  </TouchableOpacity>{" "}
-                  {t("common.and")}{" "}
-                  <TouchableOpacity onPress={() => setTermsModalVisible(true)}>
-                    <Text style={[styles.linkText, { color: colors.primary }]}>
-                      {t("auth.termsOfUse")}
-                    </Text>
-                  </TouchableOpacity>
-                </Text>
-              </View>
-
-              <TouchableOpacity
+          {/* Forgot Password Link */}
+          <View
+            style={[
+              styles.forgotPasswordContainer,
+              { alignItems: isRTL ? "flex-end" : "flex-start" },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                // TODO: Implement forgot password functionality
+              }}
+            >
+              <Text
                 style={[
-                  styles.button,
+                  styles.forgotPasswordLink,
                   {
-                    backgroundColor: agreedToTerms
-                      ? colors.primary
-                      : colors.border,
+                    color: colors.primary,
+                    textAlign: isRTL ? "right" : "left",
                   },
                 ]}
+              >
+                {t("auth.forgotPassword")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms and Conditions */}
+          <View
+            style={[
+              styles.checkboxContainer,
+              { flexDirection: isRTL ? "row-reverse" : "row" },
+            ]}
+          >
+              <Checkbox
+                checked={agreedToTerms}
+                onPress={() => setAgreedToTerms(!agreedToTerms)}
+              />
+            <View
+              style={[
+                styles.checkboxTextContainer,
+                { flexDirection: isRTL ? "row-reverse" : "row" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.checkboxText,
+                  {
+                    color: colors.textSecondary,
+                    textAlign: isRTL ? "right" : "left",
+                  },
+                ]}
+              >
+                {t("auth.agreeToTerms").split(" ").slice(0, 2).join(" ")}{" "}
+              </Text>
+                <TouchableOpacity onPress={() => setPrivacyModalVisible(true)}>
+                <Text
+                  style={[
+                    styles.linkText,
+                    {
+                      color: colors.primary,
+                      textAlign: isRTL ? "right" : "left",
+                    },
+                  ]}
+                >
+                    {t("auth.privacyPolicy")}
+                  </Text>
+              </TouchableOpacity>
+              <Text
+                style={[
+                  styles.checkboxText,
+                  {
+                    color: colors.textSecondary,
+                    textAlign: isRTL ? "right" : "left",
+                  },
+                ]}
+              >
+                {" "}
+                {t("common.and")}{" "}
+              </Text>
+                <TouchableOpacity onPress={() => setTermsModalVisible(true)}>
+                <Text
+                  style={[
+                    styles.linkText,
+                    {
+                      color: colors.primary,
+                      textAlign: isRTL ? "right" : "left",
+                    },
+                  ]}
+                >
+                    {t("auth.termsOfUse")}
+                  </Text>
+                </TouchableOpacity>
+            </View>
+            </View>
+
+          {/* Login Button */}
+          {agreedToTerms ? (
+            <LinearGradient
+              colors={
+                (colors as any).gradientButton || [
+                  colors.primary,
+                  colors.primary,
+                ]
+              }
+              style={styles.button}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <TouchableOpacity
+                style={styles.buttonInner}
                 onPress={handleLogin}
                 disabled={loading || !agreedToTerms}
               >
                 <Text style={styles.buttonText}>
                   {loading ? t("common.loading") : t("auth.loginButton")}
                 </Text>
+                <LogIn size={20} color="white" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
+            </LinearGradient>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.buttonDisabled,
+                {
+                  backgroundColor: colors.background,
+                },
+              ]}
+              onPress={handleLogin}
+              disabled={loading || !agreedToTerms}
+            >
+              <Text style={[styles.buttonText, styles.buttonTextDisabled]}>
+                {loading ? t("common.loading") : t("auth.loginButton")}
+              </Text>
+              <LogIn
+                size={20}
+                color={colors.textSecondary}
+                style={{ marginLeft: 8 }}
+              />
+            </TouchableOpacity>
+          )}
 
-              <Link href="/auth/register" asChild>
-                <TouchableOpacity style={styles.linkContainer}>
-                  <Text
-                    style={[styles.linkText, { color: colors.textSecondary }]}
-                  >
-                    {t("auth.noAccount")}
-                    <Text style={[styles.link, { color: colors.primary }]}>
-                      {" " + t("auth.register")}
-                    </Text>
+            <Link href="/auth/register" asChild>
+              <TouchableOpacity style={styles.linkContainer}>
+              <Text style={[styles.linkText, { color: colors.textSecondary }]}>
+                  {t("auth.noAccount")}
+                  <Text style={[styles.link, { color: colors.primary }]}>
+                    {" " + t("auth.register")}
                   </Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+                </Text>
+              </TouchableOpacity>
+            </Link>
+        </View>
+      </KeyboardAvoidingView>
 
       <PrivacyPolicyModal
         visible={privacyModalVisible}
@@ -185,55 +297,70 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   keyboardView: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   content: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
+    backgroundColor: "transparent",
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
+  logo: {
+    width: 200,
+    height: 100,
+    alignSelf: "center",
     marginBottom: 40,
-    color: "white",
   },
-  form: {
-    padding: 24,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  inputContainer: {
+  inputCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    marginBottom: 20,
-    paddingBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   input: {
     flex: 1,
-    marginLeft: 12,
     fontSize: 16,
-    paddingVertical: 8,
+    paddingVertical: 0,
   },
   button: {
+    borderRadius: 16,
+    marginTop: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  buttonInner: {
+    flexDirection: "row",
     padding: 16,
-    borderRadius: 12,
     alignItems: "center",
-    marginTop: 20,
+    justifyContent: "center",
+  },
+  buttonDisabled: {
+    flexDirection: "row",
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonTextDisabled: {
+    color: "rgba(255, 255, 255, 0.5)",
   },
   linkContainer: {
     marginTop: 20,
@@ -251,11 +378,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginTop: 16,
+    marginBottom: 32,
     gap: 8,
   },
-  checkboxText: {
+  checkboxTextContainer: {
     flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  checkboxText: {
     fontSize: 14,
     lineHeight: 20,
+    textAlign: "left",
+  },
+  forgotPasswordContainer: {
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  forgotPasswordLink: {
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });

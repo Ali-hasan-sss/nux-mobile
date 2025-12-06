@@ -49,6 +49,7 @@ export default function PromotionsScreen() {
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Ad | null>(null);
   const [createAdModalVisible, setCreateAdModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "my">("all");
 
   const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
   const filterOptions = [
@@ -206,25 +207,195 @@ export default function PromotionsScreen() {
     );
   };
 
-  // For restaurant owners - show their own ads
+  // For restaurant owners - show tabs for all ads and my ads
   if (isRestaurant) {
     return (
       <>
-        <LinearGradient
-          colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
-          style={styles.container}
-        >
+        <View style={[styles.container, { backgroundColor: "transparent" }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>
-              {t("restaurant.myAds")}
+              {t("promotions.title")}
             </Text>
+
+            {/* Tabs for restaurant owners */}
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === "all" && {
+                    backgroundColor: colors.primary,
+                  },
+                  activeTab !== "all" && {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={() => setActiveTab("all")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    {
+                      color:
+                        activeTab === "all" ? "white" : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {t("promotions.allAds")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === "my" && {
+                    backgroundColor: colors.primary,
+                  },
+                  activeTab !== "my" && {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={() => setActiveTab("my")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    {
+                      color: activeTab === "my" ? "white" : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {t("restaurant.myAds")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search and filters for "all" tab */}
+            {activeTab === "all" && (
+              <>
+                <View
+                  style={[
+                    styles.searchContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Search size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder={t("promotions.search")}
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                  <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
+                    <Filter size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+
+                {showFilters && (
+                  <View style={styles.filtersContainer}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <View style={styles.filtersRow}>
+                        {filterOptions.map((filterOpt) => (
+                          <TouchableOpacity
+                            key={filterOpt.key}
+                            style={[
+                              styles.filterChip,
+                              {
+                                backgroundColor: selectedFilters.includes(
+                                  filterOpt.key
+                                )
+                                  ? colors.primary
+                                  : colors.surface,
+                              },
+                            ]}
+                            onPress={() => toggleFilter(filterOpt.key)}
+                          >
+                            <Text
+                              style={[
+                                styles.filterText,
+                                {
+                                  color: selectedFilters.includes(filterOpt.key)
+                                    ? "white"
+                                    : colors.text,
+                                },
+                              ]}
+                            >
+                              {filterOpt.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                        {selectedFilters.length > 0 && (
+                          <TouchableOpacity
+                            style={[
+                              styles.clearButton,
+                              { backgroundColor: colors.error },
+                            ]}
+                            onPress={() => setSelectedFilters([])}
+                          >
+                            <Text style={styles.clearButtonText}>
+                              {t("common.clear")}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+              </>
+            )}
           </View>
 
+          {/* Content based on active tab */}
+          {activeTab === "all" ? (
+            loading && ads.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                  style={[styles.loadingText, { color: colors.textSecondary }]}
+                >
+                  {t("common.loading")}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={ads}
+                renderItem={renderAd}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.list}
+                style={{ backgroundColor: "transparent" }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    colors={[colors.primary]}
+                    tintColor={colors.primary}
+                  />
+                }
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={renderFooter}
+                ListEmptyComponent={renderEmpty}
+              />
+            )
+          ) : (
           <RestaurantAdsView />
-        </LinearGradient>
+          )}
+        </View>
 
+        {/* FAB only shows on "my" tab */}
+        {activeTab === "my" && (
         <LinearGradient
-          colors={isDark ? (colors as any).gradientButton || [colors.primary, colors.primary] : [colors.primary, colors.primary]}
+          colors={
+            isDark
+              ? (colors as any).gradientButton || [
+                  colors.primary,
+                  colors.primary,
+                ]
+              : [colors.primary, colors.primary]
+          }
           style={styles.fab}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -236,11 +407,25 @@ export default function PromotionsScreen() {
             <Plus size={24} color="white" />
           </TouchableOpacity>
         </LinearGradient>
+        )}
 
         <CreateAdModal
           visible={createAdModalVisible}
           onClose={() => setCreateAdModalVisible(false)}
         />
+
+        {selectedRestaurant && (
+          <RestaurantMapModal
+            visible={mapModalVisible}
+            onClose={() => setMapModalVisible(false)}
+            restaurant={{
+              name: selectedRestaurant.restaurant.name,
+              latitude: selectedRestaurant.restaurant.latitude,
+              longitude: selectedRestaurant.restaurant.longitude,
+              address: selectedRestaurant.restaurant.address,
+            }}
+          />
+        )}
       </>
     );
   }
@@ -248,10 +433,7 @@ export default function PromotionsScreen() {
   // For regular users - show all ads
   return (
     <>
-      <LinearGradient
-        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
-        style={styles.container}
-      >
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("promotions.title")}
@@ -341,6 +523,7 @@ export default function PromotionsScreen() {
             renderItem={renderAd}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.list}
+            style={{ backgroundColor: "transparent" }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -356,27 +539,28 @@ export default function PromotionsScreen() {
             ListEmptyComponent={renderEmpty}
           />
         )}
-        </LinearGradient>
+      </View>
 
-        {selectedRestaurant && (
-          <RestaurantMapModal
-            visible={mapModalVisible}
-            onClose={() => setMapModalVisible(false)}
-            restaurant={{
-              name: selectedRestaurant.restaurant.name,
-              latitude: selectedRestaurant.restaurant.latitude,
-              longitude: selectedRestaurant.restaurant.longitude,
-              address: selectedRestaurant.restaurant.address,
-            }}
-          />
-        )}
-      </>
-    );
-  }
+      {selectedRestaurant && (
+        <RestaurantMapModal
+          visible={mapModalVisible}
+          onClose={() => setMapModalVisible(false)}
+          restaurant={{
+            name: selectedRestaurant.restaurant.name,
+            latitude: selectedRestaurant.restaurant.latitude,
+            longitude: selectedRestaurant.restaurant.longitude,
+            address: selectedRestaurant.restaurant.address,
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   header: {
     padding: 20,
@@ -439,6 +623,7 @@ const styles = StyleSheet.create({
   list: {
     padding: 20,
     paddingTop: 10,
+    backgroundColor: "transparent",
   },
   promotionCard: {
     marginBottom: 16,
@@ -552,6 +737,28 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
     fontWeight: "600",
   },
 });

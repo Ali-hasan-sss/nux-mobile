@@ -1,34 +1,50 @@
+// Dark gradient theme with animated background - inspired by modern design
+// Always use dark theme with animated gradient background
 export const Colors = {
   light: {
-    primary: "#00D9FF", // Cyan - glowing buttons
-    secondary: "#FB923C",
-    background: "#FFFFFF",
-    surface: "#F8FAFC",
-    text: "#1F2937",
-    textSecondary: "#6B7280",
-    border: "#E5E7EB",
-    success: "#10B981",
-    error: "#EF4444",
-    warning: "#F59E0B",
-    info: "#3B82F6",
-    gradient: ["#8B5CF6", "#FB923C"] as const,
-    gradientAccent: ["#8B5CF6", "#FB923C"] as const,
-    gradientButton: ["#00D9FF", "#00B8E6"] as const,
+    primary: "#00D9FF", // Bright cyan/blue
+    secondary: "#FF6B9D", // Pink
+    accent: "#A855F7", // Purple
+    background: "#0A0E27", // Dark blue base
+    // Animated gradient background: magenta/purple to deep blue (like image)
+    backgroundGradient: ["#1A0B2E", "#2D1B4E", "#16213E", "#0A0E27"] as const,
+    surface: "rgba(26, 31, 58, 0.85)", // Semi-transparent dark surface with blur effect
+    surfaceSolid: "#1A1F3A", // Solid dark surface
+    text: "#FFFFFF", // White text for dark background (ensures readability)
+    textSecondary: "rgba(255, 255, 255, 0.75)", // Semi-transparent white for secondary text
+    border: "rgba(255, 255, 255, 0.15)", // Subtle border for visibility
+    success: "#34D399", // Green
+    error: "#F87171", // Red
+    warning: "#FBBF24", // Yellow
+    info: "#60A5FA", // Blue
+    // Vibrant gradients for buttons and accents
+    gradient: ["#FF6B9D", "#A855F7", "#00D9FF"] as const, // Pink to purple to cyan
+    gradientAccent: ["#FF6B9D", "#A855F7", "#00D9FF"] as const, // Pink to purple to cyan
+    gradientButton: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
+    buttonGradient: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
+    buttonGradientSecondary: ["#FF6B9D", "#A855F7"] as const, // Pink to purple
   },
   dark: {
-    primary: "#00D9FF", // Cyan - glowing buttons and accents
-    secondary: "#FF6B9D", // Pink accent
-    background: "#0A0E27", // Dark blue-purple base
-    surface: "#1A1F3A", // Dark blue-purple surface
-    text: "#FFFFFF",
-    textSecondary: "#B8BCC8",
-    border: "#2A2F4A",
-    success: "#00FFA3", // Cyan-green
-    error: "#FF6B6B",
-    warning: "#FFD93D",
-    info: "#00D9FF",
-    gradient: ["#1A1F3A", "#2D1B4E"] as const, // Dark blue to purple
-    gradientAccent: ["#FF6B9D", "#C471ED", "#00D9FF"] as const, // Pink to purple to cyan
-    gradientButton: ["#00D9FF", "#00B8E6"] as const, // Cyan gradient for buttons
+    primary: "#00D9FF", // Bright cyan/blue
+    secondary: "#FF6B9D", // Pink
+    accent: "#A855F7", // Purple
+    background: "#0A0E27", // Dark blue base
+    // Animated gradient background: magenta/purple to deep blue (like image)
+    backgroundGradient: ["#1A0B2E", "#2D1B4E", "#16213E", "#0A0E27"] as const,
+    surface: "rgba(26, 31, 58, 0.85)", // Semi-transparent dark surface with blur effect
+    surfaceSolid: "#1A1F3A", // Solid dark surface
+    text: "#FFFFFF", // White text for dark background (ensures readability)
+    textSecondary: "rgba(255, 255, 255, 0.75)", // Semi-transparent white for secondary text
+    border: "rgba(255, 255, 255, 0.15)", // Subtle border for visibility
+    success: "#34D399", // Green
+    error: "#F87171", // Red
+    warning: "#FBBF24", // Yellow
+    info: "#60A5FA", // Blue
+    // Vibrant gradients for buttons and accents
+    gradient: ["#FF6B9D", "#A855F7", "#00D9FF"] as const, // Pink to purple to cyan
+    gradientAccent: ["#FF6B9D", "#A855F7", "#00D9FF"] as const, // Pink to purple to cyan
+    gradientButton: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
+    buttonGradient: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
+    buttonGradientSecondary: ["#FF6B9D", "#A855F7"] as const, // Pink to purple
   },
 };

@@ -3,7 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { initializeAuth } from "../store/slices/authSlice";
 import { getProfile } from "../store/slices/profileSlice";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View } from "react-native";
+import { router, useSegments } from "expo-router";
+import { BouncingLogoLoader } from "../components/BouncingLogoLoader";
+import { AnimatedBackground } from "../components/AnimatedBackground";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -15,6 +18,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     (state: RootState) => state.auth
   );
   const profileFetchedRef = useRef(false);
+  const segments = useSegments();
+  const wasAuthenticatedRef = useRef(isAuthenticated);
 
   useEffect(() => {
     // Initialize auth state from secure storage when app starts
@@ -39,25 +44,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#f5f5f5",
-        }}
-      >
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text
-          style={{
-            marginTop: 16,
-            fontSize: 16,
-            color: "#666",
-            fontWeight: "500",
-          }}
-        >
-          Checking authentication...
-        </Text>
+      <View style={{ flex: 1 }}>
+        <AnimatedBackground>
+          <BouncingLogoLoader size={120} message="Checking authentication..." />
+        </AnimatedBackground>
       </View>
     );
   }

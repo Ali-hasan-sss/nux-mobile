@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,28 +9,26 @@ import {
   Alert,
   Animated,
   Easing,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { I18nManager } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch } from '@/store/store';
-import { useTranslation } from 'react-i18next';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { I18nManager } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch } from "@/store/store";
+import { useTranslation } from "react-i18next";
 import {
   Settings,
-  Palette,
   Globe,
   FileText,
   Shield,
   Info,
   X,
-} from 'lucide-react-native';
-import { RootState } from '@/store/store';
-import { setTheme } from '@/store/slices/themeSlice';
-import { setLanguage } from '@/store/slices/languageSlice';
-import { logout } from '@/store/slices/authSlice';
-import { useTheme } from '@/hooks/useTheme';
-import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
-import { TermsOfUseModal } from '@/components/TermsOfUseModal';
+} from "lucide-react-native";
+import { RootState } from "@/store/store";
+import { setLanguage } from "@/store/slices/languageSlice";
+import { logout } from "@/store/slices/authSlice";
+import { useTheme } from "@/hooks/useTheme";
+import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
+import { TermsOfUseModal } from "@/components/TermsOfUseModal";
 
 interface DrawerMenuProps {
   onClose: () => void;
@@ -40,7 +38,6 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
-  const { mode } = useSelector((state: RootState) => state.theme);
   const { currentLanguage } = useSelector((state: RootState) => state.language);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
@@ -50,8 +47,8 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
   useEffect(() => {
     Animated.timing(slideX, {
       toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
+      duration: 300,
+      easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     }).start();
   }, [slideX]);
@@ -59,22 +56,18 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const handleCloseAnimated = () => {
     Animated.timing(slideX, {
       toValue: -300,
-      duration: 200,
-      easing: Easing.in(Easing.cubic),
+      duration: 250,
+      easing: Easing.in(Easing.ease),
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) onClose();
     });
   };
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-    dispatch(setTheme(newTheme));
-  };
-
   const handleLanguageChange = async (language: string) => {
     dispatch(setLanguage(language));
     await i18n.changeLanguage(language);
-    await AsyncStorage.setItem('user-language', language);
+    await AsyncStorage.setItem("user-language", language);
     // Direction is forced to LTR globally; no RTL toggling here
   };
 
@@ -89,7 +82,11 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
       <Animated.View
         style={[
           styles.drawer,
-          { backgroundColor: colors.background, transform: [{ translateX: slideX }] },
+          {
+            backgroundColor: colors.background,
+            transform: [{ translateX: slideX }],
+            left: 0,
+          },
         ]}
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -103,55 +100,22 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
           <TouchableOpacity style={styles.menuItem}>
             <Settings size={20} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>
-              {t('drawer.accountSettings')}
+              {t("drawer.accountSettings")}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.section}>
             <View style={styles.menuItem}>
-              <Palette size={20} color={colors.primary} />
-              <Text style={[styles.menuText, { color: colors.text }]}>
-                {t('drawer.theme')}
-              </Text>
-            </View>
-            <View style={styles.optionsContainer}>
-              {(['light', 'dark', 'system'] as const).map((theme) => (
-                <TouchableOpacity
-                  key={theme}
-                  style={[
-                    styles.option,
-                    {
-                      backgroundColor:
-                        mode === theme ? colors.primary : colors.surface,
-                    },
-                  ]}
-                  onPress={() => handleThemeChange(theme)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      { color: mode === theme ? 'white' : colors.text },
-                    ]}
-                  >
-                    {t(`drawer.${theme}`)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.menuItem}>
               <Globe size={20} color={colors.primary} />
               <Text style={[styles.menuText, { color: colors.text }]}>
-                {t('drawer.language')}
+                {t("drawer.language")}
               </Text>
             </View>
             <View style={styles.optionsContainer}>
               {[
-                { code: 'en', label: 'English' },
-                { code: 'ar', label: 'العربية' },
-                { code: 'de', label: 'Deutsch' },
+                { code: "en", label: "English" },
+                { code: "ar", label: "العربية" },
+                { code: "de", label: "Deutsch" },
               ].map((lang) => (
                 <TouchableOpacity
                   key={lang.code}
@@ -171,7 +135,7 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
                       styles.optionText,
                       {
                         color:
-                          currentLanguage === lang.code ? 'white' : colors.text,
+                          currentLanguage === lang.code ? "white" : colors.text,
                       },
                     ]}
                   >
@@ -188,7 +152,7 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
           >
             <FileText size={20} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>
-              {t('drawer.termsOfUse')}
+              {t("drawer.termsOfUse")}
             </Text>
           </TouchableOpacity>
 
@@ -198,14 +162,14 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
           >
             <Shield size={20} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>
-              {t('drawer.privacyPolicy')}
+              {t("drawer.privacyPolicy")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
             <Info size={20} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>
-              {t('drawer.aboutApp')}
+              {t("drawer.aboutApp")}
             </Text>
           </TouchableOpacity>
 
@@ -213,7 +177,7 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
             style={[styles.logoutButton, { backgroundColor: colors.error }]}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutText}>{t('account.logout')}</Text>
+            <Text style={styles.logoutText}>{t("account.logout")}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -234,30 +198,34 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    flexDirection: 'row',
+    position: "relative",
   },
   backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   drawer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
     width: 280,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 20,
     borderBottomWidth: 1,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   content: {
     flex: 1,
@@ -267,8 +235,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
   },
   menuText: {
@@ -276,7 +244,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   optionsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginLeft: 32,
     marginTop: 8,
     gap: 8,
@@ -288,17 +256,17 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   logoutButton: {
     marginTop: 40,
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

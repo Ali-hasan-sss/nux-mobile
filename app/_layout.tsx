@@ -7,9 +7,12 @@ import { store } from "@/store/store";
 import { useFrameworkReady } from "@/hooks/useFrameworkReady";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { LanguageProvider } from "@/providers/LanguageProvider";
+import { AlertProvider } from "@/contexts/AlertContext";
 import "@/i18n/i18n";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-gesture-handler";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { View } from "react-native";
 
 // Fix PlatformConstants error
 if (typeof global !== "undefined") {
@@ -30,16 +33,94 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <Provider store={store}>
         <LanguageProvider>
-          <AuthProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="auth" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="auto" />
-            </GestureHandlerRootView>
-          </AuthProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: "transparent",
+                  width: "100%",
+                  height: "100%",
+                }}
+              >
+                {/* AnimatedBackground أول عنصر - يغطي الشاشة بالكامل */}
+                <AnimatedBackground />
+                <GestureHandlerRootView
+                  style={{
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: "transparent",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  >
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        animation: "fade",
+                        contentStyle: { backgroundColor: "transparent" },
+                        presentation: "transparentModal",
+                      }}
+                    >
+                      <Stack.Screen
+                        name="index"
+                        options={{
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "transparentModal",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="welcome"
+                        options={{
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "card",
+                          animation: "fade",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="choose-action"
+                        options={{
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "card",
+                          animation: "slide_from_right",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="auth"
+                        options={{
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "card",
+                          animation: "slide_from_right",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: "transparent" },
+                        }}
+                      />
+                      <Stack.Screen
+                        name="+not-found"
+                        options={{
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "transparentModal",
+                        }}
+                      />
+                    </Stack>
+                    <StatusBar style="light" />
+                  </View>
+                </GestureHandlerRootView>
+              </View>
+            </AuthProvider>
+          </AlertProvider>
         </LanguageProvider>
       </Provider>
     </SafeAreaProvider>

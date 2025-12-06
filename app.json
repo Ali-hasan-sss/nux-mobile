@@ -47,6 +47,10 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#1A1F3A"
       },
+      "navigationBar": {
+        "backgroundColor": "#0A0E27",
+        "barStyle": "light-content"
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

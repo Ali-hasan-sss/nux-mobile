@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { X, CreditCard, Star, Package } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import api from "@/api/axiosInstance";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TopUpPackage {
   id: number;
@@ -52,6 +53,7 @@ export default function PackagesModal({
 }: PackagesModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [packages, setPackages] = useState<TopUpPackage[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -132,7 +134,13 @@ export default function PackagesModal({
     >
       <View style={styles.modalOverlay}>
         <View
-          style={[styles.modalContent, { backgroundColor: colors.background }]}
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom,
+            },
+          ]}
         >
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -282,7 +290,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "80%",
-    paddingBottom: 20,
+    // paddingBottom will be set dynamically via style prop
   },
   modalHeader: {
     flexDirection: "row",

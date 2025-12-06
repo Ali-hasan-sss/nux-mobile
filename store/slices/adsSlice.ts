@@ -133,6 +133,10 @@ const adsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    addAd: (state, action: PayloadAction<Ad>) => {
+      // Add new ad to the beginning of the list
+      state.ads = [action.payload, ...(state.ads || [])];
+    },
   },
   extraReducers: (builder) => {
     // Fetch ads
@@ -182,11 +186,22 @@ const adsSlice = createSlice({
       .addCase(fetchRestaurantAds.pending, (state) => {
         state.loading = true;
         state.error = null;
+        // Don't clear ads on pending to avoid flickering
       })
       .addCase(fetchRestaurantAds.fulfilled, (state, action) => {
         state.loading = false;
-        state.ads = action.payload.ads;
-        state.pagination = action.payload.pagination;
+        // Always update with the response, even if empty array
+        // This ensures we show the correct state after refresh
+        if (action.payload) {
+          state.ads = Array.isArray(action.payload.ads)
+            ? action.payload.ads
+            : action.payload.ads || [];
+          state.pagination = action.payload.pagination || null;
+        } else {
+          // If payload is invalid, set to empty array (no ads found)
+          state.ads = [];
+          state.pagination = null;
+        }
       })
       .addCase(fetchRestaurantAds.rejected, (state, action) => {
         state.loading = false;
@@ -201,7 +216,7 @@ const adsSlice = createSlice({
       .addCase(deleteRestaurantAd.fulfilled, (state, action) => {
         state.loading = false;
         // Remove deleted ad from state
-        state.ads = state.ads.filter((ad) => ad.id !== action.payload);
+        state.ads = (state.ads || []).filter((ad) => ad.id !== action.payload);
       })
       .addCase(deleteRestaurantAd.rejected, (state, action) => {
         state.loading = false;
@@ -210,6 +225,6 @@ const adsSlice = createSlice({
   },
 });
 
-export const { setFilters, clearFilters, clearAds, clearError } =
+export const { setFilters, clearFilters, clearAds, clearError, addAd } =
   adsSlice.actions;
 export default adsSlice.reducer;

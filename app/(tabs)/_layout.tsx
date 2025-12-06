@@ -3,7 +3,7 @@ import { Home, Tag, ShoppingBag, User } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { Redirect } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
@@ -23,15 +23,19 @@ export default function TabLayout() {
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
     <Tabs
       screenOptions={{
         header: () => <CustomHeader />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
+          sceneStyle: {
+            backgroundColor: "transparent",
+          },
         tabBarStyle: {
-          backgroundColor: isDark ? "#1A1F3A" : colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
+            backgroundColor: "rgba(10, 14, 39, 0.95)",
+            borderTopWidth: 0,
+            borderTopColor: "transparent",
           paddingBottom:
             Platform.OS === "ios"
               ? Math.max(insets.bottom, 10)
@@ -45,11 +49,8 @@ export default function TabLayout() {
           bottom: 0,
           left: 0,
           right: 0,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 8,
+            elevation: 0,
+            shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -88,5 +89,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </View>
   );
 }

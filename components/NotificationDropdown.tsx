@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { X, CheckCheck } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface NotificationDropdownProps {
   visible: boolean;
@@ -24,6 +25,7 @@ export function NotificationDropdown({
 }: NotificationDropdownProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const {
     notifications,
     isLoading,
@@ -177,7 +179,15 @@ export function NotificationDropdown({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.dropdown, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            styles.dropdown,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom,
+            },
+          ]}
+        >
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text style={[styles.title, { color: colors.text }]}>
               {t("notifications.title")}
@@ -275,6 +285,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
+    // paddingBottom will be set dynamically via style prop
   },
 
   header: {

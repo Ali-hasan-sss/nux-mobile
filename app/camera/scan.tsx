@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Animated,
 } from "react-native";
@@ -17,6 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
 import { scanQrCode } from "@/store/slices/balanceSlice";
 import { useBalance } from "@/hooks/useBalance";
+import { useAlert } from "@/contexts/AlertContext";
 // Fallback location if expo-location is not available
 const getCurrentLocation = async () => {
   try {
@@ -78,40 +78,19 @@ export default function ScanScreen() {
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCamera, setShowCamera] = useState(true);
-  const [toast, setToast] = useState<{
-    visible: boolean;
-    type: "success" | "error";
-    message: string;
-  }>({
-    visible: false,
-    type: "success",
-    message: "",
-  });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.balance);
   const auth = useSelector((state: RootState) => state.auth);
   const { refreshBalances } = useBalance();
+  const { showToast, showAlert } = useAlert();
   const hasScanned = useRef(false);
 
   // Animation values
   const scanFrameScale = useRef(new Animated.Value(1)).current;
   const scanFrameOpacity = useRef(new Animated.Value(0.8)).current;
   const cornerScale = useRef(new Animated.Value(1)).current;
-
-  //   Toast
-  const showToast = (type: "success" | "error", message: string) => {
-    setToast({
-      visible: true,
-      type,
-      message,
-    });
-
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 3000);
-  };
 
   // Scan frame animation
   const startScanAnimation = () => {
@@ -228,7 +207,7 @@ export default function ScanScreen() {
     try {
       // التحقق من حالة المصادقة
       if (!auth.isAuthenticated) {
-        showToast("error", "يجب تسجيل الدخول أولاً");
+        showToast({ message: "يجب تسجيل الدخول أولاً", type: "error" });
         setIsProcessing(false);
         setShowCamera(true);
         setTimeout(() => router.back(), 2000);
@@ -268,7 +247,10 @@ export default function ScanScreen() {
         ).unwrap();
 
         // نجح المسح - إظهار Toast النجاح وتحديث الرصيد
-        showToast("success", "تم مسح الكود بنجاح! تم منحك النقاط");
+        showToast({
+          message: "تم مسح الكود بنجاح! تم منحك النقاط",
+          type: "success",
+        });
 
         // تحديث الرصيد بعد نجاح المسح
         refreshBalances();
@@ -288,38 +270,40 @@ export default function ScanScreen() {
         ) {
           // For development, show a bypass option
           if (__DEV__) {
-            Alert.alert(
-              "خطأ في الموقع",
-              "يجب أن تكون داخل المطعم لمسح هذا الكود. هل تريد تجاوز هذا الفحص للتطوير؟",
-              [
-                {
-                  text: "تجاوز للتطوير",
-                  onPress: () => {
-                    showToast("success", "تم مسح الكود بنجاح! (تطوير)");
-                    // تحديث الرصيد بعد نجاح المسح
-                    refreshBalances();
-                    setTimeout(() => {
-                      router.back();
-                    }, 2000);
-                  },
-                },
-                {
-                  text: "إلغاء",
-                  onPress: () => {
-                    setIsProcessing(false);
-                    setShowCamera(true);
-                    hasScanned.current = false;
-                    setIsScanning(true);
-                    setScannedData(null);
+            showAlert({
+              title: "خطأ في الموقع",
+              message:
+                "يجب أن تكون داخل المطعم لمسح هذا الكود. هل تريد تجاوز هذا الفحص للتطوير؟",
+              type: "warning",
+              confirmText: "تجاوز للتطوير",
+              cancelText: "إلغاء",
+              onConfirm: () => {
+                showToast({
+                  message: "تم مسح الكود بنجاح! (تطوير)",
+                  type: "success",
+                });
+                // تحديث الرصيد بعد نجاح المسح
+                refreshBalances();
+                setTimeout(() => {
+                  router.back();
+                }, 2000);
+              },
+              onCancel: () => {
+                setIsProcessing(false);
+                setShowCamera(true);
+                hasScanned.current = false;
+                setIsScanning(true);
+                setScannedData(null);
 
-                    // بدء انيميشن المسح مرة أخرى
-                    startScanAnimation();
-                  },
-                },
-              ]
-            );
+                // بدء انيميشن المسح مرة أخرى
+                startScanAnimation();
+              },
+            });
           } else {
-            showToast("error", "يجب أن تكون داخل المطعم لمسح هذا الكود");
+            showToast({
+              message: "يجب أن تكون داخل المطعم لمسح هذا الكود",
+              type: "error",
+            });
             setIsProcessing(false);
             setShowCamera(true);
             hasScanned.current = false;
@@ -339,7 +323,10 @@ export default function ScanScreen() {
             scanError.code === "NETWORK_ERROR")
         ) {
           console.log("🔄 Using fallback success for development");
-          showToast("success", "تم مسح الكود بنجاح! (تطوير)");
+          showToast({
+            message: "تم مسح الكود بنجاح! (تطوير)",
+            type: "success",
+          });
           // تحديث الرصيد بعد نجاح المسح
           refreshBalances();
           setTimeout(() => {
@@ -367,7 +354,7 @@ export default function ScanScreen() {
       }
 
       // إظهار Toast الخطأ وإعادة تعيين الحالة
-      showToast("error", errorMessage);
+      showToast({ message: errorMessage, type: "error" });
       setIsProcessing(false);
       setShowCamera(true);
       hasScanned.current = false;
@@ -586,28 +573,6 @@ export default function ScanScreen() {
             </View>
           </View>
         </CameraView>
-      )}
-
-      {/* Toast */}
-      {toast.visible && (
-        <View
-          style={[
-            styles.toast,
-            {
-              backgroundColor:
-                toast.type === "success" ? colors.success : colors.error,
-            },
-          ]}
-        >
-          <View style={styles.toastContent}>
-            {toast.type === "success" ? (
-              <CheckCircle size={20} color="white" />
-            ) : (
-              <XCircle size={20} color="white" />
-            )}
-            <Text style={styles.toastText}>{toast.message}</Text>
-          </View>
-        </View>
       )}
     </View>
   );

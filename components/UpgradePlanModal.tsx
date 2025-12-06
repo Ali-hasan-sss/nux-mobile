@@ -15,6 +15,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { X, Check, Crown, ArrowLeft } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   fetchPlans,
   createCheckoutSession,
@@ -37,6 +38,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
   const { colors } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const { plans, loading, checkoutLoading, error } = useSelector(
     (state: RootState) => state.plans
@@ -301,7 +303,13 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
     >
       <View style={styles.modalOverlay}>
         <View
-          style={[styles.modalContent, { backgroundColor: colors.background }]}
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom,
+            },
+          ]}
         >
           {/* Header */}
           <View
@@ -367,6 +375,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "90%",
+    // paddingBottom will be set dynamically via style prop
   },
   modalHeader: {
     flexDirection: "row",

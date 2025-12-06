@@ -119,27 +119,21 @@ export default function PurchaseScreen() {
   // For restaurant owners - show activity tabs
   if (isRestaurant) {
     return (
-      <LinearGradient
-        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
-        style={styles.container}
-      >
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("restaurant.activity")}
           </Text>
         </View>
         <RestaurantActivityTabs />
-      </LinearGradient>
+      </View>
     );
   }
 
   // For regular users - show purchase options
   return (
     <>
-      <LinearGradient
-        colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
-        style={styles.container}
-      >
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("purchase.title")}
@@ -402,7 +396,7 @@ export default function PurchaseScreen() {
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
 
       {selectedRestaurant && (
         <>
@@ -428,9 +422,11 @@ export default function PurchaseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   scrollContent: {
     paddingBottom: 100, // Extra space for tabs
+    backgroundColor: "transparent",
   },
   header: {
     padding: 20,

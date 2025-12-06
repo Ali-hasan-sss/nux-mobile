@@ -1,4 +1,18 @@
 {
+  "welcome": {
+    "title": "مرحباً",
+    "subtitle": "اختر اللغة المفضلة لديك",
+    "selectLanguage": "اختر اللغة",
+    "continue": "متابعة"
+  },
+  "chooseAction": {
+    "title": "ابدأ الآن",
+    "subtitle": "اختر خياراً للمتابعة",
+    "createAccount": "إنشاء حساب",
+    "createAccountDescription": "إذا كنت جديداً، قم بإنشاء حساب للبدء",
+    "login": "تسجيل الدخول",
+    "loginDescription": "إذا كان لديك حساب بالفعل، قم بتسجيل الدخول للمتابعة"
+  },
   "auth": {
     "login": "تسجيل الدخول",
     "register": "إنشاء حساب",
@@ -12,11 +26,21 @@
     "hasAccount": "لديك حساب بالفعل؟",
     "agreeToTerms": "أوافق على سياسة الخصوصية وشروط الاستخدام",
     "privacyPolicy": "سياسة الخصوصية",
-    "termsOfUse": "شروط الاستخدام"
+    "termsOfUse": "شروط الاستخدام",
+    "verificationCode": "رمز التحقق",
+    "enterVerificationCode": "يرجى إدخال الرمز المكون من 6 أرقام المرسل إلى بريدك الإلكتروني",
+    "codeSentTo": "تم إرسال الرمز إلى",
+    "didNotReceiveCode": "لم يصل رمز التحقق؟",
+    "resendCode": "إعادة إرسال الرمز",
+    "passwordMinLength": "يجب أن تكون كلمة المرور 8 محارف على الأقل",
+    "passwordRequiresUppercase": "يجب أن تحتوي كلمة المرور على حرف كبير على الأقل",
+    "passwordRequiresNumber": "يجب أن تحتوي كلمة المرور على رقم على الأقل",
+    "passwordsDoNotMatch": "كلمات المرور غير متطابقة"
   },
   "home": {
     "title": "مكافآت الولاء",
     "welcomeBack": "مرحباً بعودتك!",
+    "welcomeToNux": "مرحباً بك في NUX",
     "scanCode": "مسح الرمز",
     "scanCodeDesc": "امسح رمز QR الخاص بالمطعم",
     "payDrink": "ادفع بنقاط المشروبات",
@@ -42,7 +66,8 @@
     "popular": "الأكثر شعبية",
     "noPromotions": "لا توجد عروض متاحة",
     "validUntil": "صالح حتى {{date}}",
-    "restaurantLocation": "موقع المطعم"
+    "restaurantLocation": "موقع المطعم",
+    "allAds": "جميع الإعلانات"
   },
   "purchase": {
     "title": "شراء",
@@ -104,6 +129,12 @@
     "noNotifications": "لا توجد إشعارات",
     "markAllRead": "تحديد الكل كمقروء"
   },
+  "tabs": {
+    "home": "الرئيسية",
+    "promotions": "العروض",
+    "purchase": "شراء",
+    "account": "الحساب"
+  },
   "common": {
     "cancel": "إلغاء",
     "confirm": "تأكيد",
@@ -115,7 +146,12 @@
     "apply": "تطبيق",
     "clear": "مسح",
     "and": "و",
-    "delete": "حذف"
+    "delete": "حذف",
+    "next": "التالي",
+    "back": "رجوع",
+    "pleaseEnterEmail": "يرجى إدخال بريدك الإلكتروني",
+    "pleaseEnterValidEmail": "يرجى إدخال بريد إلكتروني صحيح",
+    "pleaseEnterVerificationCode": "يرجى إدخال رمز التحقق المكون من 6 أرقام"
   },
   "restaurant": {
     "mealsCode": "رمز الوجبات",
@@ -202,18 +238,5 @@
     "processingPayment": "جاري معالجة الدفع",
     "subscriptionActivated": "تم تفعيل الاشتراك بنجاح",
     "paymentCancelled": "تم إلغاء الدفع"
-  },
-  "common": {
-    "cancel": "إلغاء",
-    "confirm": "تأكيد",
-    "save": "حفظ",
-    "loading": "جاري التحميل...",
-    "error": "خطأ",
-    "success": "نجح",
-    "close": "إغلاق",
-    "apply": "تطبيق",
-    "clear": "مسح",
-    "and": "و",
-    "delete": "حذف"
   }
 }

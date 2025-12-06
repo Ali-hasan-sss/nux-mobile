@@ -1,4 +1,18 @@
 {
+  "welcome": {
+    "title": "Welcome",
+    "subtitle": "Choose your preferred language",
+    "selectLanguage": "Select Language",
+    "continue": "Continue"
+  },
+  "chooseAction": {
+    "title": "Get Started",
+    "subtitle": "Choose an option to continue",
+    "createAccount": "Create Account",
+    "createAccountDescription": "If you're new, create an account to get started",
+    "login": "Login",
+    "loginDescription": "If you already have an account, sign in to continue"
+  },
   "auth": {
     "login": "Login",
     "register": "Register",
@@ -12,11 +26,21 @@
     "hasAccount": "Already have an account?",
     "agreeToTerms": "I agree to the Privacy Policy and Terms of Use",
     "privacyPolicy": "Privacy Policy",
-    "termsOfUse": "Terms of Use"
+    "termsOfUse": "Terms of Use",
+    "verificationCode": "Verification Code",
+    "enterVerificationCode": "Please enter the 6-digit code sent to your email",
+    "codeSentTo": "Code sent to",
+    "didNotReceiveCode": "Didn't receive the code?",
+    "resendCode": "Resend Code",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordRequiresUppercase": "Password must contain at least one uppercase letter",
+    "passwordRequiresNumber": "Password must contain at least one number",
+    "passwordsDoNotMatch": "Passwords do not match"
   },
   "home": {
     "title": "Loyalty Rewards",
     "welcomeBack": "Welcome back!",
+    "welcomeToNux": "Welcome to NUX",
     "scanCode": "Scan Code",
     "scanCodeDesc": "Scan restaurant QR code",
     "payDrink": "Pay with Drink Points",
@@ -42,7 +66,8 @@
     "popular": "Popular",
     "noPromotions": "No promotions available",
     "validUntil": "Valid until {{date}}",
-    "restaurantLocation": "Restaurant Location"
+    "restaurantLocation": "Restaurant Location",
+    "allAds": "All Ads"
   },
   "purchase": {
     "title": "Purchase",
@@ -103,6 +128,12 @@
     "title": "Notifications",
     "noNotifications": "No notifications",
     "markAllRead": "Mark all as read"
+  },
+  "tabs": {
+    "home": "Home",
+    "promotions": "Promotions",
+    "purchase": "Purchase",
+    "account": "Account"
   },
   "common": {
     "cancel": "Cancel",
@@ -213,6 +244,11 @@
     "apply": "Apply",
     "clear": "Clear",
     "and": "and",
-    "delete": "Delete"
+    "delete": "Delete",
+    "next": "Next",
+    "back": "Back",
+    "pleaseEnterEmail": "Please enter your email",
+    "pleaseEnterValidEmail": "Please enter a valid email",
+    "pleaseEnterVerificationCode": "Please enter the 6-digit verification code"
   }
 }

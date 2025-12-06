@@ -49,20 +49,18 @@ export function CustomHeader() {
 
   return (
     <>
-      <LinearGradient
-        colors={
-          isDark
-            ? ["#1A1F3A", "#2D1B4E"]
-            : [colors.background, colors.background]
-        }
-        style={styles.container}
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: "rgba(10, 14, 39, 0.95)" },
+        ]}
       >
         <View
           style={[
             styles.header,
             {
-              borderBottomColor: colors.border,
               paddingTop: 40, // Fixed padding instead of insets
+              backgroundColor: "transparent",
             },
           ]}
         >
@@ -95,7 +93,7 @@ export function CustomHeader() {
             )}
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <Modal
         visible={drawerOpen}
@@ -127,11 +125,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   logo: {
     width: 80,
-    height: 40,
+    height: 50,
   },
   notificationButton: {
     position: "relative",

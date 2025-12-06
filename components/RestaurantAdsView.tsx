@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -33,11 +33,7 @@ export const RestaurantAdsView: React.FC = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Ad | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load restaurant ads on mount and focus
-  useEffect(() => {
-    dispatch(fetchRestaurantAds());
-  }, [dispatch]);
-
+  // Load restaurant ads only on focus (not on mount to avoid double fetch)
   useFocusEffect(
     useCallback(() => {
       dispatch(fetchRestaurantAds());
@@ -45,9 +41,14 @@ export const RestaurantAdsView: React.FC = () => {
   );
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await dispatch(fetchRestaurantAds());
-    setRefreshing(false);
+    try {
+      setRefreshing(true);
+      await dispatch(fetchRestaurantAds());
+    } catch (error) {
+      console.error("Error refreshing ads:", error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleDeleteAd = (ad: Ad) => {
@@ -128,7 +129,8 @@ export const RestaurantAdsView: React.FC = () => {
   };
 
   const renderEmpty = () => {
-    if (loading) return null;
+    // Don't show empty state while loading or refreshing
+    if (loading || refreshing) return null;
     return (
       <View style={styles.emptyContainer}>
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -146,7 +148,8 @@ export const RestaurantAdsView: React.FC = () => {
     );
   };
 
-  if (loading && ads.length === 0) {
+  // Only show full loading screen on initial load (not during refresh)
+  if (loading && !refreshing && (!ads || ads.length === 0)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -160,7 +163,7 @@ export const RestaurantAdsView: React.FC = () => {
   return (
     <>
       <FlatList
-        data={ads}
+        data={ads || []}
         renderItem={renderAd}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}

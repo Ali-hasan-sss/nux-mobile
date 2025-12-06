@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   StyleSheet,
   Modal,
   Dimensions,
-} from 'react-native';
-//import MapView, { Marker } from 'react-native-maps';
-import { useTranslation } from 'react-i18next';
-import { X, MapPin } from 'lucide-react-native';
-import { useTheme } from '@/hooks/useTheme';
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import { useTranslation } from "react-i18next";
+import { X, MapPin } from "lucide-react-native";
+import { useTheme } from "@/hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface RestaurantMapModalProps {
   visible: boolean;
@@ -23,7 +24,7 @@ interface RestaurantMapModalProps {
   };
 }
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export function RestaurantMapModal({
   visible,
@@ -32,6 +33,7 @@ export function RestaurantMapModal({
 }: RestaurantMapModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
@@ -47,18 +49,19 @@ export function RestaurantMapModal({
             {
               backgroundColor: colors.surface,
               borderBottomColor: colors.border,
+              paddingTop: Math.max(insets.top, 16) + 16,
             },
           ]}
         >
           <Text style={[styles.title, { color: colors.text }]}>
-            {t('promotions.restaurantLocation')}
+            {t("promotions.restaurantLocation")}
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        {/* <MapView
+        <MapView
           style={styles.map}
           initialRegion={{
             latitude: restaurant.latitude,
@@ -66,6 +69,9 @@ export function RestaurantMapModal({
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           }}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          toolbarEnabled={false}
         >
           <Marker
             coordinate={{
@@ -74,11 +80,18 @@ export function RestaurantMapModal({
             }}
             title={restaurant.name}
             description={restaurant.address}
+            pinColor={colors.primary}
           />
-        </MapView> */}
+        </MapView>
 
         <View
-          style={[styles.restaurantInfo, { backgroundColor: colors.surface }]}
+          style={[
+            styles.restaurantInfo,
+            {
+              backgroundColor: colors.surface,
+              paddingBottom: Math.max(insets.bottom, 20),
+            },
+          ]}
         >
           <View style={styles.restaurantHeader}>
             <MapPin size={20} color={colors.primary} />
@@ -107,16 +120,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
-    paddingTop: 50,
     borderBottomWidth: 1,
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   closeButton: {
     padding: 4,
@@ -131,13 +143,13 @@ const styles = StyleSheet.create({
     marginTop: -16,
   },
   restaurantHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   restaurantName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginLeft: 8,
   },
   restaurantAddress: {

@@ -7,7 +7,10 @@ import {
   Dimensions,
   TouchableOpacity,
 } from "react-native";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react-native";
+import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react-native";
+import { useTheme } from "@/hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -28,6 +31,8 @@ export const Toast: React.FC<ToastProps> = ({
   duration = 3000,
   onHide,
 }) => {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -80,31 +85,31 @@ export const Toast: React.FC<ToastProps> = ({
       case "success":
         return {
           icon: CheckCircle,
-          backgroundColor: "#10B981",
+          gradient: [colors.success, "#10B981"],
           iconColor: "#FFFFFF",
         };
       case "error":
         return {
           icon: XCircle,
-          backgroundColor: "#EF4444",
+          gradient: [colors.error, "#EF4444"],
           iconColor: "#FFFFFF",
         };
       case "warning":
         return {
           icon: AlertCircle,
-          backgroundColor: "#F59E0B",
+          gradient: [colors.warning, "#F59E0B"],
           iconColor: "#FFFFFF",
         };
       case "info":
         return {
-          icon: AlertCircle,
-          backgroundColor: "#3B82F6",
+          icon: Info,
+          gradient: [colors.info, "#3B82F6"],
           iconColor: "#FFFFFF",
         };
       default:
         return {
-          icon: AlertCircle,
-          backgroundColor: "#6B7280",
+          icon: Info,
+          gradient: ["#6B7280", "#4B5563"],
           iconColor: "#FFFFFF",
         };
     }
@@ -122,23 +127,22 @@ export const Toast: React.FC<ToastProps> = ({
         {
           transform: [{ translateY }],
           opacity,
+          top: Math.max(insets.top + 10, 50),
         },
       ]}
     >
-      <View
-        style={[
-          styles.toast,
-          {
-            backgroundColor: config.backgroundColor,
-          },
-        ]}
+      <LinearGradient
+        colors={config.gradient}
+        style={styles.toast}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
       >
         <IconComponent size={20} color={config.iconColor} />
         <Text style={styles.message}>{message}</Text>
         <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
           <Text style={styles.closeText}>×</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
     </Animated.View>
   );
 };
@@ -146,7 +150,6 @@ export const Toast: React.FC<ToastProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 50,
     left: 20,
     right: 20,
     zIndex: 9999,
@@ -155,16 +158,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   message: {
     flex: 1,

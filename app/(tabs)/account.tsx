@@ -224,13 +224,13 @@ export default function AccountScreen() {
     setUpgradePlanModalVisible(true);
   };
   return (
-    <LinearGradient
-      colors={isDark ? colors.gradient : ["#FFFFFF", "#F8FAFC"]}
-      style={styles.container}
-    >
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={[styles.scrollView, { backgroundColor: "transparent" }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { backgroundColor: "transparent" },
+        ]}
       >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
@@ -535,19 +535,22 @@ export default function AccountScreen() {
           </>
         )}
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   scrollView: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   scrollContent: {
     paddingBottom: 100, // Extra space for tabs
+    backgroundColor: "transparent",
   },
   header: {
     padding: 20,

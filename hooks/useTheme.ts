@@ -1,18 +1,10 @@
-import { useSelector } from 'react-redux';
-import { useColorScheme } from 'react-native';
-import { RootState } from '@/store/store';
-import { Colors } from '@/constants/Colors';
+import { Colors } from "@/constants/Colors";
 
+// Dark gradient theme - always returns dark gradient colors (no light mode)
 export const useTheme = () => {
-  const { mode } = useSelector((state: RootState) => state.theme);
-  const systemColorScheme = useColorScheme();
-
-  const resolvedMode: 'light' | 'dark' =
-    mode === 'system' ? systemColorScheme ?? 'light' : mode;
-
   return {
-    colors: Colors[resolvedMode],
-    isDark: resolvedMode === 'dark',
-    mode,
+    colors: Colors.light, // Use light key but with dark gradient colors
+    isDark: true, // Always dark gradient background
+    mode: "dark" as const,
   };
 };

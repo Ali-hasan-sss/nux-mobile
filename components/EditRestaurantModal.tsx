@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
@@ -21,8 +22,10 @@ import {
   updateRestaurantInfo,
 } from "@/store/slices/restaurantInfoSlice";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import api from "@/api/axiosInstance";
 import { CrossPlatformStorage } from "@/store/services/crossPlatformStorage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface EditRestaurantModalProps {
   visible: boolean;
@@ -36,6 +39,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
 
   const { info, loading, updating } = useSelector(
     (state: RootState) => state.restaurantInfo
@@ -86,7 +90,21 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadImage(result.assets[0].uri);
+        const originalUri = result.assets[0].uri;
+
+        // Compress and resize image before uploading
+        const manipulatedImage = await ImageManipulator.manipulateAsync(
+          originalUri,
+          [
+            { resize: { width: 1024 } }, // Max width 1024px for logo
+          ],
+          {
+            compress: 0.7, // Compress to 70% quality
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        );
+
+        await uploadImage(manipulatedImage.uri);
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -108,25 +126,32 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
       console.log("📤 Uploading logo:", filename, "Type:", type);
 
-      // Fetch the image as blob
-      const imageResponse = await fetch(uri);
-      const blob = await imageResponse.blob();
-
-      // Create FormData
+      // Create FormData - React Native way (using uri directly)
       const formData = new FormData();
-      formData.append("file", blob, filename);
+      formData.append("file", {
+        uri: Platform.OS === "ios" ? uri.replace("file://", "") : uri,
+        name: filename,
+        type: type,
+      } as any);
       formData.append("entityType", "logo");
 
-      console.log("📦 FormData created with blob");
+      console.log("📦 FormData created");
 
       // Upload using fetch API
       const response = await fetch("https://back.nuxapp.de/api/uploadFile", {
         method: "POST",
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
+          // Don't set Content-Type - let React Native set it automatically with boundary
         },
         body: formData,
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Upload failed:", errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
 
       const data = await response.json();
       console.log("✅ Upload response:", data);
@@ -196,7 +221,13 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     >
       <View style={styles.modalOverlay}>
         <View
-          style={[styles.modalContent, { backgroundColor: colors.background }]}
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom,
+            },
+          ]}
         >
           {/* Header */}
           <View
