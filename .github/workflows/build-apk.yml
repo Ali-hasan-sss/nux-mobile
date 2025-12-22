@@ -33,12 +33,70 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
+          cache: "gradle"
+
+      - name: 📦 Cache Android SDK
+        uses: actions/cache@v4
+        id: cache-android-sdk
+        with:
+          path: |
+            ~/.android
+          key: ${{ runner.os }}-android-sdk
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-
+
+      - name: 📦 Cache node_modules
+        uses: actions/cache@v4
+        id: cache-node-modules
+        with:
+          path: |
+            node_modules
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: 📦 Install dependencies
         run: npm ci
 
+      - name: 📦 Cache Expo
+        uses: actions/cache@v4
+        id: cache-expo
+        with:
+          path: |
+            ~/.expo
+            .expo
+          key: ${{ runner.os }}-expo-${{ hashFiles('**/app.json', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-expo-
+
+      - name: 📦 Cache Android Gradle
+        uses: actions/cache@v4
+        id: cache-gradle
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', '**/build.gradle*', '**/settings.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 📦 Cache Android Build artifacts
+        uses: actions/cache@v4
+        id: cache-android-build
+        with:
+          path: |
+            android/app/build
+            android/build
+          key: ${{ runner.os }}-android-build-${{ hashFiles('**/build.gradle*', '**/settings.gradle', 'android/app/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-android-build-
+
       - name: 🔨 Generate native code with Expo Prebuild
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android
+        env:
+          EXPO_NO_DOTENV: 1
 
       - name: 📝 Setup release keystore
         run: |
@@ -52,13 +110,14 @@ jobs:
           chmod +x ./gradlew
           # Use absolute path for keystore
           KEYSTORE_PATH="$GITHUB_WORKSPACE/android/app/release.keystore"
-          ./gradlew assembleRelease --no-daemon \
+          ./gradlew assembleRelease --no-daemon --build-cache \
             -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
         env:
           EXPO_NO_DOTENV: 1
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
       - name: 📦 Upload APK artifact
         uses: actions/upload-artifact@v4

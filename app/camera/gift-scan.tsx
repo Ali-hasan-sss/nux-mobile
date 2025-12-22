@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { X, Check, CheckCircle, XCircle } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
+import * as ImageManipulator from "expo-image-manipulator";
 
 export default function GiftScanScreen() {
   const [facing, setFacing] = useState<CameraType>("back");
@@ -33,12 +34,57 @@ export default function GiftScanScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const params = useLocalSearchParams();
+  const imageUri = params.imageUri as string | undefined;
+
+  // Handle image scanning if imageUri is provided
+  useEffect(() => {
+    if (imageUri && !scanned && !isProcessing) {
+      scanQRFromImage(imageUri);
+    }
+  }, [imageUri]);
 
   useEffect(() => {
-    if (permission && !permission.granted) {
+    if (permission && !permission.granted && !imageUri) {
       requestPermission();
     }
-  }, [permission, requestPermission]);
+  }, [permission, requestPermission, imageUri]);
+
+  const scanQRFromImage = async (uri: string) => {
+    try {
+      setIsProcessing(true);
+      setShowCamera(false);
+
+      // Resize image if needed for better scanning
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Use CameraView to scan the image
+      // Note: expo-camera doesn't directly support scanning from URI
+      // We'll need to use a workaround or backend API
+
+      // For now, let's show a message that image scanning needs backend support
+      showToast(
+        "error",
+        "Image scanning requires backend API support. Please use the camera to scan QR codes."
+      );
+      setIsProcessing(false);
+      setShowCamera(true);
+
+      // TODO: Implement backend API endpoint for QR scanning from image
+      // or use a library that supports image scanning
+    } catch (error: any) {
+      console.error("Error scanning QR from image:", error);
+      showToast(
+        "error",
+        "Failed to scan QR code from image. Please use the camera instead."
+      );
+      setIsProcessing(false);
+      setShowCamera(true);
+    }
+  };
 
   // Toast
   const showToast = (type: "success" | "error", message: string) => {
@@ -77,6 +123,8 @@ export default function GiftScanScreen() {
 
       // الانتظار قليلاً ثم العودة
       setTimeout(() => {
+        // Emit event to notify GiftModal that scan screen is closing
+        DeviceEventEmitter.emit("gift-scan-closed");
         router.back();
       }, 1500);
     } catch (e) {
@@ -159,7 +207,11 @@ export default function GiftScanScreen() {
                   styles.closeButton,
                   { backgroundColor: colors.background },
                 ]}
-                onPress={() => router.back()}
+                onPress={() => {
+                  // Emit event to notify GiftModal that scan screen is closing
+                  DeviceEventEmitter.emit("gift-scan-closed");
+                  router.back();
+                }}
               >
                 <X size={24} color={colors.text} />
               </TouchableOpacity>

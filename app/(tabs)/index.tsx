@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   UtensilsCrossed,
   Wallet,
   QrCode,
+  Menu,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
@@ -33,6 +34,7 @@ import {
   setSelectedRestaurantBalance,
 } from "@/store/slices/balanceSlice";
 import { RestaurantQRCodes } from "@/components/RestaurantQRCodes";
+import { useRestaurantQR } from "@/hooks/useRestaurantQR";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -49,6 +51,7 @@ export default function HomeScreen() {
     loading,
     error,
   } = useBalance();
+  const { loadRestaurantInfo } = useRestaurantQR();
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<
     "drink" | "meal" | "wallet"
@@ -63,10 +66,22 @@ export default function HomeScreen() {
   // Fetch user balances every time the screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      if (auth.isAuthenticated) {
+      if (!auth.isAuthenticated) return;
+
+      if (isRestaurant) {
+        // For restaurant owners, reload restaurant info (including QR codes)
+        console.log(
+          "🔄 HomeScreen: Reloading restaurant info for restaurant owner"
+        );
+        loadRestaurantInfo();
+      } else {
+        // For regular users, load balances
         loadBalances();
       }
-    }, [auth.isAuthenticated])
+      // Note: loadRestaurantInfo and loadBalances are stable functions from hooks
+      // They don't need to be in dependencies to avoid infinite loops
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [auth.isAuthenticated, isRestaurant])
   );
 
   useEffect(() => {
@@ -93,6 +108,10 @@ export default function HomeScreen() {
 
   const handleScanCode = () => {
     router.push("/camera/scan");
+  };
+
+  const handleScanMenuCode = () => {
+    router.push("/camera/menu-scan");
   };
 
   const handlePayWithDrink = () => {
@@ -183,6 +202,33 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={styles.primaryButtonDesc}>
                       {t("home.scanCodeDesc")}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </LinearGradient>
+
+              {/* Menu Scan Button */}
+              <LinearGradient
+                colors={
+                  isDark
+                    ? (colors as any).gradientAccent || colors.gradient
+                    : colors.gradient
+                }
+                style={[styles.primaryButton, { marginTop: 16 }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <TouchableOpacity
+                  style={styles.primaryButtonInner}
+                  onPress={handleScanMenuCode}
+                >
+                  <Menu size={32} color="white" />
+                  <View style={styles.buttonTextContainer}>
+                    <Text style={styles.primaryButtonText}>
+                      {t("home.scanMenuCode")}
+                    </Text>
+                    <Text style={styles.primaryButtonDesc}>
+                      {t("home.scanMenuCodeDesc")}
                     </Text>
                   </View>
                 </TouchableOpacity>

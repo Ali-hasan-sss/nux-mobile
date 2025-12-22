@@ -22,10 +22,14 @@ import {
   Shield,
   Info,
   X,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { setLanguage } from "@/store/slices/languageSlice";
 import { logout } from "@/store/slices/authSlice";
+import { setTheme } from "@/store/slices/themeSlice";
 import { useTheme } from "@/hooks/useTheme";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
@@ -37,7 +41,7 @@ interface DrawerMenuProps {
 export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const { currentLanguage } = useSelector((state: RootState) => state.language);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
@@ -69,6 +73,10 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
     await i18n.changeLanguage(language);
     await AsyncStorage.setItem("user-language", language);
     // Direction is forced to LTR globally; no RTL toggling here
+  };
+
+  const handleThemeChange = (themeMode: "light" | "dark" | "system") => {
+    dispatch(setTheme(themeMode));
   };
 
   const handleLogout = () => {
@@ -143,6 +151,65 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.menuItem}>
+              {mode === "dark" ? (
+                <Moon size={20} color={colors.primary} />
+              ) : mode === "light" ? (
+                <Sun size={20} color={colors.primary} />
+              ) : (
+                <Monitor size={20} color={colors.primary} />
+              )}
+              <Text style={[styles.menuText, { color: colors.text }]}>
+                {t("drawer.theme")}
+              </Text>
+            </View>
+            <View style={styles.optionsContainer}>
+              {[
+                { code: "dark", label: t("drawer.dark"), icon: Moon },
+                { code: "light", label: t("drawer.light"), icon: Sun },
+                { code: "system", label: t("drawer.system"), icon: Monitor },
+              ].map((theme) => {
+                const Icon = theme.icon;
+                const isSelected = mode === theme.code;
+                return (
+                  <TouchableOpacity
+                    key={theme.code}
+                    style={[
+                      styles.option,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.primary
+                          : colors.surface,
+                      },
+                    ]}
+                    onPress={() =>
+                      handleThemeChange(
+                        theme.code as "light" | "dark" | "system"
+                      )
+                    }
+                  >
+                    <Icon
+                      size={14}
+                      color={isSelected ? "white" : colors.text}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {
+                          color: isSelected ? "white" : colors.text,
+                        },
+                      ]}
+                    >
+                      {theme.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -248,8 +315,11 @@ const styles = StyleSheet.create({
     marginLeft: 32,
     marginTop: 8,
     gap: 8,
+    flexWrap: "wrap",
   },
   option: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,

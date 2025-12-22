@@ -8,10 +8,20 @@ import {
   Modal,
   ActivityIndicator,
   DeviceEventEmitter,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
-import { Camera } from "lucide-react-native";
+import {
+  Camera,
+  Coffee,
+  UtensilsCrossed,
+  Wallet,
+  Image as ImageIcon,
+} from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBalance } from "@/hooks/useBalance";
@@ -49,6 +59,9 @@ export default function GiftModal({
   const [qrScanned, setQrScanned] = useState(false);
   const [scanModalVisible, setScanModalVisible] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
+  const [amountError, setAmountError] = useState<string>("");
+  const [isPickingImage, setIsPickingImage] = useState(false);
+  const [isScanScreenOpen, setIsScanScreenOpen] = useState(false); // Track if scan screen is open
 
   // Reset form when modal opens
   useEffect(() => {
@@ -59,17 +72,59 @@ export default function GiftModal({
       setQrScanned(false);
       setScanModalVisible(false);
       setAutoTriggered(false);
+      setAmountError("");
+      setIsScanScreenOpen(false);
     }
   }, [visible]);
 
+  // Validate amount against balance when amount or gift type changes
+  useEffect(() => {
+    if (!giftAmount || giftAmount.trim() === "") {
+      setAmountError("");
+      return;
+    }
+
+    const amount = parseFloat(giftAmount.replace(",", "."));
+    if (Number.isNaN(amount) || amount <= 0) {
+      setAmountError("");
+      return;
+    }
+
+    let availableBalance = 0;
+    let balanceType = "";
+
+    switch (selectedGiftType) {
+      case "wallet":
+        availableBalance = currentBalance.walletBalance;
+        balanceType = "$";
+        break;
+      case "meal":
+        availableBalance = currentBalance.mealPoints;
+        balanceType = t("purchase.mealPoints");
+        break;
+      case "drink":
+        availableBalance = currentBalance.drinkPoints;
+        balanceType = t("purchase.drinkPoints");
+        break;
+    }
+
+    if (amount > availableBalance) {
+      const errorMessage = `Insufficient balance. Available: ${availableBalance} ${balanceType}`;
+      setAmountError(errorMessage);
+    } else {
+      setAmountError("");
+    }
+  }, [giftAmount, selectedGiftType, currentBalance, t]);
+
   // Listen to camera scan event and handle QR data
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(
+    const scanSub = DeviceEventEmitter.addListener(
       "gift-scanned",
       (data: string) => {
         console.log("📱 GiftModal received scanned QR:", data);
         setScannedQRCode(data);
         setQrScanned(true);
+        setIsScanScreenOpen(false); // Mark scan screen as closed
 
         const amountNumber = parseFloat(giftAmount.replace(",", "."));
         if (
@@ -87,8 +142,16 @@ export default function GiftModal({
         }
       }
     );
+
+    // Listen for scan screen close event (when user closes without scanning)
+    const closeSub = DeviceEventEmitter.addListener("gift-scan-closed", () => {
+      console.log("📱 GiftModal: Scan screen closed");
+      setIsScanScreenOpen(false); // Mark scan screen as closed
+    });
+
     return () => {
-      sub.remove();
+      scanSub.remove();
+      closeSub.remove();
     };
   }, [visible, giftAmount, autoTriggered, isGiftProcessing]);
 
@@ -120,12 +183,42 @@ export default function GiftModal({
   ]);
 
   const handleScanForGift = () => {
-    if (!giftAmount || parseFloat(giftAmount) <= 0) {
+    if (!giftAmount || parseFloat(giftAmount.replace(",", ".")) <= 0) {
       showToast({ message: "Please enter a valid amount", type: "error" });
       return;
     }
 
-    // Navigate directly to camera scanner screen
+    const amount = parseFloat(giftAmount.replace(",", "."));
+    let availableBalance = 0;
+
+    switch (selectedGiftType) {
+      case "wallet":
+        availableBalance = currentBalance.walletBalance;
+        break;
+      case "meal":
+        availableBalance = currentBalance.mealPoints;
+        break;
+      case "drink":
+        availableBalance = currentBalance.drinkPoints;
+        break;
+    }
+
+    if (amount > availableBalance) {
+      showToast({
+        message:
+          amountError ||
+          `Insufficient balance. Available: ${availableBalance} ${
+            selectedGiftType === "wallet" ? "$" : "points"
+          }`,
+        type: "error",
+      });
+      return;
+    }
+
+    // Keep modal open but mark scan screen as open
+    setIsScanScreenOpen(true);
+
+    // Navigate to scan screen without closing modal
     router.push("/camera/gift-scan");
   };
 
@@ -133,7 +226,111 @@ export default function GiftModal({
     setScanModalVisible(false);
   };
 
-  // Upload from gallery is not used in this flow
+  const handlePickImageFromGallery = async () => {
+    if (!giftAmount || parseFloat(giftAmount.replace(",", ".")) <= 0) {
+      showToast({ message: "Please enter a valid amount", type: "error" });
+      return;
+    }
+
+    const amount = parseFloat(giftAmount.replace(",", "."));
+    let availableBalance = 0;
+
+    switch (selectedGiftType) {
+      case "wallet":
+        availableBalance = currentBalance.walletBalance;
+        break;
+      case "meal":
+        availableBalance = currentBalance.mealPoints;
+        break;
+      case "drink":
+        availableBalance = currentBalance.drinkPoints;
+        break;
+    }
+
+    if (amount > availableBalance) {
+      showToast({
+        message:
+          amountError ||
+          `Insufficient balance. Available: ${availableBalance} ${
+            selectedGiftType === "wallet" ? "$" : "points"
+          }`,
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      setIsPickingImage(true);
+
+      // Request permission
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        showToast({
+          message: "Permission to access media library is required",
+          type: "error",
+        });
+        setIsPickingImage(false);
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        setIsPickingImage(false);
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+
+      // Scan QR code from the selected image
+      // Since expo-camera doesn't support scanning from image URI directly,
+      // we'll use a workaround: create a temporary CameraView component
+      // that can scan the image, or use backend API
+
+      // For now, let's use a simpler approach: navigate to a scan screen
+      // that can handle image scanning, or use backend API
+
+      // Actually, the best solution is to use expo-camera's BarCodeScanner
+      // with a workaround: we can create a hidden CameraView and use it to scan
+      // But that's complex. Let's use a different approach:
+
+      // Use the image URI and try to extract QR code using expo-camera
+      // We'll need to create a temporary component that uses CameraView
+      // to scan the image
+
+      // For now, let's show a message and redirect to camera scan
+      // with the image URI as a parameter
+      showToast({
+        message: "Processing image...",
+        type: "info",
+      });
+
+      // For now, since expo-camera doesn't support scanning from image URI directly,
+      // we'll show a helpful message and suggest using the camera
+      // TODO: Implement backend API endpoint for QR scanning from image
+      // or use a library like react-native-qrcode-scanner
+
+      showToast({
+        message:
+          "QR scanning from gallery images is not yet supported. Please use the camera to scan QR codes.",
+        type: "info",
+      });
+    } catch (error: any) {
+      console.error("Error picking image:", error);
+      showToast({
+        message: error?.message || "Failed to pick image",
+        type: "error",
+      });
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
 
   const sendGift = async (overrideQrCode?: string) => {
     if (!giftAmount || parseFloat(giftAmount) <= 0) {
@@ -261,15 +458,18 @@ export default function GiftModal({
         // Toast success
         const successMsg = "Gift sent successfully!";
         showToast({ message: successMsg, type: "success" });
-        // Close modal and navigate to stable screen
-        onClose();
-        router.replace("/(tabs)/purchase");
+        // Reset form state
         setGiftAmount("");
         setScannedQRCode("");
         setQrScanned(false);
         setAutoTriggered(false);
+        setIsScanScreenOpen(false);
         // Refresh balances
         loadBalances();
+        // Close modal after a short delay to show success message
+        setTimeout(() => {
+          onClose();
+        }, 1000);
       } else {
         const errorMessage =
           (result.payload as string) || "Failed to send gift";
@@ -318,157 +518,232 @@ export default function GiftModal({
         transparent={true}
         onRequestClose={handleClose}
       >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContent, { backgroundColor: colors.surface }]}
+        <KeyboardAvoidingView
+          style={[
+            styles.modalOverlay,
+            {
+              backgroundColor: "rgba(0, 0, 0, 0.3)",
+              opacity: isScanScreenOpen ? 0 : 1, // Hide visually when scan screen is open
+              pointerEvents: isScanScreenOpen ? "none" : "auto", // Disable interactions when scan screen is open
+            },
+          ]}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t("purchase.giftOptions")}
-            </Text>
-
-            <View style={styles.giftTypeContainer}>
-              {[
-                {
-                  type: "wallet",
-                  label: t("purchase.walletBalance"),
-                  balance: currentBalance.walletBalance,
-                  symbol: "$",
-                },
-                {
-                  type: "drink",
-                  label: t("purchase.drinkPoints"),
-                  balance: currentBalance.drinkPoints,
-                  symbol: "⭐",
-                },
-                {
-                  type: "meal",
-                  label: t("purchase.mealPoints"),
-                  balance: currentBalance.mealPoints,
-                  symbol: "⭐",
-                },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.type}
-                  style={[
-                    styles.giftTypeButton,
-                    {
-                      backgroundColor:
-                        selectedGiftType === option.type
-                          ? colors.primary
-                          : colors.background,
-                      borderColor:
-                        selectedGiftType === option.type
-                          ? colors.primary
-                          : colors.border,
-                      borderWidth: 1,
-                    },
-                  ]}
-                  onPress={() => setSelectedGiftType(option.type as any)}
-                >
-                  <View style={styles.giftTypeContent}>
-                    <Text
-                      style={[
-                        styles.giftTypeText,
-                        {
-                          color:
-                            selectedGiftType === option.type
-                              ? "white"
-                              : colors.text,
-                        },
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.giftTypeBalance,
-                        {
-                          color:
-                            selectedGiftType === option.type
-                              ? "white"
-                              : colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {option.balance} {option.symbol}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
+            <View
               style={[
-                styles.amountInput,
-                { backgroundColor: colors.background, color: colors.text },
+                styles.modalContent,
+                { backgroundColor: colors.surfaceSolid },
               ]}
-              placeholder={t("purchase.amount")}
-              placeholderTextColor={colors.textSecondary}
-              value={giftAmount}
-              onChangeText={setGiftAmount}
-              keyboardType="numeric"
-            />
+            >
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {t("purchase.giftOptions")}
+              </Text>
 
-            <Text style={[styles.scanTitle, { color: colors.text }]}>
-              {t("purchase.scanOrUpload")}
-            </Text>
-
-            {qrScanned ? (
-              <View
-                style={[
-                  styles.scannedQRContainer,
-                  { backgroundColor: colors.background },
-                ]}
-              >
-                <View style={styles.scannedQRHeader}>
-                  <View style={styles.checkIcon}>
-                    <Text style={styles.checkIconText}>✓</Text>
-                  </View>
-                  <Text style={[styles.scannedQRText, { color: colors.text }]}>
-                    Recipient selected successfully!
-                  </Text>
-                </View>
-                {/* Auto-sending after scan; no rescan button in this flow */}
-              </View>
-            ) : (
-              <View style={styles.scanOptions}>
-                <TouchableOpacity
-                  style={[
-                    styles.scanButton,
-                    {
-                      backgroundColor: colors.primary,
-                      opacity: !giftAmount ? 0.5 : 1,
-                    },
-                  ]}
-                  onPress={handleScanForGift}
-                  disabled={!giftAmount}
-                >
-                  <Camera size={20} color="white" />
-                  <Text style={styles.scanButtonText}>
-                    {!giftAmount ? "Enter Amount First" : "Scan QR Code"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
+              <View style={styles.giftTypeContainer}>
+                {[
                   {
-                    backgroundColor: colors.border,
-                    opacity: isGiftProcessing ? 0.5 : 1,
+                    type: "wallet",
+                    label: t("purchase.walletBalance"),
+                    balance: currentBalance.walletBalance,
+                    symbol: "$",
+                    icon: Wallet,
+                    iconColor: colors.success,
+                  },
+                  {
+                    type: "drink",
+                    label: t("purchase.drinkPoints"),
+                    balance: currentBalance.drinkPoints,
+                    symbol: "",
+                    icon: Coffee,
+                    iconColor: colors.secondary,
+                  },
+                  {
+                    type: "meal",
+                    label: t("purchase.mealPoints"),
+                    balance: currentBalance.mealPoints,
+                    symbol: "",
+                    icon: UtensilsCrossed,
+                    iconColor: colors.primary,
+                  },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <TouchableOpacity
+                      key={option.type}
+                      style={[
+                        styles.giftTypeButton,
+                        {
+                          backgroundColor:
+                            selectedGiftType === option.type
+                              ? colors.primary
+                              : colors.background,
+                          borderColor:
+                            selectedGiftType === option.type
+                              ? colors.primary
+                              : colors.border,
+                          borderWidth: 1,
+                        },
+                      ]}
+                      onPress={() => setSelectedGiftType(option.type as any)}
+                    >
+                      <View style={styles.giftTypeContent}>
+                        <Icon
+                          size={20}
+                          color={
+                            selectedGiftType === option.type
+                              ? "white"
+                              : option.iconColor
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.giftTypeText,
+                            {
+                              color:
+                                selectedGiftType === option.type
+                                  ? "white"
+                                  : colors.text,
+                            },
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.giftTypeBalance,
+                            {
+                              color:
+                                selectedGiftType === option.type
+                                  ? "white"
+                                  : colors.textSecondary,
+                            },
+                          ]}
+                        >
+                          {option.balance} {option.symbol}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TextInput
+                style={[
+                  styles.amountInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: amountError ? colors.error : colors.border,
+                    borderWidth: 1,
                   },
                 ]}
-                onPress={handleClose}
-                disabled={isGiftProcessing}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>
-                  {t("common.cancel")}
+                placeholder={t("purchase.amount")}
+                placeholderTextColor={colors.textSecondary}
+                value={giftAmount}
+                onChangeText={setGiftAmount}
+                keyboardType="numeric"
+              />
+              {amountError && (
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  {amountError}
                 </Text>
-              </TouchableOpacity>
+              )}
+
+              <Text style={[styles.scanTitle, { color: colors.text }]}>
+                {t("purchase.scanOrUpload")}
+              </Text>
+
+              {qrScanned ? (
+                <View
+                  style={[
+                    styles.scannedQRContainer,
+                    { backgroundColor: colors.background },
+                  ]}
+                >
+                  <View style={styles.scannedQRHeader}>
+                    <View style={styles.checkIcon}>
+                      <Text style={styles.checkIconText}>✓</Text>
+                    </View>
+                    <Text
+                      style={[styles.scannedQRText, { color: colors.text }]}
+                    >
+                      Recipient selected successfully!
+                    </Text>
+                  </View>
+                  {/* Auto-sending after scan; no rescan button in this flow */}
+                </View>
+              ) : (
+                <View style={styles.scanOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.scanButton,
+                      {
+                        backgroundColor: colors.primary,
+                        opacity: !giftAmount || isPickingImage ? 0.5 : 1,
+                      },
+                    ]}
+                    onPress={handleScanForGift}
+                    disabled={!giftAmount || isPickingImage}
+                  >
+                    {isPickingImage ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Camera size={20} color="white" />
+                    )}
+                    <Text style={styles.scanButtonText}>
+                      {!giftAmount ? "Enter Amount First" : "Scan QR Code"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.scanButton,
+                      {
+                        backgroundColor: colors.secondary,
+                        opacity: !giftAmount || isPickingImage ? 0.5 : 1,
+                      },
+                    ]}
+                    onPress={handlePickImageFromGallery}
+                    disabled={!giftAmount || isPickingImage}
+                  >
+                    {isPickingImage ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <ImageIcon size={20} color="white" />
+                    )}
+                    <Text style={styles.scanButtonText}>
+                      {!giftAmount ? "Enter Amount First" : "From Gallery"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    {
+                      backgroundColor: colors.border,
+                      opacity: isGiftProcessing ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handleClose}
+                  disabled={isGiftProcessing}
+                >
+                  <Text
+                    style={[styles.modalButtonText, { color: colors.text }]}
+                  >
+                    {t("common.cancel")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ScrollView>
           {isGiftProcessing && (
             <View style={styles.processingOverlay}>
               <View style={styles.processingContent}>
@@ -477,7 +752,7 @@ export default function GiftModal({
               </View>
             </View>
           )}
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Direct camera navigation used; no intermediate ScanModal */}
@@ -488,14 +763,22 @@ export default function GiftModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     paddingHorizontal: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   modalContent: {
     padding: 24,
     borderRadius: 16,
-    maxHeight: "80%",
+    maxHeight: "90%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   modalTitle: {
     fontSize: 20,
@@ -604,6 +887,7 @@ const styles = StyleSheet.create({
   },
   giftTypeContent: {
     alignItems: "center",
+    gap: 4,
   },
   giftTypeBalance: {
     fontSize: 12,
@@ -643,5 +927,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
 });

@@ -52,7 +52,13 @@ export function CustomHeader() {
       <View
         style={[
           styles.container,
-          { backgroundColor: "rgba(10, 14, 39, 0.95)" },
+          {
+            backgroundColor: isDark
+              ? "rgba(26, 31, 58, 0.95)" // colors.surfaceSolid with 95% opacity
+              : "rgba(255, 255, 255, 0.95)", // colors.surfaceSolid with 95% opacity
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          },
         ]}
       >
         <View
@@ -118,6 +124,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+    zIndex: 1000,
   },
   header: {
     flexDirection: "row",

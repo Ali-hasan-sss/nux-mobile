@@ -43,6 +43,8 @@
     "welcomeToNux": "Welcome to NUX",
     "scanCode": "Scan Code",
     "scanCodeDesc": "Scan restaurant QR code",
+    "scanMenuCode": "Scan Menu Code",
+    "scanMenuCodeDesc": "Scan QR code to view menu",
     "payDrink": "Pay with Drink Points",
     "payDrinkDesc": "{{points}} points available",
     "payMeal": "Pay with Meal Points",
@@ -67,7 +69,11 @@
     "noPromotions": "No promotions available",
     "validUntil": "Valid until {{date}}",
     "restaurantLocation": "Restaurant Location",
-    "allAds": "All Ads"
+    "allAds": "All Ads",
+    "openInMaps": "Open in Google Maps",
+    "failedToOpenMaps": "Failed to open maps application",
+    "mapLoadError": "Unable to load map",
+    "useMapsAppInstead": "You can open the location in your maps app instead"
   },
   "purchase": {
     "title": "Purchase",
@@ -104,6 +110,7 @@
     "accountSettings": "Account Settings",
     "theme": "Theme",
     "language": "Language",
+    "theme": "Theme",
     "termsOfUse": "Terms of Use",
     "privacyPolicy": "Privacy Policy",
     "aboutApp": "About App",
@@ -114,7 +121,26 @@
   "camera": {
     "scanQR": "Scan QR Code",
     "placeCodeInFrame": "Place QR code within the frame",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "requestingPermission": "Requesting camera permission...",
+    "cameraPermissionRequired": "Camera permission is required to scan QR codes",
+    "grantPermission": "Grant Permission",
+    "scanMenuQRCode": "Scan the menu QR code",
+    "processing": "Processing"
+  },
+  "menu": {
+    "title": "Menu",
+    "loadingCategories": "Loading categories",
+    "loadingItems": "Loading items",
+    "loadingMenu": "Loading menu",
+    "errorLoadingCategories": "Error Loading Categories",
+    "errorLoadingItems": "Error Loading Items",
+    "errorLoadingMenu": "Error Loading Menu",
+    "invalidQRCode": "Invalid QR Code",
+    "noCategories": "No Categories",
+    "noCategoriesDesc": "No menu categories available",
+    "noItems": "No Items",
+    "noItemsDesc": "No items available in this category"
   },
   "payment": {
     "selectPaymentMethod": "Select Payment Method",
@@ -132,7 +158,7 @@
   "tabs": {
     "home": "Home",
     "promotions": "Promotions",
-    "purchase": "Purchase",
+    "purchase": "Wallet",
     "account": "Account"
   },
   "common": {

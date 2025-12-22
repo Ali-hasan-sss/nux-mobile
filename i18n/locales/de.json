@@ -43,6 +43,8 @@
     "welcomeToNux": "Willkommen bei NUX",
     "scanCode": "Code scannen",
     "scanCodeDesc": "Restaurant QR-Code scannen",
+    "scanMenuCode": "Menü-Code scannen",
+    "scanMenuCodeDesc": "QR-Code scannen, um das Menü anzuzeigen",
     "payDrink": "Mit Getränkepunkten bezahlen",
     "payDrinkDesc": "{{points}} Punkte verfügbar",
     "payMeal": "Mit Mahlzeitpunkten bezahlen",
@@ -67,7 +69,11 @@
     "noPromotions": "Keine Angebote verfügbar",
     "validUntil": "Gültig bis {{date}}",
     "restaurantLocation": "Restaurant-Standort",
-    "allAds": "Alle Anzeigen"
+    "allAds": "Alle Anzeigen",
+    "openInMaps": "In Google Maps öffnen",
+    "failedToOpenMaps": "Kartenanwendung konnte nicht geöffnet werden",
+    "mapLoadError": "Karte konnte nicht geladen werden",
+    "useMapsAppInstead": "Sie können den Standort stattdessen in Ihrer Karten-App öffnen"
   },
   "purchase": {
     "title": "Kaufen",
@@ -102,8 +108,8 @@
   },
   "drawer": {
     "accountSettings": "Kontoeinstellungen",
-    "theme": "Design",
     "language": "Sprache",
+    "theme": "Design",
     "termsOfUse": "Nutzungsbedingungen",
     "privacyPolicy": "Datenschutzrichtlinie",
     "aboutApp": "Über die App",
@@ -114,7 +120,26 @@
   "camera": {
     "scanQR": "QR-Code scannen",
     "placeCodeInFrame": "QR-Code in den Rahmen platzieren",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "requestingPermission": "Kamera-Berechtigung wird angefordert...",
+    "cameraPermissionRequired": "Kamera-Berechtigung ist erforderlich, um QR-Codes zu scannen",
+    "grantPermission": "Berechtigung erteilen",
+    "scanMenuQRCode": "Menü QR-Code scannen",
+    "processing": "Wird verarbeitet"
+  },
+  "menu": {
+    "title": "Menü",
+    "loadingCategories": "Kategorien werden geladen",
+    "loadingItems": "Artikel werden geladen",
+    "loadingMenu": "Menü wird geladen",
+    "errorLoadingCategories": "Fehler beim Laden der Kategorien",
+    "errorLoadingItems": "Fehler beim Laden der Artikel",
+    "errorLoadingMenu": "Fehler beim Laden des Menüs",
+    "invalidQRCode": "Ungültiger QR-Code",
+    "noCategories": "Keine Kategorien",
+    "noCategoriesDesc": "Keine Menükategorien verfügbar",
+    "noItems": "Keine Artikel",
+    "noItemsDesc": "Keine Artikel in dieser Kategorie verfügbar"
   },
   "payment": {
     "selectPaymentMethod": "Zahlungsmethode wählen",
@@ -218,7 +243,7 @@
   "tabs": {
     "home": "Startseite",
     "promotions": "Angebote",
-    "purchase": "Kaufen",
+    "purchase": "Geldbörse",
     "account": "Konto"
   },
   "common": {

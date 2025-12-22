@@ -35,8 +35,9 @@ export const RestaurantQRCodes: React.FC = () => {
     toggleAutoRefresh,
   } = useRestaurantQR();
 
-  // Menu URL for QR code
-  const WEB_BASE_URL = "https://nuxapp.de";
+  // Menu URL for QR code - same as website
+  // Generate menu URL from restaurant id, matching website implementation
+  const WEB_BASE_URL = "https://nuxapp.de"; // Public menu URL base
   const menuUrl = info?.id ? `${WEB_BASE_URL}/menu/${info.id}` : "";
 
   const [refreshing, setRefreshing] = useState(false);
@@ -46,8 +47,22 @@ export const RestaurantQRCodes: React.FC = () => {
 
   useEffect(() => {
     // Fetch restaurant info on mount
+    console.log("🔄 RestaurantQRCodes: Loading restaurant info...");
     loadRestaurantInfo();
   }, [loadRestaurantInfo]);
+
+  // Log when info changes to debug QR codes
+  useEffect(() => {
+    if (info) {
+      console.log("✅ RestaurantQRCodes: Restaurant info loaded:", {
+        name: info.name,
+        qrCode_drink: info.qrCode_drink,
+        qrCode_meal: info.qrCode_meal,
+        hasDrinkCode: !!info.qrCode_drink,
+        hasMealCode: !!info.qrCode_meal,
+      });
+    }
+  }, [info]);
 
   // Auto-refresh QR codes every 5 minutes if enabled
   useEffect(() => {
@@ -77,9 +92,21 @@ export const RestaurantQRCodes: React.FC = () => {
         text: t("common.confirm"),
         onPress: async () => {
           setRefreshing(true);
-          await regenerateQR();
-          setRefreshing(false);
-          Alert.alert(t("common.success"), t("restaurant.regenerateSuccess"));
+          try {
+            await regenerateQR();
+            // Reload restaurant info to ensure we have the latest data
+            await loadRestaurantInfo();
+            setRefreshing(false);
+            Alert.alert(t("common.success"), t("restaurant.regenerateSuccess"));
+          } catch (error) {
+            console.error("❌ Error regenerating QR codes:", error);
+            setRefreshing(false);
+            Alert.alert(
+              t("common.error"),
+              t("restaurant.regenerateFailed") ||
+                "Failed to regenerate QR codes"
+            );
+          }
         },
       },
     ]);
@@ -298,71 +325,149 @@ export const RestaurantQRCodes: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* QR Codes */}
+      {/* QR Codes - Same order as website: Drink, Meal, Menu */}
       <View style={styles.qrCodesContainer}>
-        {/* Drink QR */}
-        <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
-          <View style={styles.qrCardHeader}>
-            <Coffee size={28} color={colors.secondary} />
-            <Text style={[styles.qrCardTitle, { color: colors.text }]}>
-              {t("restaurant.drinkQRCode")}
+        {/* Drink QR - Same as website */}
+        {info.qrCode_drink ? (
+          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.qrCardHeader}>
+              <Coffee size={28} color={colors.secondary} />
+              <View style={styles.qrCardTitleContainer}>
+                <Text style={[styles.qrCardTitle, { color: colors.text }]}>
+                  {t("restaurant.drinkQRCode")}
+                </Text>
+                <Text
+                  style={[styles.qrCardDesc, { color: colors.textSecondary }]}
+                >
+                  {t("restaurant.scanToCollectDrinkStars") ||
+                    `Scan to collect drink stars at ${info.name}`}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.qrCodeWrapper}>
+              <QRCode
+                value={info.qrCode_drink}
+                size={280}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+                ecl="H"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.printButton, { backgroundColor: colors.primary }]}
+              onPress={() =>
+                handlePrintQR(
+                  t("restaurant.drinksCode"),
+                  info.qrCode_drink,
+                  "drink"
+                )
+              }
+            >
+              <Printer size={18} color="white" />
+              <Text style={styles.printButtonText}>
+                {t("restaurant.print")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.qrCardHeader}>
+              <Coffee size={28} color={colors.secondary} />
+              <Text style={[styles.qrCardTitle, { color: colors.text }]}>
+                {t("restaurant.drinkQRCode")}
+              </Text>
+            </View>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              {t("restaurant.noQRCode") || "QR code not available"}
             </Text>
+            <TouchableOpacity
+              style={[
+                styles.regenerateButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={handleRegenerate}
+            >
+              <RefreshCw size={18} color="white" />
+              <Text style={styles.regenerateButtonText}>
+                {t("restaurant.generateQR") || "Generate QR Code"}
+              </Text>
+            </TouchableOpacity>
           </View>
+        )}
 
-          <View style={styles.qrCodeWrapper}>
-            <QRCode
-              value={info.qrCode_drink}
-              size={200}
-              color={colors.text}
-              backgroundColor={colors.background}
-            />
+        {/* Meal QR - Same as website */}
+        {info.qrCode_meal ? (
+          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.qrCardHeader}>
+              <UtensilsCrossed size={28} color={colors.primary} />
+              <View style={styles.qrCardTitleContainer}>
+                <Text style={[styles.qrCardTitle, { color: colors.text }]}>
+                  {t("restaurant.mealQRCode")}
+                </Text>
+                <Text
+                  style={[styles.qrCardDesc, { color: colors.textSecondary }]}
+                >
+                  {t("restaurant.scanToCollectMealStars") ||
+                    `Scan to collect meal stars at ${info.name}`}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.qrCodeWrapper}>
+              <QRCode
+                value={info.qrCode_meal}
+                size={280}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+                ecl="H"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.printButton, { backgroundColor: colors.primary }]}
+              onPress={() =>
+                handlePrintQR(
+                  t("restaurant.mealsCode"),
+                  info.qrCode_meal,
+                  "meal"
+                )
+              }
+            >
+              <Printer size={18} color="white" />
+              <Text style={styles.printButtonText}>
+                {t("restaurant.print")}
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.printButton, { backgroundColor: colors.primary }]}
-            onPress={() =>
-              handlePrintQR(
-                t("restaurant.drinksCode"),
-                info.qrCode_drink,
-                "drink"
-              )
-            }
-          >
-            <Printer size={18} color="white" />
-            <Text style={styles.printButtonText}>{t("restaurant.print")}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Meal QR */}
-        <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
-          <View style={styles.qrCardHeader}>
-            <UtensilsCrossed size={28} color={colors.primary} />
-            <Text style={[styles.qrCardTitle, { color: colors.text }]}>
-              {t("restaurant.mealQRCode")}
+        ) : (
+          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.qrCardHeader}>
+              <UtensilsCrossed size={28} color={colors.primary} />
+              <Text style={[styles.qrCardTitle, { color: colors.text }]}>
+                {t("restaurant.mealQRCode")}
+              </Text>
+            </View>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              {t("restaurant.noQRCode") || "QR code not available"}
             </Text>
+            <TouchableOpacity
+              style={[
+                styles.regenerateButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={handleRegenerate}
+            >
+              <RefreshCw size={18} color="white" />
+              <Text style={styles.regenerateButtonText}>
+                {t("restaurant.generateQR") || "Generate QR Code"}
+              </Text>
+            </TouchableOpacity>
           </View>
+        )}
 
-          <View style={styles.qrCodeWrapper}>
-            <QRCode
-              value={info.qrCode_meal}
-              size={200}
-              color={colors.text}
-              backgroundColor={colors.background}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.printButton, { backgroundColor: colors.primary }]}
-            onPress={() =>
-              handlePrintQR(t("restaurant.mealsCode"), info.qrCode_meal, "meal")
-            }
-          >
-            <Printer size={18} color="white" />
-            <Text style={styles.printButtonText}>{t("restaurant.print")}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Menu QR */}
+        {/* Menu QR - Same as website */}
         {menuUrl && (
           <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
             <View style={styles.qrCardHeader}>
@@ -374,7 +479,8 @@ export const RestaurantQRCodes: React.FC = () => {
                 <Text
                   style={[styles.qrCardDesc, { color: colors.textSecondary }]}
                 >
-                  {t("restaurant.scanForMenu")}
+                  {t("restaurant.scanToOpenMenu") ||
+                    "Scan to open the restaurant menu"}
                 </Text>
               </View>
             </View>
@@ -382,9 +488,10 @@ export const RestaurantQRCodes: React.FC = () => {
             <View style={styles.qrCodeWrapper}>
               <QRCode
                 value={menuUrl}
-                size={200}
-                color={colors.text}
-                backgroundColor={colors.background}
+                size={280}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+                ecl="H"
               />
             </View>
 
@@ -536,10 +643,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   qrCodeWrapper: {
-    padding: 16,
+    padding: 24,
     borderRadius: 12,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
     marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    // Add border for better visibility and scanning
+    borderWidth: 2,
+    borderColor: "#000000",
+    // Ensure minimum size for scanning (280 + 48 padding = 328)
+    minWidth: 328,
+    minHeight: 328,
+    // Add shadow for depth
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   printButton: {
     flexDirection: "row",

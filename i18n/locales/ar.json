@@ -43,6 +43,8 @@
     "welcomeToNux": "مرحباً بك في NUX",
     "scanCode": "مسح الرمز",
     "scanCodeDesc": "امسح رمز QR الخاص بالمطعم",
+    "scanMenuCode": "مسح كود القائمة",
+    "scanMenuCodeDesc": "امسح رمز QR لعرض القائمة",
     "payDrink": "ادفع بنقاط المشروبات",
     "payDrinkDesc": "{{points}} نقطة متاحة",
     "payMeal": "ادفع بنقاط الوجبات",
@@ -67,7 +69,11 @@
     "noPromotions": "لا توجد عروض متاحة",
     "validUntil": "صالح حتى {{date}}",
     "restaurantLocation": "موقع المطعم",
-    "allAds": "جميع الإعلانات"
+    "allAds": "جميع الإعلانات",
+    "openInMaps": "فتح في خرائط جوجل",
+    "failedToOpenMaps": "فشل في فتح تطبيق الخرائط",
+    "mapLoadError": "تعذر تحميل الخريطة",
+    "useMapsAppInstead": "يمكنك فتح الموقع في تطبيق الخرائط بدلاً من ذلك"
   },
   "purchase": {
     "title": "شراء",
@@ -102,8 +108,8 @@
   },
   "drawer": {
     "accountSettings": "إعدادات الحساب",
-    "theme": "المظهر",
     "language": "اللغة",
+    "theme": "المظهر",
     "termsOfUse": "شروط الاستخدام",
     "privacyPolicy": "سياسة الخصوصية",
     "aboutApp": "حول التطبيق",
@@ -114,7 +120,26 @@
   "camera": {
     "scanQR": "مسح رمز QR",
     "placeCodeInFrame": "ضع رمز QR داخل الإطار",
-    "cancel": "إلغاء"
+    "cancel": "إلغاء",
+    "requestingPermission": "جاري طلب إذن الكاميرا...",
+    "cameraPermissionRequired": "يُطلب إذن الكاميرا لمسح رموز QR",
+    "grantPermission": "منح الإذن",
+    "scanMenuQRCode": "امسح رمز QR الخاص بالقائمة",
+    "processing": "جاري المعالجة"
+  },
+  "menu": {
+    "title": "القائمة",
+    "loadingCategories": "جاري تحميل الفئات",
+    "loadingItems": "جاري تحميل العناصر",
+    "loadingMenu": "جاري تحميل القائمة",
+    "errorLoadingCategories": "خطأ في تحميل الفئات",
+    "errorLoadingItems": "خطأ في تحميل العناصر",
+    "errorLoadingMenu": "خطأ في تحميل القائمة",
+    "invalidQRCode": "كود QR غير صالح",
+    "noCategories": "لا توجد فئات",
+    "noCategoriesDesc": "لا توجد فئات قائمة متاحة",
+    "noItems": "لا توجد عناصر",
+    "noItemsDesc": "لا توجد عناصر متاحة في هذه الفئة"
   },
   "payment": {
     "selectPaymentMethod": "اختر طريقة الدفع",
@@ -132,7 +157,7 @@
   "tabs": {
     "home": "الرئيسية",
     "promotions": "العروض",
-    "purchase": "شراء",
+    "purchase": "المحفظة",
     "account": "الحساب"
   },
   "common": {

@@ -41,11 +41,11 @@ export const useBalance = () => {
       };
 
   // Actions
-  const loadBalances = () => {
+  const loadBalances = useCallback(() => {
     if (auth.isAuthenticated) {
       dispatch(fetchUserBalances());
     }
-  };
+  }, [auth.isAuthenticated, dispatch]);
 
   const selectRestaurant = (restaurantId: string) => {
     dispatch(setSelectedRestaurantBalance(restaurantId));

@@ -8,6 +8,12 @@ export const restaurantQRService = {
       const response = await api.get<RestaurantResponse>(
         "/restaurants/account/me"
       );
+      console.log("📡 RestaurantQRService: API Response:", {
+        success: response.data.success,
+        hasData: !!response.data.data,
+        qrCode_drink: response.data.data?.qrCode_drink,
+        qrCode_meal: response.data.data?.qrCode_meal,
+      });
       return response.data;
     } catch (error: any) {
       console.error("❌ Error fetching restaurant info:", error);

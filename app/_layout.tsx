@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { store } from "@/store/store";
+import { store, RootState } from "@/store/store";
 import { useFrameworkReady } from "@/hooks/useFrameworkReady";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { LanguageProvider } from "@/providers/LanguageProvider";
@@ -13,6 +13,16 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-gesture-handler";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+// Component to handle StatusBar based on theme
+function ThemedStatusBar() {
+  const isDark = useSelector((state: RootState) => state.theme.isDark);
+  return <StatusBar style={isDark ? "light" : "dark"} />;
+}
 
 // Fix PlatformConstants error
 if (typeof global !== "undefined") {
@@ -24,6 +34,13 @@ if (typeof global !== "undefined") {
 
 export default function RootLayout() {
   const isFrameworkReady = useFrameworkReady();
+
+  useEffect(() => {
+    if (isFrameworkReady) {
+      // Hide splash screen when app is ready
+      SplashScreen.hideAsync();
+    }
+  }, [isFrameworkReady]);
 
   if (!isFrameworkReady) {
     return null;
@@ -115,7 +132,7 @@ export default function RootLayout() {
                         }}
                       />
                     </Stack>
-                    <StatusBar style="light" />
+                    <ThemedStatusBar />
                   </View>
                 </GestureHandlerRootView>
               </View>

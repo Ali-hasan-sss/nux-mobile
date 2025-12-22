@@ -86,6 +86,11 @@ const restaurantQRSlice = createSlice({
       .addCase(fetchRestaurantInfo.fulfilled, (state, action) => {
         state.loading = false;
         state.info = action.payload;
+        console.log("✅ Restaurant info fetched and stored:", {
+          name: action.payload.name,
+          qrCode_drink: action.payload.qrCode_drink,
+          qrCode_meal: action.payload.qrCode_meal,
+        });
       })
       .addCase(fetchRestaurantInfo.rejected, (state, action) => {
         state.loading = false;
@@ -100,10 +105,18 @@ const restaurantQRSlice = createSlice({
       })
       .addCase(regenerateQRCodes.fulfilled, (state, action) => {
         state.loading = false;
+        // Update QR codes - if info exists, update it; otherwise set the entire info
         if (state.info) {
           state.info.qrCode_drink = action.payload.qrCode_drink;
           state.info.qrCode_meal = action.payload.qrCode_meal;
+        } else {
+          // If info doesn't exist, set the entire payload as info
+          state.info = action.payload;
         }
+        console.log("✅ QR codes regenerated:", {
+          qrCode_drink: action.payload.qrCode_drink,
+          qrCode_meal: action.payload.qrCode_meal,
+        });
       })
       .addCase(regenerateQRCodes.rejected, (state, action) => {
         state.loading = false;
