@@ -64,18 +64,34 @@ export function RestaurantMapModal({
         try {
           console.log("🔄 Loading react-native-maps...");
           // Use dynamic require - metro.config.js will handle web/Node.js cases
-          const Maps = require("react-native-maps");
+          let Maps;
+          try {
+            Maps = require("react-native-maps");
+          } catch (requireError: any) {
+            console.error(
+              "❌ Failed to require react-native-maps:",
+              requireError
+            );
+            // Try alternative import method
+            try {
+              Maps = require("react-native-maps/lib/index");
+            } catch (altError: any) {
+              console.error("❌ Alternative import also failed:", altError);
+              throw requireError; // Throw original error
+            }
+          }
 
           // Try different export patterns
-          MapView = Maps.default || Maps.MapView || Maps;
-          Marker = Maps.Marker;
+          MapView = Maps?.default || Maps?.MapView || Maps;
+          Marker = Maps?.Marker;
 
           console.log("📦 Maps module:", {
-            hasDefault: !!Maps.default,
-            hasMapView: !!Maps.MapView,
-            hasMarker: !!Maps.Marker,
+            hasDefault: !!Maps?.default,
+            hasMapView: !!Maps?.MapView,
+            hasMarker: !!Maps?.Marker,
             MapViewType: typeof MapView,
             MarkerType: typeof Marker,
+            MapsType: typeof Maps,
           });
 
           if (MapView && Marker) {
@@ -84,17 +100,22 @@ export function RestaurantMapModal({
             setMapError(null);
           } else {
             console.warn(
-              "⚠️ react-native-maps loaded but MapView/Marker not found"
+              "⚠️ react-native-maps loaded but MapView/Marker not found",
+              { Maps, MapView, Marker }
             );
             setMapError(t("promotions.mapLoadError"));
+            setMapsLoaded(false);
           }
         } catch (error: any) {
           console.error("❌ react-native-maps not available:", {
             message: error?.message,
             error: error,
             stack: error?.stack,
+            name: error?.name,
           });
           setMapError(t("promotions.mapLoadError"));
+          setMapsLoaded(false);
+          // Don't crash the app, just show error state
         }
       } else {
         // Web platform - maps not available
@@ -130,20 +151,32 @@ export function RestaurantMapModal({
     }
   };
 
-  const handleOpenInMaps = () => {
-    const { latitude, longitude, name, address } = restaurant;
-    const url = Platform.select({
-      ios: `maps://app?daddr=${latitude},${longitude}&dirflg=d`,
-      android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(
-        name
-      )})`,
-    });
-
-    if (url) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Failed to open maps:", err);
-        Alert.alert(t("common.error"), t("promotions.failedToOpenMaps"));
+  const handleOpenInMaps = async () => {
+    try {
+      const { latitude, longitude, name, address } = restaurant;
+      const url = Platform.select({
+        ios: `maps://app?daddr=${latitude},${longitude}&dirflg=d`,
+        android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(
+          name
+        )})`,
       });
+
+      if (url) {
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+          await Linking.openURL(url);
+        } else {
+          // Fallback to Google Maps web
+          const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+          await Linking.openURL(webUrl);
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to open maps:", err);
+      Alert.alert(
+        t("common.error") || "Error",
+        t("promotions.failedToOpenMaps") || "Failed to open maps application"
+      );
     }
   };
 
@@ -220,7 +253,7 @@ export function RestaurantMapModal({
               </Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : MapView && Marker ? (
           <MapView
             style={styles.map}
             initialRegion={{
@@ -238,6 +271,7 @@ export function RestaurantMapModal({
               setMapError(t("promotions.mapLoadError"));
             }}
             onMapReady={() => {
+              console.log("✅ Map is ready");
               setMapError(null);
               setMapReady(true);
             }}
@@ -252,6 +286,45 @@ export function RestaurantMapModal({
               pinColor={colors.primary}
             />
           </MapView>
+        ) : (
+          <View style={styles.errorContainer}>
+            <MapPin
+              size={64}
+              color={colors.primary}
+              style={{ marginBottom: 24 }}
+            />
+            <View style={styles.restaurantInfoPreview}>
+              <Text style={[styles.restaurantName, { color: colors.text }]}>
+                {restaurant.name}
+              </Text>
+              {restaurant.address && (
+                <Text
+                  style={[
+                    styles.restaurantAddress,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {restaurant.address}
+                </Text>
+              )}
+            </View>
+            <Text
+              style={[styles.errorSubtext, { color: colors.textSecondary }]}
+            >
+              {t("promotions.useMapsAppInstead")}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.openMapsButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={handleOpenInMaps}
+            >
+              <Text style={styles.openMapsButtonText}>
+                {t("promotions.openInMaps")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View

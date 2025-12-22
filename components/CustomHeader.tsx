@@ -7,7 +7,6 @@ import {
   Modal,
   Image,
 } from "react-native";
-//import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Menu } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/hooks/useTheme";
@@ -16,15 +15,22 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { DrawerMenu } from "./DrawerMenu";
 import { NotificationDropdown } from "./NotificationDropdown";
-// import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, StatusBar } from "react-native";
 
 export function CustomHeader() {
-  // const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { colors, isDark } = useTheme();
   const { unreadCount, loadUnreadCount } = useNotifications();
   const auth = useSelector((state: RootState) => state.auth);
+
+  // Calculate safe top padding for header
+  // Use insets.top, but fallback to StatusBar.currentHeight on Android if insets is 0
+  const topPadding = Platform.OS === "android" 
+    ? Math.max(insets.top || 0, StatusBar.currentHeight || 0)
+    : insets.top;
 
   // Load unread count when component mounts and user is authenticated
   useEffect(() => {
@@ -65,7 +71,7 @@ export function CustomHeader() {
           style={[
             styles.header,
             {
-              paddingTop: 40, // Fixed padding instead of insets
+              paddingTop: topPadding,
               backgroundColor: "transparent",
             },
           ]}
