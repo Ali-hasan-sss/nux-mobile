@@ -22,6 +22,7 @@ import {
   deleteRestaurantAd,
 } from "@/store/slices/adsSlice";
 import { Ad } from "@/store/types/adsTypes";
+import { getImageUrl } from "@/config/api";
 
 export const RestaurantAdsView: React.FC = () => {
   const { t } = useTranslation();
@@ -75,8 +76,8 @@ export const RestaurantAdsView: React.FC = () => {
 
   const renderAd = ({ item }: { item: Ad }) => {
     const imageUri =
-      item.image ||
-      item.restaurant.logo ||
+      getImageUrl(item.image) ||
+      getImageUrl(item.restaurant.logo) ||
       "https://via.placeholder.com/400x160?text=No+Image";
 
     return (
@@ -86,17 +87,6 @@ export const RestaurantAdsView: React.FC = () => {
       >
         <Image source={{ uri: imageUri }} style={styles.adImage} />
         <View style={styles.adContent}>
-          <View
-            style={[
-              styles.categoryBadge,
-              { backgroundColor: colors.secondary },
-            ]}
-          >
-            <Text style={styles.categoryText}>
-              {item.category === "food" ? "🍽️" : "☕"}
-            </Text>
-          </View>
-
           <View style={styles.adHeader}>
             <Text style={[styles.adTitle, { color: colors.text }]}>
               {item.title}
@@ -226,19 +216,6 @@ const styles = StyleSheet.create({
   },
   adContent: {
     padding: 16,
-  },
-  categoryBadge: {
-    position: "absolute",
-    top: -8,
-    right: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
   },
   adHeader: {
     flexDirection: "row",

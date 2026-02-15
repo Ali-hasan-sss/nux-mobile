@@ -24,6 +24,7 @@ export const Colors = {
     gradientButton: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradient: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradientSecondary: ["#FF6B9D", "#A855F7"] as const, // Pink to purple
+    inputBackground: "rgba(255, 255, 255, 0.95)", // Light input/card in light mode
   },
   dark: {
     primary: "#00D9FF", // Bright cyan/blue
@@ -47,5 +48,6 @@ export const Colors = {
     gradientButton: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradient: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradientSecondary: ["#FF6B9D", "#A855F7"] as const, // Pink to purple
+    inputBackground: "rgba(26, 31, 58, 0.95)", // Dark input/card in dark mode
   },
 };

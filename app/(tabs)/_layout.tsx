@@ -10,16 +10,23 @@ import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { CustomHeader } from "@/components/CustomHeader";
 
+/** تخطيط التبويبات - تطبيق العميل فقط (لا تبويبات أو واجهة لصاحب المطعم) */
 export default function TabLayout() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  const user = useSelector((state: RootState) => state.auth.user);
+  const mustVerify =
+    user?.emailVerified === false || user?.emailVerified === undefined;
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
   if (!isAuthenticated) {
     return <Redirect href="/auth/login" />;
+  }
+  if (mustVerify) {
+    return <Redirect href="/auth/verify-email" />;
   }
 
   return (
@@ -30,7 +37,7 @@ export default function TabLayout() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
           sceneStyle: {
-            backgroundColor: "transparent",
+            backgroundColor: colors.background,
           },
           tabBarStyle: {
             backgroundColor: isDark
@@ -97,6 +104,12 @@ export default function TabLayout() {
           name="menu-webview"
           options={{
             href: null, // Hide from tab bar - only accessible via navigation
+          }}
+        />
+        <Tabs.Screen
+          name="explore-restaurants"
+          options={{
+            href: null, // Only accessible via home "Explore restaurants" button
           }}
         />
       </Tabs>

@@ -26,6 +26,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import api from "@/api/axiosInstance";
 import { CrossPlatformStorage } from "@/store/services/crossPlatformStorage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getImageUrl } from "@/config/api";
 
 interface EditRestaurantModalProps {
   visible: boolean;
@@ -275,7 +276,10 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   {uploadingImage ? (
                     <ActivityIndicator size="large" color={colors.primary} />
                   ) : logo ? (
-                    <Image source={{ uri: logo }} style={styles.logoImage} />
+                    <Image
+                      source={{ uri: getImageUrl(logo) ?? logo }}
+                      style={styles.logoImage}
+                    />
                   ) : (
                     <View style={styles.logoPlaceholder}>
                       <Upload size={32} color={colors.textSecondary} />

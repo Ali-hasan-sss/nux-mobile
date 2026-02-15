@@ -2,7 +2,6 @@ import { authApi } from "../../api/authApi";
 import {
   LoginRequest,
   RegisterUserRequest,
-  RegisterRestaurantRequest,
   AuthResponse,
   AuthTokens,
 } from "../types/authTypes";
@@ -44,26 +43,6 @@ export const authService = {
     console.log("✅ User registration successful");
     return {
       user: response.data.data.user,
-      tokens: response.data.data.tokens,
-    };
-  },
-
-  // Restaurant registration
-  async registerRestaurant(
-    restaurantData: RegisterRestaurantRequest
-  ): Promise<AuthResponse> {
-    console.log(
-      "🏪 Attempting restaurant registration for:",
-      restaurantData.email
-    );
-    const response = await authApi.post(
-      "/auth/registerRestaurant",
-      restaurantData
-    );
-    console.log("✅ Restaurant registration successful");
-    return {
-      user: response.data.data.user,
-      restaurant: response.data.data.restaurant,
       tokens: response.data.data.tokens,
     };
   },

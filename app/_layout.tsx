@@ -7,6 +7,7 @@ import { store, RootState } from "@/store/store";
 import { useFrameworkReady } from "@/hooks/useFrameworkReady";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { LanguageProvider } from "@/providers/LanguageProvider";
+import { NotificationSocketProvider } from "@/contexts/NotificationSocketContext";
 import { AlertProvider } from "@/contexts/AlertContext";
 import "@/i18n/i18n";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -52,6 +53,7 @@ export default function RootLayout() {
         <LanguageProvider>
           <AlertProvider>
             <AuthProvider>
+              <NotificationSocketProvider>
               <View
                 style={{
                   flex: 1,
@@ -136,6 +138,7 @@ export default function RootLayout() {
                   </View>
                 </GestureHandlerRootView>
               </View>
+              </NotificationSocketProvider>
             </AuthProvider>
           </AlertProvider>
         </LanguageProvider>

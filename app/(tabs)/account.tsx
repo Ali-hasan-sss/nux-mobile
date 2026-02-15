@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import QRCode from "react-native-qrcode-svg";
@@ -21,18 +23,20 @@ import {
   Crown,
   Trash2,
   Edit,
+  Share2,
+  Eye,
+  EyeOff,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
 import { updatePhoneNumber } from "@/store/slices/userSlice";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
-import { EditRestaurantModal } from "@/components/EditRestaurantModal";
-import { UpgradePlanModal } from "@/components/UpgradePlanModal";
-
+import { useAlert } from "@/contexts/AlertContext";
 export default function AccountScreen() {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const { showToast, showAlert } = useAlert();
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
   const user = useSelector((state: RootState) => state.user);
@@ -52,7 +56,9 @@ export default function AccountScreen() {
     clearProfileError,
   } = useProfile();
 
-  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
+  const sectionBg = isDark ? colors.surface : colors.background;
+  const iconBg = (hex: string) => (isDark ? hex + "20" : hex + "15");
+  const qrViewShotRef = useRef<any>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -61,9 +67,10 @@ export default function AccountScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
-  const [editRestaurantModalVisible, setEditRestaurantModalVisible] =
-    useState(false);
-  const [upgradePlanModalVisible, setUpgradePlanModalVisible] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
 
   // Load profile on component mount
   useEffect(() => {
@@ -92,7 +99,10 @@ export default function AccountScreen() {
   const handleSaveProfile = async () => {
     try {
       if (!name.trim() || !email.trim()) {
-        Alert.alert(t("common.error"), "Please fill in all required fields");
+        showToast({
+          message: t("account.fillRequiredFields", "Please fill in all required fields"),
+          type: "error",
+        });
         return;
       }
 
@@ -102,39 +112,45 @@ export default function AccountScreen() {
       });
 
       if (result.type.endsWith("/fulfilled")) {
-        Alert.alert(t("common.success"), t("account.profileUpdated"));
+        showToast({ message: t("account.profileUpdated"), type: "success" });
         dispatch(updatePhoneNumber(phone));
       } else {
-        Alert.alert(
-          t("common.error"),
-          (result.payload as string) || "Failed to update profile"
-        );
+        showToast({
+          message: (result.payload as string) || t("account.profileUpdateFailed", "Failed to update profile"),
+          type: "error",
+        });
       }
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || "Failed to update profile"
-      );
+      showToast({
+        message: error.message || t("account.profileUpdateFailed", "Failed to update profile"),
+        type: "error",
+      });
     }
   };
 
   const handleUpdatePassword = async () => {
     try {
       if (!currentPassword || !newPassword || !confirmNewPassword) {
-        Alert.alert(t("common.error"), "Please fill in all password fields");
+        showToast({
+          message: t("account.fillPasswordFields", "Please fill in all password fields"),
+          type: "error",
+        });
         return;
       }
 
       if (newPassword !== confirmNewPassword) {
-        Alert.alert(t("common.error"), "New passwords do not match");
+        showToast({
+          message: t("account.passwordsDoNotMatch", "New passwords do not match"),
+          type: "error",
+        });
         return;
       }
 
       if (newPassword.length < 6) {
-        Alert.alert(
-          t("common.error"),
-          "Password must be at least 6 characters"
-        );
+        showToast({
+          message: t("auth.passwordMinLength"),
+          type: "error",
+        });
         return;
       }
 
@@ -144,92 +160,105 @@ export default function AccountScreen() {
       });
 
       if (result.type.endsWith("/fulfilled")) {
-        Alert.alert(t("common.success"), "Password updated successfully");
+        showToast({
+          message: t("account.passwordUpdated", "Password updated successfully"),
+          type: "success",
+        });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmNewPassword("");
       } else {
-        Alert.alert(
-          t("common.error"),
-          (result.payload as string) || "Failed to update password"
-        );
+        showToast({
+          message: (result.payload as string) || t("account.passwordUpdateFailed", "Failed to update password"),
+          type: "error",
+        });
       }
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || "Failed to update password"
-      );
+      showToast({
+        message: error.message || t("account.passwordUpdateFailed", "Failed to update password"),
+        type: "error",
+      });
     }
   };
 
   const handleDeleteAccount = async () => {
     try {
       if (!deletePassword) {
-        Alert.alert(
-          t("common.error"),
-          "Please enter your password to delete account"
-        );
+        showToast({
+          message: t("account.enterPasswordToDelete", "Please enter your password to delete account"),
+          type: "error",
+        });
         return;
       }
 
-      Alert.alert(
-        "Delete Account",
-        "Are you sure you want to delete your account? This action cannot be undone.",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: async () => {
-              const result = await deleteUserAccount({
-                password: deletePassword,
-              });
+      showAlert({
+        title: t("account.deleteAccount", "Delete Account"),
+        message: t("account.deleteAccountConfirm", "Are you sure you want to delete your account? This action cannot be undone."),
+        type: "warning",
+        confirmText: t("common.delete", "Delete"),
+        cancelText: t("common.cancel", "Cancel"),
+        onConfirm: async () => {
+          const result = await deleteUserAccount({
+            password: deletePassword,
+          });
 
-              if (result.type.endsWith("/fulfilled")) {
-                Alert.alert(
-                  "Account Deleted",
-                  "Your account has been deleted successfully",
-                  [
-                    {
-                      text: "OK",
-                      onPress: () => {
-                        // Navigate to login or clear auth state
-                        // This would typically be handled by the auth system
-                      },
-                    },
-                  ]
-                );
-              } else {
-                Alert.alert(
-                  t("common.error"),
-                  (result.payload as string) || "Failed to delete account"
-                );
-              }
-            },
-          },
-        ]
-      );
+          if (result.type.endsWith("/fulfilled")) {
+            showToast({
+              message: t("account.accountDeleted", "Your account has been deleted successfully"),
+              type: "success",
+            });
+          } else {
+            showToast({
+              message: (result.payload as string) || t("account.deleteAccountFailed", "Failed to delete account"),
+              type: "error",
+            });
+          }
+        },
+      });
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || "Failed to delete account"
-      );
+      showToast({
+        message: error.message || t("account.deleteAccountFailed", "Failed to delete account"),
+        type: "error",
+      });
     }
   };
 
-  const handleUpgradePlan = () => {
-    setUpgradePlanModalVisible(true);
+  const handleShareMyCode = async () => {
+    if (!profile?.qrCode || !qrViewShotRef.current) return;
+    try {
+      const uri = await qrViewShotRef.current.capture?.({
+        format: "png",
+        result: "tmpfile",
+      });
+      if (!uri) throw new Error("Capture failed");
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        showToast({
+          message: t("account.sharingNotAvailable"),
+          type: "error",
+        });
+        return;
+      }
+      const fileUri = Platform.OS === "ios" ? `file://${uri}` : uri;
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "image/png",
+        dialogTitle: t("account.myQRCode"),
+      });
+    } catch (err) {
+      showToast({
+        message: t("account.shareFailed"),
+        type: "error",
+      });
+    }
   };
+
   return (
-    <View style={[styles.container, { backgroundColor: "transparent" }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        style={[styles.scrollView, { backgroundColor: "transparent" }]}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           styles.scrollContent,
-          { backgroundColor: "transparent" },
+          { backgroundColor: colors.background },
         ]}
       >
         <View style={styles.header}>
@@ -239,7 +268,7 @@ export default function AccountScreen() {
         </View>
 
         <View style={styles.content}>
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <View style={[styles.section, { backgroundColor: sectionBg }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("account.profile")}
             </Text>
@@ -262,7 +291,7 @@ export default function AccountScreen() {
                 placeholder={t("account.email")}
                 placeholderTextColor={colors.textSecondary}
                 value={email}
-                onChangeText={setEmail}
+                editable={false}
                 keyboardType="email-address"
               />
             </View>
@@ -309,7 +338,7 @@ export default function AccountScreen() {
             </LinearGradient>
           </View>
 
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <View style={[styles.section, { backgroundColor: sectionBg }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("account.updatePassword")}
             </Text>
@@ -322,8 +351,19 @@ export default function AccountScreen() {
                 placeholderTextColor={colors.textSecondary}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
-                secureTextEntry
+                secureTextEntry={!showCurrentPassword}
               />
+              <TouchableOpacity
+                onPress={() => setShowCurrentPassword((s) => !s)}
+                style={styles.eyeButton}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
@@ -334,8 +374,19 @@ export default function AccountScreen() {
                 placeholderTextColor={colors.textSecondary}
                 value={newPassword}
                 onChangeText={setNewPassword}
-                secureTextEntry
+                secureTextEntry={!showNewPassword}
               />
+              <TouchableOpacity
+                onPress={() => setShowNewPassword((s) => !s)}
+                style={styles.eyeButton}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {showNewPassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
@@ -346,8 +397,19 @@ export default function AccountScreen() {
                 placeholderTextColor={colors.textSecondary}
                 value={confirmNewPassword}
                 onChangeText={setConfirmNewPassword}
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
               />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword((s) => !s)}
+                style={styles.eyeButton}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
             </View>
 
             <LinearGradient
@@ -382,57 +444,7 @@ export default function AccountScreen() {
             </LinearGradient>
           </View>
 
-          {isRestaurant ? (
-            <View style={[styles.section, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t("restaurant.planManagement")}
-              </Text>
-              <LinearGradient
-                colors={
-                  isDark
-                    ? (colors as any).gradientButton || [
-                        colors.primary,
-                        colors.primary,
-                      ]
-                    : [colors.primary, colors.primary]
-                }
-                style={styles.upgradeButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <TouchableOpacity
-                  style={styles.upgradeButtonInner}
-                  onPress={() => setEditRestaurantModalVisible(true)}
-                >
-                  <Edit size={20} color="white" />
-                  <Text style={styles.upgradeButtonText}>
-                    {t("restaurant.editInfo")}
-                  </Text>
-                </TouchableOpacity>
-              </LinearGradient>
-              <LinearGradient
-                colors={
-                  isDark
-                    ? ["#FF6B9D", "#C471ED"]
-                    : [colors.secondary, colors.secondary]
-                }
-                style={[styles.upgradeButton, { marginTop: 12 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <TouchableOpacity
-                  style={styles.upgradeButtonInner}
-                  onPress={handleUpgradePlan}
-                >
-                  <Crown size={20} color="white" />
-                  <Text style={styles.upgradeButtonText}>
-                    {t("restaurant.upgradePlan")}
-                  </Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            </View>
-          ) : (
-            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <View style={[styles.section, { backgroundColor: sectionBg }]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 {t("account.myQRCode")}
               </Text>
@@ -444,12 +456,49 @@ export default function AccountScreen() {
 
               <View style={styles.qrContainer}>
                 {profile?.qrCode && profile.qrCode.trim() !== "" ? (
-                  <QRCode
-                    value={profile.qrCode}
-                    size={200}
-                    color={colors.text}
-                    backgroundColor={colors.background}
-                  />
+                  <>
+                    <ViewShot
+                      ref={qrViewShotRef}
+                      options={{ format: "png", result: "tmpfile" }}
+                      style={styles.qrShotWrapper}
+                    >
+                      <View style={styles.qrShareCard}>
+                        <QRCode
+                          value={profile.qrCode}
+                          size={200}
+                          color="#000000"
+                          backgroundColor="#FFFFFF"
+                        />
+                        <View style={styles.qrUserInfo}>
+                          {profile.fullName && (
+                            <Text style={styles.qrShareName}>
+                              {profile.fullName}
+                            </Text>
+                          )}
+                          <Text style={styles.qrShareEmail}>
+                            {auth.user?.email || profile.email}
+                          </Text>
+                        </View>
+                      </View>
+                    </ViewShot>
+                    <TouchableOpacity
+                      onPress={handleShareMyCode}
+                      style={[
+                        styles.shareButtonBelow,
+                        { backgroundColor: iconBg(colors.primary) },
+                      ]}
+                    >
+                      <Share2 size={22} color={colors.primary} />
+                      <Text
+                        style={[
+                          styles.shareButtonText,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        {t("account.shareCode")}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
                 ) : (
                   <View
                     style={[
@@ -469,10 +518,9 @@ export default function AccountScreen() {
                 )}
               </View>
             </View>
-          )}
 
           {/* Delete Account Section */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <View style={[styles.section, { backgroundColor: sectionBg }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Danger Zone
             </Text>
@@ -490,12 +538,23 @@ export default function AccountScreen() {
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="Enter your password to confirm deletion"
+                placeholder={t("account.enterPasswordConfirmDelete", "Enter your password to confirm deletion")}
                 placeholderTextColor={colors.textSecondary}
                 value={deletePassword}
                 onChangeText={setDeletePassword}
-                secureTextEntry
+                secureTextEntry={!showDeletePassword}
               />
+              <TouchableOpacity
+                onPress={() => setShowDeletePassword((s) => !s)}
+                style={styles.eyeButton}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {showDeletePassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -521,19 +580,6 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        {/* Edit Restaurant Modal */}
-        {isRestaurant && (
-          <>
-            <EditRestaurantModal
-              visible={editRestaurantModalVisible}
-              onClose={() => setEditRestaurantModalVisible(false)}
-            />
-            <UpgradePlanModal
-              visible={upgradePlanModalVisible}
-              onClose={() => setUpgradePlanModalVisible(false)}
-            />
-          </>
-        )}
       </ScrollView>
     </View>
   );
@@ -593,6 +639,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 8,
   },
+  eyeButton: {
+    padding: 4,
+    marginLeft: 4,
+    justifyContent: "center",
+  },
   saveButton: {
     borderRadius: 16,
     marginTop: 8,
@@ -641,6 +692,43 @@ const styles = StyleSheet.create({
   qrDescription: {
     fontSize: 14,
     marginBottom: 20,
+  },
+  qrShotWrapper: {
+    alignItems: "center",
+  },
+  qrShareCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 24,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  qrUserInfo: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  qrShareName: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 4,
+    color: "#000000",
+  },
+  qrShareEmail: {
+    fontSize: 14,
+    color: "#000000",
+  },
+  shareButtonBelow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  shareButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
   qrContainer: {
     alignItems: "center",

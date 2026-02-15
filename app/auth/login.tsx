@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,21 +7,21 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
 } from "react-native";
 import { Link, router } from "expo-router";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { CustomAlert } from "@/components/CustomAlert";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
 import { loginUser } from "@/store/slices/authSlice";
 import { getProfile } from "@/store/slices/profileSlice";
-import type { AppDispatch } from "@/store/store";
+import type { AppDispatch, RootState } from "@/store/store";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -31,37 +31,62 @@ export default function LoginScreen() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [errorAlert, setErrorAlert] = useState<{
+    visible: boolean;
+    message: string;
+  }>({ visible: false, message: "" });
   const dispatch = useDispatch<AppDispatch>();
+  const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated);
+  const user = useSelector((s: RootState) => s.auth.user);
+  const mustVerify =
+    user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const isRTL = i18n.language === "ar";
 
+  useEffect(() => {
+    if (isAuthenticated && mustVerify) {
+      router.replace("/auth/verify-email");
+    }
+  }, [isAuthenticated, mustVerify]);
+
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(t("common.error"), "Please fill in all fields");
+      setErrorAlert({
+        visible: true,
+        message: t("common.pleaseFillAllFields"),
+      });
       return;
     }
 
     if (!agreedToTerms) {
-      Alert.alert(
-        t("common.error"),
-        "Please agree to the terms and conditions"
-      );
+      setErrorAlert({
+        visible: true,
+        message: t("common.pleaseAgreeToTerms"),
+      });
       return;
     }
 
     setLoading(true);
     try {
-      // تسجيل الدخول
-      await dispatch(loginUser({ email, password })).unwrap();
+      const result = await dispatch(loginUser({ email, password })).unwrap();
 
-      // جلب بيانات المستخدم بعد نجاح تسجيل الدخول
       console.log("🔄 Fetching user profile after login...");
       await dispatch(getProfile()).unwrap();
 
-      router.replace("/(tabs)");
+      const mustVerify =
+        result.user?.emailVerified === false ||
+        result.user?.emailVerified === undefined;
+      if (mustVerify) {
+        router.replace("/auth/verify-email");
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (error: any) {
-      Alert.alert(t("common.error"), error.message || "Login failed");
+      setErrorAlert({
+        visible: true,
+        message: error.message || t("common.loginFailed"),
+      });
     } finally {
       setLoading(false);
     }
@@ -69,6 +94,14 @@ export default function LoginScreen() {
 
   return (
     <>
+      <CustomAlert
+        visible={errorAlert.visible}
+        type="error"
+        title={t("common.error")}
+        message={errorAlert.message}
+        confirmText={t("common.ok")}
+        onConfirm={() => setErrorAlert({ visible: false, message: "" })}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
@@ -86,7 +119,9 @@ export default function LoginScreen() {
           <View
             style={[
               styles.inputCard,
-              { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+              {
+                backgroundColor: (colors as any).inputBackground ?? colors.surface,
+              },
             ]}
           >
               <Mail size={20} color={colors.textSecondary} />
@@ -105,7 +140,9 @@ export default function LoginScreen() {
           <View
             style={[
               styles.inputCard,
-              { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+              {
+                backgroundColor: (colors as any).inputBackground ?? colors.surface,
+              },
             ]}
           >
               <Lock size={20} color={colors.textSecondary} />
@@ -134,9 +171,7 @@ export default function LoginScreen() {
             ]}
           >
             <TouchableOpacity
-              onPress={() => {
-                // TODO: Implement forgot password functionality
-              }}
+              onPress={() => router.push("/auth/forgot-password")}
             >
               <Text
                 style={[
@@ -257,7 +292,12 @@ export default function LoginScreen() {
               onPress={handleLogin}
               disabled={loading || !agreedToTerms}
             >
-              <Text style={[styles.buttonText, styles.buttonTextDisabled]}>
+              <Text
+                style={[
+                  styles.buttonText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {loading ? t("common.loading") : t("auth.loginButton")}
               </Text>
               <LogIn
@@ -332,6 +372,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 0,
+    backgroundColor: "transparent",
   },
   button: {
     borderRadius: 16,
@@ -358,9 +399,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  buttonTextDisabled: {
-    color: "rgba(255, 255, 255, 0.5)",
   },
   linkContainer: {
     marginTop: 20,

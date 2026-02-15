@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Animated,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -18,9 +19,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { RootState, AppDispatch } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { RestaurantMapModal } from "@/components/RestaurantMapModal";
-import { CreateAdModal } from "@/components/CreateAdModal";
 import { RestaurantAdsView } from "@/components/RestaurantAdsView";
 import { useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   fetchAds,
   refreshAds,
@@ -28,11 +29,100 @@ import {
   clearFilters,
 } from "@/store/slices/adsSlice";
 import { Ad } from "@/store/types/adsTypes";
+import { getImageUrl } from "@/config/api";
+
+const TAB_BAR_HEIGHT = 88;
+const SKELETON_CARD_COUNT = 5;
+
+function AdCardSkeleton({
+  colors,
+  isDark,
+}: {
+  colors: any;
+  isDark: boolean;
+}) {
+  const pulse = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 0.7,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.35,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const bg = isDark ? colors.surface : colors.background;
+  const placeholderBg = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+
+  return (
+    <Animated.View
+      style={[
+        styles.promotionCard,
+        { backgroundColor: bg, opacity: pulse },
+      ]}
+    >
+      <View style={[styles.promotionImage, { backgroundColor: placeholderBg }]} />
+      <View style={styles.promotionContent}>
+        <View style={styles.restaurantHeader}>
+          <View
+            style={[
+              styles.skeletonLine,
+              { backgroundColor: placeholderBg, width: 120 },
+            ]}
+          />
+          <View
+            style={[
+              styles.skeletonLine,
+              { backgroundColor: placeholderBg, width: 24, height: 24, borderRadius: 12 },
+            ]}
+          />
+        </View>
+        <View
+          style={[
+            styles.skeletonLine,
+            { backgroundColor: placeholderBg, width: "80%", marginBottom: 8 },
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonLine,
+            { backgroundColor: placeholderBg, width: "100%", height: 12, marginBottom: 4 },
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonLine,
+            { backgroundColor: placeholderBg, width: "70%", height: 12, marginBottom: 4 },
+          ]}
+        />
+        <View
+          style={[
+            styles.skeletonLine,
+            { backgroundColor: placeholderBg, width: 60, height: 10, marginTop: 4 },
+          ]}
+        />
+      </View>
+    </Animated.View>
+  );
+}
 
 export default function PromotionsScreen() {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch<AppDispatch>();
+  const listBottomPadding = insets.bottom + TAB_BAR_HEIGHT;
 
   // Redux state
   const auth = useSelector((state: RootState) => state.auth);
@@ -48,27 +138,29 @@ export default function PromotionsScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Ad | null>(null);
-  const [createAdModalVisible, setCreateAdModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "my">("all");
-
-  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
+  // Filter options match ad categories from restaurant dashboard (website): Desserts, Fast Food, Drinks, Other
   const filterOptions = [
-    { key: "food", label: t("promotions.food") },
-    { key: "drink", label: t("promotions.drinks") },
+    { key: "all", label: t("promotions.all") },
+    { key: "Desserts", label: t("promotions.desserts") },
+    { key: "Fast Food", label: t("promotions.fastFood") },
+    { key: "Drinks", label: t("promotions.drinks") },
+    { key: "Other", label: t("promotions.other") },
   ];
 
   // Load ads from Redux
   const loadAds = useCallback(
     (page: number = 1, append: boolean = false) => {
-      const categoryFilter = selectedFilters.find(
-        (f) => f === "food" || f === "drink"
-      );
+      const categoryFilter =
+        selectedFilters.length > 0 &&
+        selectedFilters[0] !== "all"
+          ? selectedFilters[0]
+          : undefined;
 
       const adsFilters = {
         page,
         pageSize: 10,
         search: searchQuery.trim() || undefined,
-        category: categoryFilter || undefined,
+        category: categoryFilter,
       };
 
       dispatch(fetchAds({ filters: adsFilters, append }));
@@ -90,36 +182,40 @@ export default function PromotionsScreen() {
 
   // Handle refresh
   const handleRefresh = () => {
-    const categoryFilter = selectedFilters.find(
-      (f) => f === "food" || f === "drink"
-    );
+    const categoryFilter =
+      selectedFilters.length > 0 && selectedFilters[0] !== "all"
+        ? selectedFilters[0]
+        : undefined;
 
     const adsFilters = {
       page: 1,
       pageSize: 10,
       search: searchQuery.trim() || undefined,
-      category: categoryFilter || undefined,
+      category: categoryFilter,
     };
 
     dispatch(refreshAds(adsFilters));
   };
 
-  // Handle load more
-  const handleLoadMore = () => {
+  // Handle load more (pagination: load next page when user scrolls near end)
+  const handleLoadMore = useCallback(() => {
     if (
       !loading &&
       pagination &&
-      pagination.currentPage < pagination.totalPages
+      pagination.currentPage < pagination.totalPages &&
+      ads.length > 0
     ) {
       loadAds(pagination.currentPage + 1, true);
     }
-  };
+  }, [loading, pagination, ads.length, loadAds]);
 
   const toggleFilter = (filterKey: string) => {
+    if (filterKey === "all") {
+      setSelectedFilters([]);
+      return;
+    }
     setSelectedFilters((prev) =>
-      prev.includes(filterKey)
-        ? prev.filter((f) => f !== filterKey)
-        : [...prev, filterKey]
+      prev.includes(filterKey) ? [] : [filterKey]
     );
   };
 
@@ -129,29 +225,23 @@ export default function PromotionsScreen() {
   };
 
   const renderAd = ({ item }: { item: Ad }) => {
-    // Use image or logo as fallback
     const imageUri =
-      item.image ||
-      item.restaurant.logo ||
+      getImageUrl(item.image) ||
+      getImageUrl(item.restaurant.logo) ||
       "https://via.placeholder.com/400x160?text=No+Image";
 
     return (
       <TouchableOpacity
-        style={[styles.promotionCard, { backgroundColor: colors.surface }]}
+        style={[
+          styles.promotionCard,
+          {
+            backgroundColor: isDark ? colors.surface : colors.background,
+          },
+        ]}
         onPress={() => handleRestaurantLocation(item)}
       >
         <Image source={{ uri: imageUri }} style={styles.promotionImage} />
         <View style={styles.promotionContent}>
-          <View
-            style={[
-              styles.discountBadge,
-              { backgroundColor: colors.secondary },
-            ]}
-          >
-            <Text style={styles.discountText}>
-              {item.category === "food" ? "🍽️" : "☕"}
-            </Text>
-          </View>
           <View style={styles.restaurantHeader}>
             <Text style={[styles.restaurantName, { color: colors.primary }]}>
               {item.restaurant.name}
@@ -207,233 +297,11 @@ export default function PromotionsScreen() {
     );
   };
 
-  // For restaurant owners - show tabs for all ads and my ads
-  if (isRestaurant) {
-    return (
-      <>
-        <View style={[styles.container, { backgroundColor: "transparent" }]}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {t("promotions.title")}
-            </Text>
-
-            {/* Tabs for restaurant owners */}
-            <View style={styles.tabsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeTab === "all" && {
-                    backgroundColor: colors.primary,
-                  },
-                  activeTab !== "all" && {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={() => setActiveTab("all")}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color:
-                        activeTab === "all" ? "white" : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {t("promotions.allAds")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeTab === "my" && {
-                    backgroundColor: colors.primary,
-                  },
-                  activeTab !== "my" && {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={() => setActiveTab("my")}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color: activeTab === "my" ? "white" : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {t("restaurant.myAds")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Search and filters for "all" tab */}
-            {activeTab === "all" && (
-              <>
-                <View
-                  style={[
-                    styles.searchContainer,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Search size={20} color={colors.textSecondary} />
-                  <TextInput
-                    style={[styles.searchInput, { color: colors.text }]}
-                    placeholder={t("promotions.search")}
-                    placeholderTextColor={colors.textSecondary}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
-                  <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
-                    <Filter size={20} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-
-                {showFilters && (
-                  <View style={styles.filtersContainer}>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                    >
-                      <View style={styles.filtersRow}>
-                        {filterOptions.map((filterOpt) => (
-                          <TouchableOpacity
-                            key={filterOpt.key}
-                            style={[
-                              styles.filterChip,
-                              {
-                                backgroundColor: selectedFilters.includes(
-                                  filterOpt.key
-                                )
-                                  ? colors.primary
-                                  : colors.surface,
-                              },
-                            ]}
-                            onPress={() => toggleFilter(filterOpt.key)}
-                          >
-                            <Text
-                              style={[
-                                styles.filterText,
-                                {
-                                  color: selectedFilters.includes(filterOpt.key)
-                                    ? "white"
-                                    : colors.text,
-                                },
-                              ]}
-                            >
-                              {filterOpt.label}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                        {selectedFilters.length > 0 && (
-                          <TouchableOpacity
-                            style={[
-                              styles.clearButton,
-                              { backgroundColor: colors.error },
-                            ]}
-                            onPress={() => setSelectedFilters([])}
-                          >
-                            <Text style={styles.clearButtonText}>
-                              {t("common.clear")}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-
-          {/* Content based on active tab */}
-          {activeTab === "all" ? (
-            loading && ads.length === 0 ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text
-                  style={[styles.loadingText, { color: colors.textSecondary }]}
-                >
-                  {t("common.loading")}
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={ads}
-                renderItem={renderAd}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.list}
-                style={{ backgroundColor: "transparent" }}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    colors={[colors.primary]}
-                    tintColor={colors.primary}
-                  />
-                }
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
-                ListEmptyComponent={renderEmpty}
-              />
-            )
-          ) : (
-          <RestaurantAdsView />
-          )}
-        </View>
-
-        {/* FAB only shows on "my" tab */}
-        {activeTab === "my" && (
-        <LinearGradient
-          colors={
-            isDark
-              ? (colors as any).gradientButton || [
-                  colors.primary,
-                  colors.primary,
-                ]
-              : [colors.primary, colors.primary]
-          }
-          style={styles.fab}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <TouchableOpacity
-            style={styles.fabInner}
-            onPress={() => setCreateAdModalVisible(true)}
-          >
-            <Plus size={24} color="white" />
-          </TouchableOpacity>
-        </LinearGradient>
-        )}
-
-        <CreateAdModal
-          visible={createAdModalVisible}
-          onClose={() => setCreateAdModalVisible(false)}
-        />
-
-        {selectedRestaurant && (
-          <RestaurantMapModal
-            visible={mapModalVisible}
-            onClose={() => setMapModalVisible(false)}
-            restaurant={{
-              name: selectedRestaurant.restaurant.name,
-              latitude: selectedRestaurant.restaurant.latitude,
-              longitude: selectedRestaurant.restaurant.longitude,
-              address: selectedRestaurant.restaurant.address,
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
-  // For regular users - show all ads
   return (
     <>
-      <View style={[styles.container, { backgroundColor: "transparent" }]}>
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("promotions.title")}
@@ -442,16 +310,29 @@ export default function PromotionsScreen() {
           <View
             style={[
               styles.searchContainer,
-              { backgroundColor: colors.surface },
+              {
+                backgroundColor: isDark
+                  ? colors.surface
+                  : colors.background,
+              },
             ]}
           >
             <Search size={20} color={colors.textSecondary} />
             <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
+              style={[
+                styles.searchInput,
+                {
+                  color: colors.text,
+                  backgroundColor: isDark
+                    ? "transparent"
+                    : colors.background,
+                },
+              ]}
               placeholder={t("promotions.search")}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              underlineColorAndroid="transparent"
             />
             <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
               <Filter size={20} color={colors.primary} />
@@ -461,18 +342,23 @@ export default function PromotionsScreen() {
           {showFilters && (
             <View style={styles.filtersContainer}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.filtersRow}>
-                  {filterOptions.map((filterOpt) => (
+<View style={styles.filtersRow}>
+                {filterOptions.map((filterOpt) => {
+                  const isSelected =
+                    filterOpt.key === "all"
+                      ? selectedFilters.length === 0
+                      : selectedFilters.includes(filterOpt.key);
+                  return (
                     <TouchableOpacity
                       key={filterOpt.key}
                       style={[
                         styles.filterChip,
                         {
-                          backgroundColor: selectedFilters.includes(
-                            filterOpt.key
-                          )
+                          backgroundColor: isSelected
                             ? colors.primary
-                            : colors.surface,
+                            : isDark
+                              ? colors.surface
+                              : colors.background,
                         },
                       ]}
                       onPress={() => toggleFilter(filterOpt.key)}
@@ -481,7 +367,7 @@ export default function PromotionsScreen() {
                         style={[
                           styles.filterText,
                           {
-                            color: selectedFilters.includes(filterOpt.key)
+                            color: isSelected
                               ? "white"
                               : colors.text,
                           },
@@ -490,39 +376,50 @@ export default function PromotionsScreen() {
                         {filterOpt.label}
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                  {selectedFilters.length > 0 && (
-                    <TouchableOpacity
-                      style={[
-                        styles.clearButton,
-                        { backgroundColor: colors.error },
-                      ]}
-                      onPress={() => setSelectedFilters([])}
-                    >
-                      <Text style={styles.clearButtonText}>
-                        {t("common.clear")}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </ScrollView>
-            </View>
-          )}
-        </View>
+                  );
+                })}
+                {selectedFilters.length > 0 && selectedFilters[0] !== "all" && (
+                  <TouchableOpacity
+                    style={[
+                      styles.clearButton,
+                      { backgroundColor: colors.error },
+                    ]}
+                    onPress={() => setSelectedFilters([])}
+                  >
+                    <Text style={styles.clearButtonText}>
+                      {t("common.clear")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </View>
 
         {loading && ads.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              {t("common.loading")}
-            </Text>
-          </View>
+          <FlatList
+            data={Array.from({ length: SKELETON_CARD_COUNT }, (_, i) => i)}
+            keyExtractor={(i) => String(i)}
+            renderItem={() => (
+              <AdCardSkeleton colors={colors} isDark={isDark} />
+            )}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: listBottomPadding },
+            ]}
+            style={{ backgroundColor: "transparent" }}
+            showsVerticalScrollIndicator={false}
+          />
         ) : (
           <FlatList
             data={ads}
             renderItem={renderAd}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: listBottomPadding },
+            ]}
             style={{ backgroundColor: "transparent" }}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -534,7 +431,7 @@ export default function PromotionsScreen() {
               />
             }
             onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
+            onEndReachedThreshold={0.4}
             ListFooterComponent={renderFooter}
             ListEmptyComponent={renderEmpty}
           />
@@ -642,19 +539,6 @@ const styles = StyleSheet.create({
   promotionContent: {
     padding: 16,
   },
-  discountBadge: {
-    position: "absolute",
-    top: -8,
-    right: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  discountText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
   restaurantHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -677,6 +561,10 @@ const styles = StyleSheet.create({
   validUntil: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 6,
   },
   fab: {
     position: "absolute",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,6 @@ import { Bell, Menu } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/hooks/useTheme";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
 import { DrawerMenu } from "./DrawerMenu";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,35 +21,15 @@ export function CustomHeader() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { colors, isDark } = useTheme();
-  const { unreadCount, loadUnreadCount } = useNotifications();
-  const auth = useSelector((state: RootState) => state.auth);
+  const { unreadCount } = useNotifications();
+  // Unread count is updated via WebSocket (NotificationSocketContext), not polling.
+  // Notifications list is fetched only when the user opens the notifications dropdown.
 
   // Calculate safe top padding for header
   // Use insets.top, but fallback to StatusBar.currentHeight on Android if insets is 0
   const topPadding = Platform.OS === "android" 
     ? Math.max(insets.top || 0, StatusBar.currentHeight || 0)
     : insets.top;
-
-  // Load unread count when component mounts and user is authenticated
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      loadUnreadCount();
-
-      // Refresh unread count every 30 seconds
-      const interval = setInterval(() => {
-        loadUnreadCount();
-      }, 30000);
-
-      return () => clearInterval(interval);
-    }
-  }, [auth.isAuthenticated]);
-
-  // Refresh unread count when notifications dropdown closes
-  useEffect(() => {
-    if (!notificationsOpen && auth.isAuthenticated) {
-      loadUnreadCount();
-    }
-  }, [notificationsOpen, auth.isAuthenticated]);
 
   return (
     <>

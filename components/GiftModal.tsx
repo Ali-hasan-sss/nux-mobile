@@ -8,9 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   DeviceEventEmitter,
-  KeyboardAvoidingView,
   ScrollView,
-  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
@@ -22,6 +20,9 @@ import {
   Image as ImageIcon,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import RNQRGenerator from "rn-qr-generator";
+import jsQR from "jsqr";
+import { decode as jpegDecode } from "jpeg-js";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBalance } from "@/hooks/useBalance";
@@ -34,6 +35,25 @@ interface GiftModalProps {
   visible: boolean;
   onClose: () => void;
   targetId: string;
+}
+
+/** Decode QR from image URI using pure JS (works in Expo Go). */
+async function decodeQRFromImageUri(uri: string): Promise<string | null> {
+  try {
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    const decoded = jpegDecode(bytes, {
+      formatAsRGBA: true,
+      useTArray: true,
+    });
+    const imageData = new Uint8ClampedArray(decoded.data);
+    const code = jsQR(imageData, decoded.width, decoded.height);
+    return code?.data?.trim() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export default function GiftModal({
@@ -109,8 +129,12 @@ export default function GiftModal({
     }
 
     if (amount > availableBalance) {
-      const errorMessage = `Insufficient balance. Available: ${availableBalance} ${balanceType}`;
-      setAmountError(errorMessage);
+      setAmountError(
+        t("purchase.insufficientBalance", {
+          balance: availableBalance,
+          symbol: balanceType,
+        })
+      );
     } else {
       setAmountError("");
     }
@@ -140,7 +164,7 @@ export default function GiftModal({
             sendGift(data);
           }, 50);
         }
-      }
+      },
     );
 
     // Listen for scan screen close event (when user closes without scanning)
@@ -204,12 +228,17 @@ export default function GiftModal({
     }
 
     if (amount > availableBalance) {
+      const symbol =
+        selectedGiftType === "wallet"
+          ? "$"
+          : selectedGiftType === "meal"
+            ? t("purchase.mealPoints")
+            : t("purchase.drinkPoints");
       showToast({
-        message:
-          amountError ||
-          `Insufficient balance. Available: ${availableBalance} ${
-            selectedGiftType === "wallet" ? "$" : "points"
-          }`,
+        message: t("purchase.insufficientBalance", {
+          balance: availableBalance,
+          symbol,
+        }),
         type: "error",
       });
       return;
@@ -248,12 +277,17 @@ export default function GiftModal({
     }
 
     if (amount > availableBalance) {
+      const symbol =
+        selectedGiftType === "wallet"
+          ? "$"
+          : selectedGiftType === "meal"
+            ? t("purchase.mealPoints")
+            : t("purchase.drinkPoints");
       showToast({
-        message:
-          amountError ||
-          `Insufficient balance. Available: ${availableBalance} ${
-            selectedGiftType === "wallet" ? "$" : "points"
-          }`,
+        message: t("purchase.insufficientBalance", {
+          balance: availableBalance,
+          symbol,
+        }),
         type: "error",
       });
       return;
@@ -276,7 +310,7 @@ export default function GiftModal({
 
       // Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: false,
         quality: 1,
       });
@@ -288,43 +322,41 @@ export default function GiftModal({
 
       const imageUri = result.assets[0].uri;
 
-      // Scan QR code from the selected image
-      // Since expo-camera doesn't support scanning from image URI directly,
-      // we'll use a workaround: create a temporary CameraView component
-      // that can scan the image, or use backend API
+      let qrValue: string | null = null;
 
-      // For now, let's use a simpler approach: navigate to a scan screen
-      // that can handle image scanning, or use backend API
+      try {
+        const detectResult = await RNQRGenerator.detect({ uri: imageUri });
+        const values = detectResult?.values ?? [];
+        if (values.length > 0 && values[0]?.trim()) {
+          qrValue = String(values[0]).trim();
+        }
+      } catch (nativeError: any) {
+        const msg = nativeError?.message ?? "";
+        const useJsFallback =
+          msg.includes("doesn't seem to be linked") || msg.includes("Expo Go");
+        if (!useJsFallback) throw nativeError;
 
-      // Actually, the best solution is to use expo-camera's BarCodeScanner
-      // with a workaround: we can create a hidden CameraView and use it to scan
-      // But that's complex. Let's use a different approach:
+        // Expo Go / not linked: decode QR in pure JS (jsQR + jpeg-js)
+        qrValue = await decodeQRFromImageUri(imageUri);
+      }
 
-      // Use the image URI and try to extract QR code using expo-camera
-      // We'll need to create a temporary component that uses CameraView
-      // to scan the image
-
-      // For now, let's show a message and redirect to camera scan
-      // with the image URI as a parameter
-      showToast({
-        message: "Processing image...",
-        type: "info",
-      });
-
-      // For now, since expo-camera doesn't support scanning from image URI directly,
-      // we'll show a helpful message and suggest using the camera
-      // TODO: Implement backend API endpoint for QR scanning from image
-      // or use a library like react-native-qrcode-scanner
-
-      showToast({
-        message:
-          "QR scanning from gallery images is not yet supported. Please use the camera to scan QR codes.",
-        type: "info",
-      });
+      if (qrValue) {
+        setScannedQRCode(qrValue);
+        setQrScanned(true);
+        showToast({
+          message: t("purchase.recipientSelectedFromImage"),
+          type: "success",
+        });
+      } else {
+        showToast({
+          message: t("purchase.noQRCodeInImage"),
+          type: "error",
+        });
+      }
     } catch (error: any) {
       console.error("Error picking image:", error);
       showToast({
-        message: error?.message || "Failed to pick image",
+        message: error?.message || t("purchase.failedToPickImage"),
         type: "error",
       });
     } finally {
@@ -354,25 +386,24 @@ export default function GiftModal({
     console.log(
       "🔍 QR Code types:",
       typeof scannedQRCode,
-      typeof profile?.qrCode
+      typeof profile?.qrCode,
     );
     console.log(
       "🔍 QR Code lengths:",
       scannedQRCode?.length,
-      profile?.qrCode?.length
+      profile?.qrCode?.length,
     );
     console.log("🔍 Are they equal?", scannedQRCode === profile?.qrCode);
     console.log(
       "🔍 Are they similar?",
       scannedQRCode?.includes(profile?.qrCode || "") ||
-        profile?.qrCode?.includes(scannedQRCode || "")
+        profile?.qrCode?.includes(scannedQRCode || ""),
     );
 
     if (scannedQRCode === profile?.qrCode) {
       console.log("❌ User trying to gift to themselves - exact match!");
       showToast({
-        message:
-          "You cannot gift to yourself. Please scan another user's QR code.",
+        message: t("purchase.cannotGiftYourself"),
         type: "error",
       });
       return;
@@ -393,8 +424,7 @@ export default function GiftModal({
         console.log("❌ Scanned QR Code:", scannedQRCode);
         console.log("❌ Current User QR Code:", profile?.qrCode);
         showToast({
-          message:
-            "This QR code appears to be yours. Please scan another user's QR code.",
+          message: t("purchase.qrCodeIsYours"),
           type: "error",
         });
         return;
@@ -425,10 +455,17 @@ export default function GiftModal({
     }
 
     if (amount > availableBalance) {
+      const symbol =
+        selectedGiftType === "wallet"
+          ? "$"
+          : selectedGiftType === "meal"
+            ? t("purchase.mealPoints")
+            : t("purchase.drinkPoints");
       showToast({
-        message: `Insufficient balance. Available: ${availableBalance} ${
-          selectedGiftType === "wallet" ? "$" : "points"
-        }`,
+        message: t("purchase.insufficientBalance", {
+          balance: availableBalance,
+          symbol,
+        }),
         type: "error",
       });
       return;
@@ -443,8 +480,8 @@ export default function GiftModal({
         currencyType: (selectedGiftType === "wallet"
           ? "balance"
           : selectedGiftType === "meal"
-          ? "stars_meal"
-          : "stars_drink") as "balance" | "stars_meal" | "stars_drink",
+            ? "stars_meal"
+            : "stars_drink") as "balance" | "stars_meal" | "stars_drink",
         qrCode: effectiveQr,
       };
 
@@ -456,8 +493,10 @@ export default function GiftModal({
 
       if (result.type.endsWith("/fulfilled")) {
         // Toast success
-        const successMsg = "Gift sent successfully!";
-        showToast({ message: successMsg, type: "success" });
+        showToast({
+          message: t("purchase.giftSentSuccess"),
+          type: "success",
+        });
         // Reset form state
         setGiftAmount("");
         setScannedQRCode("");
@@ -484,16 +523,20 @@ export default function GiftModal({
         } else {
           showToast({ message: errorMessage, type: "error" });
         }
-        // Allow retry
+        // Allow retry: show scan/gallery buttons again
         setAutoTriggered(false);
+        setQrScanned(false);
+        setScannedQRCode("");
       }
     } catch (error: any) {
       showToast({
         message: error.message || "Failed to send gift",
         type: "error",
       });
-      // Allow retry
+      // Allow retry: show scan/gallery buttons again
       setAutoTriggered(false);
+      setQrScanned(false);
+      setScannedQRCode("");
     } finally {
       setIsGiftProcessing(false);
     }
@@ -517,8 +560,9 @@ export default function GiftModal({
         animationType="slide"
         transparent={true}
         onRequestClose={handleClose}
+        statusBarTranslucent
       >
-        <KeyboardAvoidingView
+        <View
           style={[
             styles.modalOverlay,
             {
@@ -527,8 +571,6 @@ export default function GiftModal({
               pointerEvents: isScanScreenOpen ? "none" : "auto", // Disable interactions when scan screen is open
             },
           ]}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -659,69 +701,55 @@ export default function GiftModal({
                 {t("purchase.scanOrUpload")}
               </Text>
 
-              {qrScanned ? (
-                <View
+              {!giftAmount && (
+                <Text
                   style={[
-                    styles.scannedQRContainer,
-                    { backgroundColor: colors.background },
+                    styles.chooseAmountHint,
+                    { color: colors.textSecondary },
                   ]}
                 >
-                  <View style={styles.scannedQRHeader}>
-                    <View style={styles.checkIcon}>
-                      <Text style={styles.checkIconText}>✓</Text>
-                    </View>
-                    <Text
-                      style={[styles.scannedQRText, { color: colors.text }]}
-                    >
-                      Recipient selected successfully!
-                    </Text>
-                  </View>
-                  {/* Auto-sending after scan; no rescan button in this flow */}
-                </View>
-              ) : (
-                <View style={styles.scanOptions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.scanButton,
-                      {
-                        backgroundColor: colors.primary,
-                        opacity: !giftAmount || isPickingImage ? 0.5 : 1,
-                      },
-                    ]}
-                    onPress={handleScanForGift}
-                    disabled={!giftAmount || isPickingImage}
-                  >
-                    {isPickingImage ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Camera size={20} color="white" />
-                    )}
-                    <Text style={styles.scanButtonText}>
-                      {!giftAmount ? "Enter Amount First" : "Scan QR Code"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.scanButton,
-                      {
-                        backgroundColor: colors.secondary,
-                        opacity: !giftAmount || isPickingImage ? 0.5 : 1,
-                      },
-                    ]}
-                    onPress={handlePickImageFromGallery}
-                    disabled={!giftAmount || isPickingImage}
-                  >
-                    {isPickingImage ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <ImageIcon size={20} color="white" />
-                    )}
-                    <Text style={styles.scanButtonText}>
-                      {!giftAmount ? "Enter Amount First" : "From Gallery"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                  {t("purchase.chooseAmountFirst")}
+                </Text>
               )}
+
+              <View style={styles.scanOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.scanButton,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: !giftAmount || isPickingImage ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handleScanForGift}
+                  disabled={!giftAmount || isPickingImage}
+                >
+                  <Camera size={20} color="white" />
+                  <Text style={styles.scanButtonText} numberOfLines={1}>
+                    {t("camera.scanQR")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.scanButton,
+                    {
+                      backgroundColor: colors.secondary,
+                      opacity: !giftAmount || isPickingImage ? 0.5 : 1,
+                    },
+                  ]}
+                  onPress={handlePickImageFromGallery}
+                  disabled={!giftAmount || isPickingImage}
+                >
+                  {isPickingImage ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <ImageIcon size={20} color="white" />
+                  )}
+                  <Text style={styles.scanButtonText} numberOfLines={1}>
+                    {t("purchase.fromGallery")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity
@@ -752,7 +780,7 @@ export default function GiftModal({
               </View>
             </View>
           )}
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Direct camera navigation used; no intermediate ScanModal */}
@@ -796,10 +824,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
   giftTypeText: {
     fontSize: 12,
     fontWeight: "500",
+    textAlign: "center",
+    width: "100%",
   },
   amountInput: {
     padding: 16,
@@ -811,6 +842,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 12,
+  },
+  chooseAmountHint: {
+    fontSize: 13,
+    marginBottom: 8,
   },
   scanOptions: {
     flexDirection: "row",
@@ -886,13 +921,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   giftTypeContent: {
+    alignSelf: "stretch",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   giftTypeBalance: {
     fontSize: 12,
     fontWeight: "500",
     marginTop: 4,
+    textAlign: "center",
+    width: "100%",
   },
   scannedQRHeader: {
     flexDirection: "row",

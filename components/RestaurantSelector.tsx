@@ -6,14 +6,16 @@ import {
   StyleSheet,
   Modal,
   FlatList,
+  Image,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Check, X } from "lucide-react-native";
+import { ChevronDown, Check, X, Store } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import { useTheme } from "@/hooks/useTheme";
 import { Restaurant as BalanceRestaurant } from "@/store/types/balanceTypes";
+import { getImageUrl } from "@/config/api";
 
 export interface Restaurant extends BalanceRestaurant {
   userBalance?: {
@@ -142,6 +144,29 @@ export function RestaurantSelector({
     setModalVisible(false);
   };
 
+  const renderRestaurantLogo = (restaurant: Restaurant) => {
+    const logoUri = getImageUrl(restaurant.logo);
+    if (logoUri) {
+      return (
+        <Image
+          source={{ uri: logoUri }}
+          style={styles.restaurantLogo}
+          resizeMode="cover"
+        />
+      );
+    }
+    return (
+      <View
+        style={[
+          styles.restaurantLogoPlaceholder,
+          { backgroundColor: colors.border },
+        ]}
+      >
+        <Store size={20} color={colors.textSecondary} />
+      </View>
+    );
+  };
+
   const renderRestaurant = ({ item }: { item: Restaurant }) => (
     <TouchableOpacity
       style={[
@@ -157,6 +182,7 @@ export function RestaurantSelector({
       ]}
       onPress={() => handleSelectRestaurant(item)}
     >
+      {renderRestaurantLogo(item)}
       <View style={styles.restaurantInfo}>
         <Text style={[styles.restaurantName, { color: colors.text }]}>
           {item.name}
@@ -182,14 +208,46 @@ export function RestaurantSelector({
         ]}
         onPress={() => setModalVisible(true)}
       >
-        <View style={styles.selectorContent}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            Restaurant
-          </Text>
-          <Text style={[styles.selectedText, { color: colors.text }]}>
-            {selectedRestaurant?.name || "Select Restaurant"}
-          </Text>
-        </View>
+        {selectedRestaurant ? (
+          <>
+            {(() => {
+              const logoUri = getImageUrl(selectedRestaurant.logo);
+              return logoUri ? (
+                <Image
+                  source={{ uri: logoUri }}
+                  style={styles.selectorLogo}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.selectorLogoPlaceholder,
+                    { backgroundColor: colors.border },
+                  ]}
+                >
+                  <Store size={22} color={colors.textSecondary} />
+                </View>
+              );
+            })()}
+            <View style={styles.selectorContent}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Restaurant
+              </Text>
+              <Text style={[styles.selectedText, { color: colors.text }]}>
+                {selectedRestaurant.name}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.selectorContent}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              Restaurant
+            </Text>
+            <Text style={[styles.selectedText, { color: colors.text }]}>
+              Select Restaurant
+            </Text>
+          </View>
+        )}
         <ChevronDown size={20} color={colors.textSecondary} />
       </TouchableOpacity>
 
@@ -241,8 +299,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 20,
   },
+  selectorLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginRight: 12,
+  },
+  selectorLogoPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   selectorContent: {
     flex: 1,
+    minWidth: 0,
   },
   label: {
     fontSize: 12,
@@ -288,8 +361,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
+  restaurantLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  restaurantLogoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   restaurantInfo: {
     flex: 1,
+    minWidth: 0,
   },
   restaurantName: {
     fontSize: 16,

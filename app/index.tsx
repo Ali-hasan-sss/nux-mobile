@@ -13,6 +13,9 @@ export default function Index() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  const user = useSelector((state: RootState) => state.auth.user);
+  const mustVerify =
+    user?.emailVerified === false || user?.emailVerified === undefined;
   const segments = useSegments();
 
   useEffect(() => {
@@ -21,19 +24,24 @@ export default function Index() {
         const savedLanguage = await AsyncStorage.getItem("user-language");
         if (savedLanguage) {
           setHasLanguage(true);
-          // If authenticated, go to tabs, otherwise go to choose-action
           if (isAuthenticated) {
-            router.replace("/(tabs)");
+            if (mustVerify) {
+              router.replace("/auth/verify-email");
+            } else {
+              router.replace("/(tabs)");
+            }
           } else {
             router.replace("/choose-action");
           }
         } else {
-          // Set default language to English on first launch
           await AsyncStorage.setItem("user-language", "en");
           setHasLanguage(true);
-          // If authenticated, go to tabs, otherwise go to choose-action
           if (isAuthenticated) {
-            router.replace("/(tabs)");
+            if (mustVerify) {
+              router.replace("/auth/verify-email");
+            } else {
+              router.replace("/(tabs)");
+            }
           } else {
             router.replace("/choose-action");
           }
@@ -53,7 +61,7 @@ export default function Index() {
     };
 
     checkLanguage();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, mustVerify]);
 
   if (isLoading) {
     return (

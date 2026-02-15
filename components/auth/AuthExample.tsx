@@ -2,16 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 
+/** تطبيق للعميل فقط - لا يعرض أي واجهة لصاحب المطعم */
 export const AuthExample: React.FC = () => {
-  const {
-    user,
-    restaurant,
-    isLoggedIn,
-    isLoading,
-    logout,
-    isRestaurantOwner,
-    isUser,
-  } = useAuth();
+  const { user, isLoggedIn, isLoading, logout } = useAuth();
 
   const handleLogout = async () => {
     Alert.alert('تسجيل الخروج', 'هل أنت متأكد من تسجيل الخروج؟', [
@@ -39,37 +32,17 @@ export const AuthExample: React.FC = () => {
         <Text style={styles.welcome}>
           مرحباً {user?.fullName || user?.email}
         </Text>
-        <Text style={styles.role}>
-          {isRestaurantOwner ? '👨‍💼 صاحب مطعم' : '👤 مستخدم عادي'}
-        </Text>
+        <Text style={styles.role}>👤 مستخدم</Text>
       </View>
 
-      {/* User Info */}
       <View style={styles.infoContainer}>
         <Text style={styles.infoTitle}>معلومات الحساب:</Text>
         <Text style={styles.infoText}>📧 {user?.email}</Text>
         {user?.fullName && (
           <Text style={styles.infoText}>👤 {user.fullName}</Text>
         )}
-        <Text style={styles.infoText}>🏷️ {user?.role}</Text>
       </View>
 
-      {/* Restaurant Info (if applicable) */}
-      {restaurant && (
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoTitle}>معلومات المطعم:</Text>
-          <Text style={styles.infoText}>🏪 {restaurant.name}</Text>
-          <Text style={styles.infoText}>📍 {restaurant.address}</Text>
-          <Text style={styles.infoText}>
-            🟢 {restaurant.isActive ? 'نشط' : 'غير نشط'}
-          </Text>
-          <Text style={styles.infoText}>
-            💳 {restaurant.isSubscriptionActive ? 'مشترك' : 'غير مشترك'}
-          </Text>
-        </View>
-      )}
-
-      {/* Logout Button */}
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={handleLogout}

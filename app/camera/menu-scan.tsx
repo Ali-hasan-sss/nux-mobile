@@ -13,6 +13,45 @@ import { X } from "lucide-react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
 
+const UUID_REGEX =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/**
+ * استخلاص معرف المطعم (qrCode) ورقم الطاولة من بيانات المسح.
+ * الرابط قد يكون: https://www.nuxapp.de/menu/uuid?table=5 أو uuid فقط.
+ * رقم الطاولة متاح حصراً من الرابط (مسح كود الطاولة).
+ */
+function parseMenuScanData(
+  data: string
+): { qrCode: string; table?: number } {
+  const trimmed = data.trim();
+  if (!trimmed) return { qrCode: trimmed };
+
+  const uuidOnly =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      trimmed
+    );
+  if (uuidOnly) return { qrCode: trimmed };
+
+  try {
+    let urlString = trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) urlString = `https://dummy.example${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
+    const url = new URL(urlString);
+    const pathMatch = url.pathname.match(/\/menu\/([0-9a-f-]{36})/i);
+    const qrCode = pathMatch ? pathMatch[1] : trimmed.match(UUID_REGEX)?.[0] ?? trimmed;
+    const tableParam = url.searchParams.get("table");
+    const table =
+      tableParam != null && tableParam !== ""
+        ? parseInt(tableParam, 10)
+        : undefined;
+    const tableValid = table != null && !isNaN(table) && table > 0;
+    return { qrCode, table: tableValid ? table : undefined };
+  } catch {
+    const fallbackUuid = trimmed.match(UUID_REGEX)?.[0];
+    return { qrCode: fallbackUuid ?? trimmed };
+  }
+}
+
 export default function MenuScanScreen() {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
@@ -147,18 +186,22 @@ export default function MenuScanScreen() {
         return;
       }
 
-      // الانتقال إلى صفحة WebView لعرض القائمة من الموقع
+      // استخلاص معرف المطعم ورقم الطاولة من الرابط (إن وُجد)
+      const { qrCode: extractedQr, table } = parseMenuScanData(data);
+
       setTimeout(() => {
-        // Hide camera and reset state before navigation
         setIsProcessing(false);
         setShowCamera(false);
         setIsScanning(false);
         hasScanned.current = false;
         stopScanAnimation();
 
+        const navParams: Record<string, string> = { qrCode: extractedQr || data };
+        if (table != null) navParams.table = String(table);
+
         router.push({
           pathname: "/(tabs)/menu-webview",
-          params: { qrCode: data },
+          params: navParams,
         } as any);
       }, 500);
     } catch (error) {

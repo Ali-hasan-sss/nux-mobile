@@ -4,9 +4,7 @@ import {
   AuthTokens,
   LoginRequest,
   RegisterUserRequest,
-  RegisterRestaurantRequest,
   User,
-  Restaurant,
 } from "../types/authTypes";
 import { authService } from "../services/authService";
 import { CrossPlatformStorage } from "../services/crossPlatformStorage";
@@ -28,12 +26,9 @@ export const loginUser = createAsyncThunk(
     try {
       const response = await authService.login(credentials);
 
-      // Save to secure storage
+      // Save to secure storage (customer app: no restaurant data)
       await CrossPlatformStorage.saveTokens(response.tokens);
       await CrossPlatformStorage.saveUser(response.user);
-      if (response.restaurant) {
-        await CrossPlatformStorage.saveRestaurant(response.restaurant);
-      }
 
       return response;
     } catch (error: any) {
@@ -196,6 +191,12 @@ const authSlice = createSlice({
         CrossPlatformStorage.saveUser(state.user).catch(console.error);
       }
     },
+    setEmailVerified: (state) => {
+      if (state.user) {
+        state.user.emailVerified = true;
+        CrossPlatformStorage.saveUser(state.user).catch(console.error);
+      }
+    },
   },
   extraReducers: (builder) => {
     // Initialize auth
@@ -342,5 +343,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setTokens, updateUser } = authSlice.actions;
+export const { clearError, setTokens, updateUser, setEmailVerified } = authSlice.actions;
 export default authSlice;

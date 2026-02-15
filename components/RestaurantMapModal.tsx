@@ -5,23 +5,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  Dimensions,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { X, MapPin } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { Linking } from "react-native";
-
-// Safely import react-native-maps with fallback
-// Import will be handled dynamically in the component to avoid Node.js build issues
-let MapView: any = null;
-let Marker: any = null;
-
-// Maps will be loaded dynamically in component to avoid Node.js build issues
+import MapView, { Marker } from "react-native-maps";
 
 interface RestaurantMapModalProps {
   visible: boolean;
@@ -34,8 +27,6 @@ interface RestaurantMapModalProps {
   };
 }
 
-const { width, height } = Dimensions.get("window");
-
 export function RestaurantMapModal({
   visible,
   onClose,
@@ -47,92 +38,13 @@ export function RestaurantMapModal({
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [mapsLoaded, setMapsLoaded] = useState(false);
 
-  // Load maps library when modal opens (only in React Native runtime)
-  useEffect(() => {
-    if (visible && !mapsLoaded) {
-      // Only try to load in native platforms
-      if (Platform.OS === "ios" || Platform.OS === "android") {
-        // Check if already loaded
-        if (MapView && Marker) {
-          console.log("✅ react-native-maps already loaded");
-          setMapsLoaded(true);
-          return;
-        }
-
-        try {
-          console.log("🔄 Loading react-native-maps...");
-          // Use dynamic require - metro.config.js will handle web/Node.js cases
-          let Maps;
-          try {
-            Maps = require("react-native-maps");
-          } catch (requireError: any) {
-            console.error(
-              "❌ Failed to require react-native-maps:",
-              requireError
-            );
-            // Try alternative import method
-            try {
-              Maps = require("react-native-maps/lib/index");
-            } catch (altError: any) {
-              console.error("❌ Alternative import also failed:", altError);
-              throw requireError; // Throw original error
-            }
-          }
-
-          // Try different export patterns
-          MapView = Maps?.default || Maps?.MapView || Maps;
-          Marker = Maps?.Marker;
-
-          console.log("📦 Maps module:", {
-            hasDefault: !!Maps?.default,
-            hasMapView: !!Maps?.MapView,
-            hasMarker: !!Maps?.Marker,
-            MapViewType: typeof MapView,
-            MarkerType: typeof Marker,
-            MapsType: typeof Maps,
-          });
-
-          if (MapView && Marker) {
-            console.log("✅ react-native-maps loaded successfully");
-            setMapsLoaded(true);
-            setMapError(null);
-          } else {
-            console.warn(
-              "⚠️ react-native-maps loaded but MapView/Marker not found",
-              { Maps, MapView, Marker }
-            );
-            setMapError(t("promotions.mapLoadError"));
-            setMapsLoaded(false);
-          }
-        } catch (error: any) {
-          console.error("❌ react-native-maps not available:", {
-            message: error?.message,
-            error: error,
-            stack: error?.stack,
-            name: error?.name,
-          });
-          setMapError(t("promotions.mapLoadError"));
-          setMapsLoaded(false);
-          // Don't crash the app, just show error state
-        }
-      } else {
-        // Web platform - maps not available
-        console.log("🌐 Web platform - maps not available");
-        setMapError(t("promotions.mapLoadError"));
-      }
-    }
-  }, [visible, mapsLoaded, t]);
-
-  // Request location permission when modal opens
   useEffect(() => {
     if (visible) {
       checkLocationPermission();
       setMapReady(false);
       setMapError(null);
     } else {
-      // Reset state when modal closes
       setMapReady(false);
       setMapError(null);
     }
@@ -142,18 +54,14 @@ export function RestaurantMapModal({
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setHasLocationPermission(status === "granted");
-      // Reset error when permission is checked
-      setMapError(null);
-    } catch (error) {
-      console.warn("Location permission check failed:", error);
+    } catch {
       setHasLocationPermission(false);
-      // Don't set error here, just disable user location
     }
   };
 
   const handleOpenInMaps = async () => {
     try {
-      const { latitude, longitude, name, address } = restaurant;
+      const { latitude, longitude, name } = restaurant;
       const url = Platform.select({
         ios: `maps://app?daddr=${latitude},${longitude}&dirflg=d`,
         android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(
@@ -166,7 +74,6 @@ export function RestaurantMapModal({
         if (canOpen) {
           await Linking.openURL(url);
         } else {
-          // Fallback to Google Maps web
           const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
           await Linking.openURL(webUrl);
         }
@@ -179,6 +86,8 @@ export function RestaurantMapModal({
       );
     }
   };
+
+  const showFallback = !!mapError || (Platform.OS !== "ios" && Platform.OS !== "android");
 
   return (
     <Modal
@@ -214,38 +123,26 @@ export function RestaurantMapModal({
           </TouchableOpacity>
         </View>
 
-        {mapError || !mapsLoaded || !MapView || !Marker ? (
-          <View style={styles.errorContainer}>
-            <MapPin
-              size={64}
-              color={colors.primary}
-              style={{ marginBottom: 24 }}
-            />
+        {showFallback ? (
+          <View style={styles.fallbackContent}>
+            <MapPin size={64} color={colors.primary} style={{ marginBottom: 24 }} />
             <View style={styles.restaurantInfoPreview}>
-              <Text style={[styles.restaurantName, { color: colors.text }]}>
+              <Text style={[styles.restaurantNamePreview, { color: colors.text }]}>
                 {restaurant.name}
               </Text>
-              {restaurant.address && (
+              {restaurant.address ? (
                 <Text
-                  style={[
-                    styles.restaurantAddress,
-                    { color: colors.textSecondary },
-                  ]}
+                  style={[styles.restaurantAddressPreview, { color: colors.textSecondary }]}
                 >
                   {restaurant.address}
                 </Text>
-              )}
+              ) : null}
             </View>
-            <Text
-              style={[styles.errorSubtext, { color: colors.textSecondary }]}
-            >
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
               {t("promotions.useMapsAppInstead")}
             </Text>
             <TouchableOpacity
-              style={[
-                styles.openMapsButton,
-                { backgroundColor: colors.primary },
-              ]}
+              style={[styles.openMapsButton, { backgroundColor: colors.primary }]}
               onPress={handleOpenInMaps}
             >
               <Text style={styles.openMapsButtonText}>
@@ -253,7 +150,7 @@ export function RestaurantMapModal({
               </Text>
             </TouchableOpacity>
           </View>
-        ) : MapView && Marker ? (
+        ) : (
           <MapView
             style={styles.map}
             initialRegion={{
@@ -262,16 +159,10 @@ export function RestaurantMapModal({
               latitudeDelta: 0.01,
               longitudeDelta: 0.01,
             }}
-            // Only show user location if permission is granted
             showsUserLocation={hasLocationPermission && mapReady}
             showsMyLocationButton={hasLocationPermission && mapReady}
             toolbarEnabled={false}
-            onError={(error: any) => {
-              console.error("MapView error:", error);
-              setMapError(t("promotions.mapLoadError"));
-            }}
             onMapReady={() => {
-              console.log("✅ Map is ready");
               setMapError(null);
               setMapReady(true);
             }}
@@ -286,50 +177,11 @@ export function RestaurantMapModal({
               pinColor={colors.primary}
             />
           </MapView>
-        ) : (
-          <View style={styles.errorContainer}>
-            <MapPin
-              size={64}
-              color={colors.primary}
-              style={{ marginBottom: 24 }}
-            />
-            <View style={styles.restaurantInfoPreview}>
-              <Text style={[styles.restaurantName, { color: colors.text }]}>
-                {restaurant.name}
-              </Text>
-              {restaurant.address && (
-                <Text
-                  style={[
-                    styles.restaurantAddress,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {restaurant.address}
-                </Text>
-              )}
-            </View>
-            <Text
-              style={[styles.errorSubtext, { color: colors.textSecondary }]}
-            >
-              {t("promotions.useMapsAppInstead")}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.openMapsButton,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handleOpenInMaps}
-            >
-              <Text style={styles.openMapsButtonText}>
-                {t("promotions.openInMaps")}
-              </Text>
-            </TouchableOpacity>
-          </View>
         )}
 
         <View
           style={[
-            styles.restaurantInfo,
+            styles.footer,
             {
               backgroundColor: colors.surface,
               paddingBottom: Math.max(insets.bottom, 20) + 8,
@@ -343,16 +195,13 @@ export function RestaurantMapModal({
               {restaurant.name}
             </Text>
           </View>
-          {restaurant.address && (
+          {restaurant.address ? (
             <Text
-              style={[
-                styles.restaurantAddress,
-                { color: colors.textSecondary },
-              ]}
+              style={[styles.restaurantAddress, { color: colors.textSecondary }]}
             >
               {restaurant.address}
             </Text>
-          )}
+          ) : null}
           <TouchableOpacity
             style={[styles.openMapsButton, { backgroundColor: colors.primary }]}
             onPress={handleOpenInMaps}
@@ -388,29 +237,7 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  restaurantInfo: {
-    paddingHorizontal: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    marginTop: -16,
-    // Ensure content is above safe area bottom
-    minHeight: 120,
-  },
-  restaurantHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  restaurantName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 8,
-  },
-  restaurantAddress: {
-    fontSize: 14,
-    marginLeft: 28,
-  },
-  errorContainer: {
+  fallbackContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -418,15 +245,20 @@ const styles = StyleSheet.create({
   },
   restaurantInfoPreview: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  errorText: {
+  restaurantNamePreview: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 8,
   },
-  errorSubtext: {
+  restaurantAddressPreview: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: 16,
+  },
+  hint: {
     fontSize: 14,
     textAlign: "center",
     marginBottom: 24,
@@ -442,5 +274,26 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  footer: {
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    marginTop: -16,
+    minHeight: 120,
+  },
+  restaurantHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  restaurantName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  restaurantAddress: {
+    fontSize: 14,
+    marginLeft: 28,
   },
 });

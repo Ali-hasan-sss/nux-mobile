@@ -7,7 +7,10 @@ import {
   ScrollView,
   Alert,
   FlatList,
+  Platform,
 } from "react-native";
+import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
 import { useBalance } from "@/hooks/useBalance";
@@ -22,6 +25,7 @@ import {
   Wallet,
   Clock,
   Star,
+  Share2,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
@@ -36,10 +40,11 @@ import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import { setSelectedRestaurantBalance } from "@/store/slices/balanceSlice";
 import GiftModal from "@/components/GiftModal";
 import PackagesModal from "@/components/PackagesModal";
-import { RestaurantActivityTabs } from "@/components/RestaurantActivityTabs";
+import { useAlert } from "@/contexts/AlertContext";
 
 export default function PurchaseScreen() {
   const { t } = useTranslation();
+  const { showToast } = useAlert();
   const dispatch = useDispatch();
   const { colors, isDark } = useTheme();
   const auth = useSelector((state: RootState) => state.auth);
@@ -58,8 +63,7 @@ export default function PurchaseScreen() {
   const [packagesModalVisible, setPackagesModalVisible] = useState(false);
   const [modalManuallyClosed, setModalManuallyClosed] = useState(false);
   const profileFetched = useRef(false);
-
-  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
+  const qrViewShotRef = useRef<any>(null);
 
   // Fetch user balances and profile every time the screen comes into focus
   useFocusEffect(
@@ -79,7 +83,10 @@ export default function PurchaseScreen() {
 
   const handleRecharge = () => {
     if (!selectedRestaurant) {
-      Alert.alert(t("common.error"), "Please select a restaurant first");
+      showToast({
+        message: t("home.selectRestaurantFirst"),
+        type: "error",
+      });
       return;
     }
     // فتح مودال باقات الشحن
@@ -88,7 +95,10 @@ export default function PurchaseScreen() {
 
   const handleGiftFriend = () => {
     if (!selectedRestaurant) {
-      Alert.alert(t("common.error"), "Please select a restaurant first");
+      showToast({
+        message: t("home.selectRestaurantFirst"),
+        type: "error",
+      });
       return;
     }
     // Reset manual close flag and open modal
@@ -98,6 +108,35 @@ export default function PurchaseScreen() {
 
   const handleReceiveFromFriend = () => {
     router.push("/camera/receive-scan");
+  };
+
+  const handleShareMyCode = async () => {
+    if (!profile?.qrCode || !qrViewShotRef.current) return;
+    try {
+      const uri = await qrViewShotRef.current.capture?.({
+        format: "png",
+        result: "tmpfile",
+      });
+      if (!uri) throw new Error("Capture failed");
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert(
+          t("common.error"),
+          t("account.sharingNotAvailable", "Sharing is not available")
+        );
+        return;
+      }
+      const fileUri = Platform.OS === "ios" ? `file://${uri}` : uri;
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "image/png",
+        dialogTitle: t("account.myQRCode"),
+      });
+    } catch (err) {
+      Alert.alert(
+        t("common.error"),
+        t("account.shareFailed", "Failed to share QR code")
+      );
+    }
   };
 
   const handleRestaurantChange = (restaurant: Restaurant) => {
@@ -116,24 +155,12 @@ export default function PurchaseScreen() {
     dispatch(setSelectedRestaurantBalance(restaurant.id));
   };
 
-  // For restaurant owners - show activity tabs
-  if (isRestaurant) {
-    return (
-      <View style={[styles.container, { backgroundColor: "transparent" }]}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {t("restaurant.activity")}
-          </Text>
-        </View>
-        <RestaurantActivityTabs />
-      </View>
-    );
-  }
+  const cardBg = isDark ? colors.surface : colors.background;
+  const iconBg = (hex: string) => (isDark ? hex + "20" : hex + "15");
 
-  // For regular users - show purchase options
   return (
     <>
-      <View style={[styles.container, { backgroundColor: "transparent" }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             {t("purchase.title")}
@@ -170,7 +197,7 @@ export default function PurchaseScreen() {
           />
         ) : (
           <View
-            style={[styles.noBalanceCard, { backgroundColor: colors.surface }]}
+            style={[styles.noBalanceCard, { backgroundColor: cardBg }]}
           >
             <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
               {t("home.noBalances")}
@@ -184,8 +211,11 @@ export default function PurchaseScreen() {
         )}
 
         <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.scrollContent}
+          style={[styles.content, { backgroundColor: colors.background }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { backgroundColor: colors.background },
+          ]}
         >
           {selectedRestaurant && (
             <View style={styles.balanceSection}>
@@ -193,13 +223,17 @@ export default function PurchaseScreen() {
                 <View
                   style={[
                     styles.balanceCard,
-                    { backgroundColor: colors.surface },
+                    {
+                      backgroundColor: cardBg,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                    },
                   ]}
                 >
                   <View
                     style={[
                       styles.balanceIcon,
-                      { backgroundColor: colors.primary + "20" },
+                      { backgroundColor: iconBg(colors.primary) },
                     ]}
                   >
                     <UtensilsCrossed size={24} color={colors.primary} />
@@ -220,13 +254,17 @@ export default function PurchaseScreen() {
                 <View
                   style={[
                     styles.balanceCard,
-                    { backgroundColor: colors.surface },
+                    {
+                      backgroundColor: cardBg,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                    },
                   ]}
                 >
                   <View
                     style={[
                       styles.balanceIcon,
-                      { backgroundColor: colors.secondary + "20" },
+                      { backgroundColor: iconBg(colors.secondary) },
                     ]}
                   >
                     <Coffee size={24} color={colors.secondary} />
@@ -246,12 +284,12 @@ export default function PurchaseScreen() {
               </View>
 
               <View
-                style={[styles.walletCard, { backgroundColor: colors.surface }]}
+                style={[styles.walletCard, { backgroundColor: cardBg }]}
               >
                 <View
                   style={[
                     styles.balanceIcon,
-                    { backgroundColor: colors.success + "20" },
+                    { backgroundColor: iconBg(colors.success) },
                   ]}
                 >
                   <Wallet size={24} color={colors.success} />
@@ -273,13 +311,13 @@ export default function PurchaseScreen() {
             </View>
           )}
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.surface }]}
+            style={[styles.actionCard, { backgroundColor: cardBg }]}
             onPress={handleRecharge}
           >
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: colors.primary + "20" },
+                { backgroundColor: iconBg(colors.primary) },
               ]}
             >
               <CreditCard size={32} color={colors.primary} />
@@ -300,13 +338,13 @@ export default function PurchaseScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.surface }]}
+            style={[styles.actionCard, { backgroundColor: cardBg }]}
             onPress={handleGiftFriend}
           >
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: colors.secondary + "20" },
+                { backgroundColor: iconBg(colors.secondary) },
               ]}
             >
               <Gift size={32} color={colors.secondary} />
@@ -325,55 +363,83 @@ export default function PurchaseScreen() {
               </Text>
             </View>
           </TouchableOpacity>
-          <View style={[{ backgroundColor: colors.surface }]}>
-            <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.qrCardWrapper]}>
+            <View
+              style={[
+                styles.qrCard,
+                { backgroundColor: cardBg },
+              ]}
+            >
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: colors.primary + "20" },
+                  { backgroundColor: iconBg(colors.primary) },
                 ]}
               >
                 <Camera size={32} color={colors.primary} />
               </View>
-              <View style={[{ backgroundColor: colors.surface }]}>
-                <Text style={[{ color: colors.text }]}>
+              <View
+                style={[
+                  styles.qrCardHeader,
+                  { backgroundColor: cardBg },
+                ]}
+              >
+                <Text style={[styles.qrCardTitle, { color: colors.text }]}>
                   {t("account.myQRCode")}
                 </Text>
-                <Text
-                  style={[
-                    styles.qrDescription,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("account.qrCodeDesc")}
-                </Text>
               </View>
+              <Text
+                style={[
+                  styles.qrDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {t("account.qrCodeDesc")}
+              </Text>
               <View style={styles.qrContainer}>
                 {profile?.qrCode ? (
                   <>
-                    <QRCode
-                      value={profile.qrCode}
-                      size={200}
-                      color={colors.text}
-                      backgroundColor={colors.background}
-                    />
-                    <View style={styles.qrUserInfo}>
-                      {profile.fullName && (
-                        <Text
-                          style={[styles.qrUserName, { color: colors.text }]}
-                        >
-                          {profile.fullName}
-                        </Text>
-                      )}
+                    <ViewShot
+                      ref={qrViewShotRef}
+                      options={{ format: "png", result: "tmpfile" }}
+                      style={styles.qrShotWrapper}
+                    >
+                      <View style={styles.qrShareCard}>
+                        <QRCode
+                          value={profile.qrCode}
+                          size={200}
+                          color="#000000"
+                          backgroundColor="#FFFFFF"
+                        />
+                        <View style={styles.qrUserInfo}>
+                          {profile.fullName && (
+                            <Text style={styles.qrShareName}>
+                              {profile.fullName}
+                            </Text>
+                          )}
+                          <Text style={styles.qrShareEmail}>
+                            {auth.user?.email || profile.email}
+                          </Text>
+                        </View>
+                      </View>
+                    </ViewShot>
+                    <TouchableOpacity
+                      onPress={handleShareMyCode}
+                      style={[
+                        styles.shareButtonBelow,
+                        { backgroundColor: iconBg(colors.primary) },
+                      ]}
+                    >
+                      <Share2 size={22} color={colors.primary} />
                       <Text
                         style={[
-                          styles.qrUserEmail,
-                          { color: colors.textSecondary },
+                          styles.shareButtonText,
+                          { color: colors.primary },
                         ]}
                       >
-                        {auth.user?.email || profile.email}
+                        {t("account.shareCode")}
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   </>
                 ) : (
                   <View
@@ -514,6 +580,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  qrCardWrapper: {},
   qrCard: {
     borderRadius: 20,
     flexDirection: "column",
@@ -546,9 +613,60 @@ const styles = StyleSheet.create({
   cardDescription: {
     fontSize: 14,
   },
+  qrCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  qrCardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  shareButtonBelow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  shareButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
   qrDescription: {
     fontSize: 14,
     marginBottom: 20,
+  },
+  qrShotWrapper: {
+    alignItems: "center",
+  },
+  qrShareCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 24,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  qrShareName: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 4,
+    color: "#000000",
+  },
+  qrShareEmail: {
+    fontSize: 14,
+    color: "#000000",
   },
   qrContainer: {
     alignItems: "center",

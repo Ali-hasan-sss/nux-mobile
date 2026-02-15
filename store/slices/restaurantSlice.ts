@@ -4,6 +4,7 @@ export interface Restaurant {
   id: string;
   name: string;
   address: string;
+  logo?: string;
   userBalance: {
     walletBalance: number;
     drinkPoints: number;

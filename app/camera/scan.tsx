@@ -181,6 +181,28 @@ export default function ScanScreen() {
     };
   }, []);
 
+  const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  /** إذا كان الكود رابط قائمة → الدخول لعرض القائمة. وإلا → طلب الحصول على النقاط. */
+  const isMenuLink = (raw: string) => /\/menu\//i.test(raw.trim());
+
+  const parseMenuParams = (raw: string): { qrCode: string; table?: number } => {
+    const trimmed = raw.trim();
+    const uuidOnly = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+    if (uuidOnly) return { qrCode: trimmed };
+    try {
+      const urlString = /^https?:\/\//i.test(trimmed) ? trimmed : `https://dummy.example${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
+      const url = new URL(urlString);
+      const pathMatch = url.pathname.match(/\/menu\/([0-9a-f-]{36})/i);
+      const qrCode = pathMatch ? pathMatch[1] : trimmed.match(UUID_REGEX)?.[0] ?? trimmed;
+      const tableParam = url.searchParams.get("table");
+      const table = tableParam != null && tableParam !== "" ? parseInt(tableParam, 10) : undefined;
+      const tableValid = table != null && !isNaN(table) && table > 0;
+      return { qrCode, table: tableValid ? table : undefined };
+    } catch {
+      return { qrCode: trimmed.match(UUID_REGEX)?.[0] ?? trimmed };
+    }
+  };
+
   const handleBarCodeScanned = async ({
     type,
     data,
@@ -204,10 +226,24 @@ export default function ScanScreen() {
     // إيقاف انيميشن المسح
     stopScanAnimation();
 
+    // إذا كان الرابط رابط قائمة → الدخول لعرض القائمة (بدون طلب نقاط)
+    if (isMenuLink(data)) {
+      const { qrCode, table } = parseMenuParams(data);
+      const navParams: Record<string, string> = { qrCode: qrCode || data };
+      if (table != null) navParams.table = String(table);
+      setTimeout(() => {
+        setIsProcessing(false);
+        setShowCamera(false);
+        hasScanned.current = false;
+        router.push({ pathname: "/(tabs)/menu-webview", params: navParams } as any);
+      }, 300);
+      return;
+    }
+
     try {
       // التحقق من حالة المصادقة
       if (!auth.isAuthenticated) {
-        showToast({ message: "يجب تسجيل الدخول أولاً", type: "error" });
+        showToast({ message: t("camera.scanMustLogin"), type: "error" });
         setIsProcessing(false);
         setShowCamera(true);
         setTimeout(() => router.back(), 2000);
@@ -248,7 +284,7 @@ export default function ScanScreen() {
 
         // نجح المسح - إظهار Toast النجاح وتحديث الرصيد
         showToast({
-          message: "تم مسح الكود بنجاح! تم منحك النقاط",
+          message: t("camera.scanSuccess"),
           type: "success",
         });
 
@@ -271,15 +307,14 @@ export default function ScanScreen() {
           // For development, show a bypass option
           if (__DEV__) {
             showAlert({
-              title: "خطأ في الموقع",
-              message:
-                "يجب أن تكون داخل المطعم لمسح هذا الكود. هل تريد تجاوز هذا الفحص للتطوير؟",
+              title: t("camera.scanLocationErrorTitle"),
+              message: t("camera.scanLocationErrorMessage"),
               type: "warning",
-              confirmText: "تجاوز للتطوير",
-              cancelText: "إلغاء",
+              confirmText: t("camera.scanBypassForDev"),
+              cancelText: t("camera.cancel"),
               onConfirm: () => {
                 showToast({
-                  message: "تم مسح الكود بنجاح! (تطوير)",
+                  message: t("camera.scanSuccessDev"),
                   type: "success",
                 });
                 // تحديث الرصيد بعد نجاح المسح
@@ -301,7 +336,7 @@ export default function ScanScreen() {
             });
           } else {
             showToast({
-              message: "يجب أن تكون داخل المطعم لمسح هذا الكود",
+              message: t("camera.scanErrorForbidden"),
               type: "error",
             });
             setIsProcessing(false);
@@ -324,7 +359,7 @@ export default function ScanScreen() {
         ) {
           console.log("🔄 Using fallback success for development");
           showToast({
-            message: "تم مسح الكود بنجاح! (تطوير)",
+            message: t("camera.scanSuccessDev"),
             type: "success",
           });
           // تحديث الرصيد بعد نجاح المسح
@@ -341,19 +376,17 @@ export default function ScanScreen() {
     } catch (error: any) {
       console.error("خطأ في مسح الكود:", error);
 
-      let errorMessage = "حدث خطأ أثناء مسح الكود";
-
+      let errorMessage = t("camera.scanErrorGeneric");
       if (error.message?.includes("Network Error")) {
-        errorMessage = "خطأ في الشبكة. تحقق من اتصال الإنترنت";
+        errorMessage = t("camera.scanErrorNetwork");
       } else if (error.message?.includes("401")) {
-        errorMessage = "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى";
+        errorMessage = t("camera.scanErrorUnauthorized");
       } else if (error.message?.includes("403")) {
-        errorMessage = "غير مصرح لك بمسح هذا الكود. تأكد من أنك داخل المطعم";
+        errorMessage = t("camera.scanErrorForbidden");
       } else if (error.message?.includes("Location permission denied")) {
-        errorMessage = "صلاحية الموقع مطلوبة لمسح الكود";
+        errorMessage = t("camera.scanErrorLocationRequired");
       }
 
-      // إظهار Toast الخطأ وإعادة تعيين الحالة
       showToast({ message: errorMessage, type: "error" });
       setIsProcessing(false);
       setShowCamera(true);
@@ -374,31 +407,31 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.message, { color: colors.text }]}>
-          We need your permission to show the camera
+          {t("camera.cameraPermissionRequired")}
         </Text>
         <TouchableOpacity
           style={[styles.permissionButton, { backgroundColor: colors.primary }]}
           onPress={requestPermission}
         >
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <Text style={styles.permissionButtonText}>
+            {t("camera.grantPermission")}
+          </Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   if (locationPermission === false) {
-    // Location permission is not granted
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.message, { color: colors.text }]}>
-          Location permission is required to scan QR codes
+          {t("camera.locationPermissionRequired")}
         </Text>
         <TouchableOpacity
           style={[styles.permissionButton, { backgroundColor: colors.primary }]}
           onPress={async () => {
             try {
               const Location = await import("expo-location");
-
               if (
                 Location &&
                 typeof Location.requestForegroundPermissionsAsync === "function"
@@ -417,7 +450,7 @@ export default function ScanScreen() {
           }}
         >
           <Text style={styles.permissionButtonText}>
-            Grant Location Permission
+            {t("camera.grantLocationPermission")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -427,7 +460,7 @@ export default function ScanScreen() {
           ]}
           onPress={() => router.back()}
         >
-          <Text style={styles.permissionButtonText}>Cancel</Text>
+          <Text style={styles.permissionButtonText}>{t("camera.cancel")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -435,7 +468,7 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Loader Screen - يظهر بدلاً من الكاميرا أثناء المعالجة */}
+      {/* Loader Screen - سبينر فقط أثناء المعالجة */}
       {!showCamera && isProcessing && (
         <View
           style={[
@@ -445,17 +478,6 @@ export default function ScanScreen() {
         >
           <View style={styles.loaderContent}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.fullScreenLoaderText, { color: colors.text }]}>
-              جاري معالجة الكود...
-            </Text>
-            <Text
-              style={[
-                styles.fullScreenLoaderSubtext,
-                { color: colors.textSecondary },
-              ]}
-            >
-              الرجاء الانتظار
-            </Text>
           </View>
         </View>
       )}
@@ -531,23 +553,20 @@ export default function ScanScreen() {
                   ]}
                 />
               </Animated.View>
-              <Text style={styles.instructionText}>
-                {isScanning
-                  ? t("camera.placeCodeInFrame")
-                  : isProcessing
-                  ? "جاري معالجة الكود..."
-                  : scannedData
-                  ? "تم مسح الكود بنجاح!"
-                  : "اضغط لإعادة المحاولة"}
-              </Text>
+              {!isProcessing && (
+                <Text style={styles.instructionText}>
+                  {isScanning
+                    ? t("camera.placeCodeInFrame")
+                    : scannedData
+                    ? t("camera.scanSuccess")
+                    : t("camera.tapToRetry")}
+                </Text>
+              )}
 
-              {/* Loader */}
+              {/* Loader - سبينر فقط بدون نص */}
               {isProcessing && (
                 <View style={styles.loaderContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loaderText, { color: colors.text }]}>
-                    جاري معالجة الكود...
-                  </Text>
                 </View>
               )}
 
@@ -562,12 +581,12 @@ export default function ScanScreen() {
                     setIsScanning(true);
                     setScannedData(null);
                     setShowCamera(true);
-
-                    // بدء انيميشن المسح مرة أخرى
                     startScanAnimation();
                   }}
                 >
-                  <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+                  <Text style={styles.retryButtonText}>
+                    {t("camera.retryScan")}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -685,11 +704,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
   },
-  loaderText: {
-    marginTop: 10,
-    fontSize: 16,
-    fontWeight: "500",
-  },
   toast: {
     position: "absolute",
     top: 100,
@@ -730,16 +744,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
-  },
-  fullScreenLoaderText: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 20,
-    textAlign: "center",
-  },
-  fullScreenLoaderSubtext: {
-    fontSize: 16,
-    marginTop: 8,
-    textAlign: "center",
   },
 });

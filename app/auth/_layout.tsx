@@ -1,14 +1,16 @@
-import { Stack } from "expo-router";
+import { Stack, Redirect } from "expo-router";
 import { useSelector } from "react-redux";
-import { Redirect } from "expo-router";
 import { RootState } from "@/store/store";
 
 export default function AuthLayout() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  const user = useSelector((state: RootState) => state.auth.user);
+  const mustVerify =
+    user?.emailVerified === false || user?.emailVerified === undefined;
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !mustVerify) {
     return <Redirect href="/(tabs)" />;
   }
 
@@ -32,6 +34,30 @@ export default function AuthLayout() {
       />
       <Stack.Screen
         name="register"
+        options={{
+          contentStyle: { backgroundColor: "transparent" },
+          animation: "slide_from_right",
+          presentation: "card",
+        }}
+      />
+      <Stack.Screen
+        name="verify-email"
+        options={{
+          contentStyle: { backgroundColor: "transparent" },
+          animation: "slide_from_right",
+          presentation: "card",
+        }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        options={{
+          contentStyle: { backgroundColor: "transparent" },
+          animation: "slide_from_right",
+          presentation: "card",
+        }}
+      />
+      <Stack.Screen
+        name="reset-password"
         options={{
           contentStyle: { backgroundColor: "transparent" },
           animation: "slide_from_right",

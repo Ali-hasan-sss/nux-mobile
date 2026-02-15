@@ -3,6 +3,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'ADMIN' | 'RESTAURANT_OWNER' | 'USER';
+  emailVerified?: boolean;
   restaurantName?: string;
   address?: string;
   latitude?: number;

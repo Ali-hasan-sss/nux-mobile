@@ -7,14 +7,13 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
   Image,
   Animated,
   Dimensions,
 } from "react-native";
 import { Link, router } from "expo-router";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -23,31 +22,28 @@ import {
   Eye,
   EyeOff,
   UserPlus,
-  Shield,
   ArrowRight,
   ArrowLeft,
+  User,
+  CheckCircle,
 } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { CustomAlert } from "@/components/CustomAlert";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
 import { registerUser } from "@/store/slices/authSlice";
 import { getProfile } from "@/store/slices/profileSlice";
-import type { AppDispatch } from "@/store/store";
+import type { AppDispatch, RootState } from "@/store/store";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+const TOTAL_STEPS = 2; // 1: Email + name, 2: Password (like website); verify email after signup
+
 export default function RegisterScreen() {
-  const [step, setStep] = useState(1); // 1: Email, 2: Verification, 3: Password
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
-  const [verificationCode, setVerificationCode] = useState([
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -58,112 +54,28 @@ export default function RegisterScreen() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [errorAlert, setErrorAlert] = useState<{
+    visible: boolean;
+    message: string;
+  }>({ visible: false, message: "" });
   const dispatch = useDispatch<AppDispatch>();
+  const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated);
+  const user = useSelector((s: RootState) => s.auth.user);
+  const mustVerify =
+    user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const isRTL = i18n.language === "ar";
-  const codeInputRefs = useRef<(TextInput | null)[]>([]);
+
+  useEffect(() => {
+    if (isAuthenticated && mustVerify) {
+      router.replace("/auth/verify-email");
+    }
+  }, [isAuthenticated, mustVerify]);
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [direction, setDirection] = useState<"next" | "back">("next");
-
-  const handleCodeChange = (index: number, value: string) => {
-    // Only allow numbers
-    const numericValue = value.replace(/[^0-9]/g, "");
-
-    if (numericValue.length > 1) {
-      // Handle paste - distribute characters from left to right
-      const chars = numericValue.slice(0, 6).split("");
-      const newCode = [...verificationCode];
-
-      // Find the first empty box starting from the clicked index
-      let startIndex = index;
-      for (let i = 0; i < index; i++) {
-        if (newCode[i] === "") {
-          startIndex = i;
-          break;
-        }
-      }
-
-      // Fill boxes from left to right
-      chars.forEach((char, idx) => {
-        const targetIndex = startIndex + idx;
-        if (targetIndex < 6) {
-          newCode[targetIndex] = char;
-        }
-      });
-
-      setVerificationCode(newCode);
-
-      // Focus on the next empty box or the last box
-      const nextEmptyIndex = newCode.findIndex(
-        (val, idx) => idx >= startIndex && val === ""
-      );
-      const focusIndex =
-        nextEmptyIndex !== -1
-          ? nextEmptyIndex
-          : Math.min(startIndex + chars.length, 5);
-      if (focusIndex < 6 && codeInputRefs.current[focusIndex]) {
-        codeInputRefs.current[focusIndex]?.focus();
-      }
-    } else {
-      // Single character input
-      const newCode = [...verificationCode];
-
-      // If current box has value and we're typing, move to next
-      if (newCode[index] !== "" && numericValue !== "") {
-        // Find first empty box from left
-        const firstEmpty = newCode.findIndex((val) => val === "");
-        if (firstEmpty !== -1) {
-          newCode[firstEmpty] = numericValue;
-          setVerificationCode(newCode);
-          if (codeInputRefs.current[firstEmpty]) {
-            codeInputRefs.current[firstEmpty]?.focus();
-          }
-          return;
-        }
-      }
-
-      newCode[index] = numericValue;
-      setVerificationCode(newCode);
-
-      // Move to next box if value entered
-      if (numericValue !== "" && index < 5) {
-        const nextEmpty = newCode.findIndex(
-          (val, idx) => idx > index && val === ""
-        );
-        if (nextEmpty !== -1 && codeInputRefs.current[nextEmpty]) {
-          codeInputRefs.current[nextEmpty]?.focus();
-        } else if (index < 5 && codeInputRefs.current[index + 1]) {
-          codeInputRefs.current[index + 1]?.focus();
-        }
-      }
-    }
-  };
-
-  const handleCodeKeyPress = (index: number, key: string) => {
-    if (key === "Backspace" && verificationCode[index] === "") {
-      // Move to previous box on backspace if current is empty
-      if (index > 0 && codeInputRefs.current[index - 1]) {
-        codeInputRefs.current[index - 1]?.focus();
-      }
-    }
-  };
-
-  const handleCodeFocus = (index: number) => {
-    // If there's an empty box before this one, focus on it instead
-    const emptyBefore = verificationCode.findIndex(
-      (val, idx) => idx < index && val === ""
-    );
-    if (emptyBefore !== -1 && codeInputRefs.current[emptyBefore]) {
-      codeInputRefs.current[emptyBefore]?.focus();
-    }
-  };
-
-  const getVerificationCodeString = () => {
-    return verificationCode.join("");
-  };
 
   // Password validation
   const validatePassword = (pwd: string): string[] => {
@@ -233,75 +145,82 @@ export default function RegisterScreen() {
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (!email) {
-        Alert.alert(t("common.error"), "Please enter your email");
+      if (!email.trim()) {
+        setErrorAlert({
+          visible: true,
+          message: t("common.pleaseEnterEmail"),
+        });
         return;
       }
-      // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        Alert.alert(t("common.error"), "Please enter a valid email");
+      if (!emailRegex.test(email.trim())) {
+        setErrorAlert({
+          visible: true,
+          message: t("common.pleaseEnterValidEmail"),
+        });
         return;
       }
+      setDirection("next");
       setStep(2);
-    } else if (step === 2) {
-      const code = getVerificationCodeString();
-      // Allow 000000 to bypass verification (temporary)
-      if (code === "000000") {
-        setStep(3);
-      } else if (code.length !== 6) {
-        Alert.alert(
-          t("common.error"),
-          "Please enter the 6-digit verification code"
-        );
-        return;
-      } else {
-        // In the future, verify the code here
-        setStep(3);
-      }
     }
   };
 
   const handleRegister = async () => {
     if (!password || !confirmPassword) {
-      Alert.alert(
-        t("common.error"),
-        t("common.pleaseFillAllFields") || "Please fill in all fields"
-      );
+      setErrorAlert({
+        visible: true,
+        message: t("common.pleaseFillAllFields"),
+      });
       return;
     }
 
-    // Validate password
     const passwordValidationErrors = validatePassword(password);
     if (passwordValidationErrors.length > 0) {
-      Alert.alert(t("common.error"), passwordValidationErrors[0]);
+      setErrorAlert({
+        visible: true,
+        message: passwordValidationErrors[0],
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(t("common.error"), t("auth.passwordsDoNotMatch"));
+      setErrorAlert({
+        visible: true,
+        message: t("auth.passwordsDoNotMatch"),
+      });
       return;
     }
 
     if (!agreedToTerms) {
-      Alert.alert(
-        t("common.error"),
-        "Please agree to the terms and conditions"
-      );
+      setErrorAlert({
+        visible: true,
+        message: t("common.pleaseAgreeToTerms"),
+      });
       return;
     }
 
     setLoading(true);
     try {
       await dispatch(
-        registerUser({ email, password, fullName: "New User" })
+        registerUser({
+          email: email.trim(),
+          password,
+          fullName: fullName.trim() || undefined,
+        })
       ).unwrap();
 
       await dispatch(getProfile()).unwrap();
 
-      router.replace("/(tabs)");
+      // Like website: go to verify-email screen after signup
+      router.replace({
+        pathname: "/auth/verify-email",
+        params: { email: email.trim() },
+      });
     } catch (error: any) {
-      Alert.alert(t("common.error"), error.message || "Registration failed");
+      setErrorAlert({
+        visible: true,
+        message: error.message || t("common.registrationFailed"),
+      });
     } finally {
       setLoading(false);
     }
@@ -309,25 +228,21 @@ export default function RegisterScreen() {
 
   const handleBack = () => {
     if (step > 1) {
-      // Reset verification code when going back from step 2 to step 1
-      if (step === 2) {
-        setVerificationCode(["", "", "", "", "", ""]);
-      }
+      setDirection("back");
       setStep(step - 1);
-    }
-  };
-
-  // Reset verification code when email changes in step 1
-  const handleEmailChange = (text: string) => {
-    setEmail(text);
-    // If we're in step 1 and email changes, reset verification code
-    if (step === 1) {
-      setVerificationCode(["", "", "", "", "", ""]);
     }
   };
 
   return (
     <>
+      <CustomAlert
+        visible={errorAlert.visible}
+        type="error"
+        title={t("common.error")}
+        message={errorAlert.message}
+        confirmText={t("common.ok")}
+        onConfirm={() => setErrorAlert({ visible: false, message: "" })}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
@@ -346,7 +261,44 @@ export default function RegisterScreen() {
               resizeMode="contain"
             />
 
-            {/* Step 1: Email */}
+            {/* Step indicator: always left-to-right (1 then 2) */}
+            <View style={styles.stepIndicator}>
+              {[1, 2].map((i) => (
+                <View key={i} style={styles.stepIndicatorItem}>
+                  <View
+                    style={[
+                      styles.stepDot,
+                      i <= step
+                        ? { backgroundColor: colors.primary }
+                        : { backgroundColor: colors.background },
+                    ]}
+                  >
+                    {i < step ? (
+                      <CheckCircle size={16} color="#fff" />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.stepDotText,
+                          { color: i <= step ? "#fff" : colors.textSecondary },
+                        ]}
+                      >
+                        {i}
+                      </Text>
+                    )}
+                  </View>
+                  {i < 2 && (
+                    <View
+                      style={[
+                        styles.stepLine,
+                        { backgroundColor: i < step ? colors.primary : colors.background },
+                      ]}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
+
+            {/* Step 1: Email + Full name (like website) */}
             {step === 1 && (
               <Animated.View
                 style={[
@@ -365,25 +317,43 @@ export default function RegisterScreen() {
                   },
                 ]}
               >
-                {/* Email Input Container */}
+             
+
+                {/* Full name (optional) */}
                 <View
                   style={[
                     styles.inputCard,
-                    { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+                    { backgroundColor: (colors as any).inputBackground ?? colors.surface },
+                  ]}
+                >
+                  <User size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder={t("auth.fullNameOptional")}
+                    placeholderTextColor={isDark ? colors.textSecondary : "#6b7280"}
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                  />
+                </View>
+   {/* Email Input */}
+               <View
+                  style={[
+                    styles.inputCard,
+                    { backgroundColor: (colors as any).inputBackground ?? colors.surface },
                   ]}
                 >
                   <Mail size={20} color={colors.textSecondary} />
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
                     placeholder={t("auth.email")}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? colors.textSecondary : "#6b7280"}
                     value={email}
-                    onChangeText={handleEmailChange}
+                    onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
                 </View>
-
                 {/* Next Button */}
                 <TouchableOpacity
                   style={[
@@ -413,197 +383,21 @@ export default function RegisterScreen() {
                     />
                   ) : null}
                   <View style={styles.buttonInner}>
-                    <Text style={styles.buttonText}>{t("common.next")}</Text>
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        { color: isDark ? "#fff" : (colors.text || "#1a1a1a") },
+                      ]}
+                    >
+                      {t("common.next")}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </Animated.View>
             )}
 
-            {/* Step 2: Verification Code */}
+            {/* Step 2: Password (like website); verify email after signup */}
             {step === 2 && (
-              <Animated.View
-                style={[
-                  styles.stepContainer,
-                  {
-                    transform: [
-                      {
-                        translateX: slideAnim.interpolate({
-                          inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-                          outputRange: isRTL
-                            ? [SCREEN_WIDTH, 0, -SCREEN_WIDTH]
-                            : [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.stepTitle,
-                    { color: colors.text, textAlign: isRTL ? "right" : "left" },
-                  ]}
-                >
-                  {t("auth.verificationCode")}
-                </Text>
-                <Text
-                  style={[
-                    styles.stepDescription,
-                    {
-                      color: colors.textSecondary,
-                      textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {t("auth.enterVerificationCode")}
-                </Text>
-                {/* Display email */}
-                <Text
-                  style={[
-                    styles.emailDisplay,
-                    {
-                      color: colors.textSecondary,
-                      textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {t("auth.codeSentTo")} {email}
-                </Text>
-
-                {/* Verification Code Input - 6 Boxes */}
-                <View style={styles.codeContainer}>
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <TextInput
-                      key={index}
-                      ref={(ref) => {
-                        codeInputRefs.current[index] = ref;
-                      }}
-                      style={[
-                        styles.codeBox,
-                        {
-                          backgroundColor: "rgba(26, 31, 58, 0.95)",
-                          borderColor: verificationCode[index]
-                            ? colors.primary
-                            : colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                      value={verificationCode[index]}
-                      onChangeText={(text) => handleCodeChange(index, text)}
-                      onKeyPress={({ nativeEvent }) =>
-                        handleCodeKeyPress(index, nativeEvent.key)
-                      }
-                      onFocus={() => handleCodeFocus(index)}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      textAlign="center"
-                      selectTextOnFocus
-                    />
-                  ))}
-                </View>
-
-                {/* Resend Code Section */}
-                <View
-                  style={[
-                    styles.resendCodeContainer,
-                    { alignItems: isRTL ? "flex-end" : "flex-start" },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.resendCodeText,
-                      {
-                        color: colors.textSecondary,
-                        textAlign: isRTL ? "right" : "left",
-                      },
-                    ]}
-                  >
-                    {t("auth.didNotReceiveCode")}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      // TODO: Implement resend code functionality
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.resendCodeLink,
-                        {
-                          color: colors.primary,
-                          textAlign: isRTL ? "right" : "left",
-                        },
-                      ]}
-                    >
-                      {t("auth.resendCode")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Back and Next Buttons */}
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.backButton,
-                      { backgroundColor: colors.background },
-                    ]}
-                    onPress={handleBack}
-                  >
-                    <Text
-                      style={[styles.backButtonText, { color: colors.text }]}
-                    >
-                      {t("common.back")}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      styles.buttonFlex,
-                      {
-                        backgroundColor:
-                          getVerificationCodeString().length === 6
-                            ? (colors as any).gradientButton
-                              ? undefined
-                              : colors.primary
-                            : colors.background,
-                      },
-                    ]}
-                    onPress={handleNextStep}
-                    disabled={getVerificationCodeString().length !== 6}
-                  >
-                    {getVerificationCodeString().length === 6 &&
-                    (colors as any).gradientButton ? (
-                      <LinearGradient
-                        colors={
-                          (colors as any).gradientButton || [
-                            colors.primary,
-                            colors.primary,
-                          ]
-                        }
-                        style={StyleSheet.absoluteFill}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      />
-                    ) : null}
-                    <View style={styles.buttonInner}>
-                      <Text
-                        style={[
-                          styles.buttonText,
-                          getVerificationCodeString().length === 6
-                            ? {}
-                            : { color: "rgba(255, 255, 255, 0.5)" },
-                        ]}
-                      >
-                        {t("common.next")}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            )}
-
-            {/* Step 3: Password */}
-            {step === 3 && (
               <Animated.View
                 style={[
                   styles.stepContainer,
@@ -625,14 +419,14 @@ export default function RegisterScreen() {
                 <View
                   style={[
                     styles.inputCard,
-                    { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+                    { backgroundColor: (colors as any).inputBackground ?? colors.surface },
                   ]}
                 >
                   <Lock size={20} color={colors.textSecondary} />
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
                     placeholder={t("auth.password")}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? colors.textSecondary : "#6b7280"}
                     value={password}
                     onChangeText={handlePasswordChange}
                     secureTextEntry={!showPassword}
@@ -675,14 +469,14 @@ export default function RegisterScreen() {
                 <View
                   style={[
                     styles.inputCard,
-                    { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+                    { backgroundColor: (colors as any).inputBackground ?? colors.surface },
                   ]}
                 >
                   <Lock size={20} color={colors.textSecondary} />
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
                     placeholder={t("auth.confirmPassword")}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? colors.textSecondary : "#6b7280"}
                     value={confirmPassword}
                     onChangeText={handleConfirmPasswordChange}
                     secureTextEntry={!showConfirmPassword}
@@ -857,7 +651,7 @@ export default function RegisterScreen() {
                       disabled={loading || !agreedToTerms}
                     >
                       <Text
-                        style={[styles.buttonText, styles.buttonTextDisabled]}
+                        style={[styles.buttonText, { color: colors.textSecondary }]}
                       >
                         {loading
                           ? t("common.loading")
@@ -926,6 +720,36 @@ const styles = StyleSheet.create({
   stepContainer: {
     width: "100%",
   },
+  stepIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  stepIndicatorRTL: {
+    flexDirection: "row-reverse",
+  },
+  stepIndicatorItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  stepDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepDotText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  stepLine: {
+    width: 48,
+    height: 4,
+    marginHorizontal: 4,
+    borderRadius: 2,
+  },
   logo: {
     width: 200,
     height: 100,
@@ -949,55 +773,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 0,
-  },
-  codeContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-    gap: 12,
-  },
-  codeBox: {
-    flex: 1,
-    height: 60,
-    borderRadius: 16,
-    borderWidth: 2,
-    fontSize: 24,
-    fontWeight: "600",
-    textAlign: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  stepTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  stepDescription: {
-    fontSize: 14,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  emailDisplay: {
-    fontSize: 12,
-    marginBottom: 24,
-    fontStyle: "italic",
-  },
-  resendCodeContainer: {
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  resendCodeText: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  resendCodeLink: {
-    fontSize: 14,
-    fontWeight: "600",
-    textDecorationLine: "underline",
+    backgroundColor: "transparent",
   },
   button: {
     borderRadius: 16,
@@ -1029,9 +805,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  buttonTextDisabled: {
-    color: "rgba(255, 255, 255, 0.5)",
   },
   buttonRow: {
     flexDirection: "row",

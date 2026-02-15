@@ -41,8 +41,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isAuthenticated, isLoading, dispatch]);
 
-  // Show loading screen while checking authentication
-  if (isLoading) {
+  // Show loading screen only during initial auth check (from storage), not during login/register.
+  // When user is on auth screen (login/register), keep the screen mounted so error messages can be shown.
+  const inAuthScreen =
+    Array.isArray(segments) &&
+    (segments[0] === "auth" || segments[1] === "auth");
+  const showInitialLoader = isLoading && !inAuthScreen;
+
+  if (showInitialLoader) {
     return (
       <View style={{ flex: 1 }}>
         <AnimatedBackground>

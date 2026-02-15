@@ -11,7 +11,6 @@ export const API_CONFIG = {
     AUTH: {
       LOGIN: "/auth/login",
       REGISTER: "/auth/register",
-      REGISTER_RESTAURANT: "/auth/registerRestaurant",
       ADMIN_LOGIN: "/auth/admin/login",
       REFRESH: "/auth/refresh",
       VERIFY_EMAIL: "/auth/verify-email",
@@ -31,6 +30,13 @@ export const API_CONFIG = {
       MARK_AS_READ: "/notifications/read",
       MARK_ALL_AS_READ: "/notifications/read-all",
     },
+    MENU: {
+      GET_CATEGORIES: "/customer/menu",
+      GET_ITEMS: "/customer/menu/items",
+    },
+    ORDERS: {
+      CREATE: "/customer/orders",
+    },
   },
 
   // Timeouts
@@ -47,6 +53,24 @@ export const API_CONFIG = {
 export const getEndpointUrl = (endpoint: string): string => {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 };
+
+/**
+ * Resolve image URL from path stored without domain.
+ * If path is already absolute (http/https), return as-is.
+ * Otherwise prepend backend domain so /uploads/... loads correctly.
+ */
+export function getImageUrl(
+  path: string | null | undefined
+): string | null {
+  if (!path || typeof path !== "string") return null;
+  const trimmed = path.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://"))
+    return trimmed;
+  const base = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
+  const pathClean = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${base}${pathClean}`;
+}
 
 // Log current configuration
 if (__DEV__) {

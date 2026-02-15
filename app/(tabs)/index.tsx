@@ -5,24 +5,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Animated,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Camera,
+  Scan,
   Coffee,
   Star,
   UtensilsCrossed,
   Wallet,
-  QrCode,
-  Menu,
+  Search,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBalance } from "@/hooks/useBalance";
 import { router, useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PaymentModal } from "@/components/PaymentModal";
 import {
   RestaurantSelector,
@@ -33,16 +32,20 @@ import {
   fetchUserBalances,
   setSelectedRestaurantBalance,
 } from "@/store/slices/balanceSlice";
-import { RestaurantQRCodes } from "@/components/RestaurantQRCodes";
-import { useRestaurantQR } from "@/hooks/useRestaurantQR";
 
+const TAB_BAR_HEIGHT = 88;
+
+/** الشاشة الرئيسية - للتطبيق المخصص للعميل فقط (لا عرض لصاحب المطعم) */
 export default function HomeScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  const fabBottom = insets.bottom + TAB_BAR_HEIGHT + 12;
+  const isRTL = i18n.language === "ar";
   const auth = useSelector((state: RootState) => state.auth);
   const selectedRestaurant = useSelector(
-    (state: RootState) => state.restaurant.selectedRestaurant
+    (state: RootState) => state.restaurant.selectedRestaurant,
   );
   const {
     restaurantsWithBalances,
@@ -51,67 +54,21 @@ export default function HomeScreen() {
     loading,
     error,
   } = useBalance();
-  const { loadRestaurantInfo } = useRestaurantQR();
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<
     "drink" | "meal" | "wallet"
   >("wallet");
 
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const isRestaurant = auth.user?.role === "RESTAURANT_OWNER";
-
-  // Remove mock data initialization - let real data come from API
-
-  // Fetch user balances every time the screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       if (!auth.isAuthenticated) return;
-
-      if (isRestaurant) {
-        // For restaurant owners, reload restaurant info (including QR codes)
-        console.log(
-          "🔄 HomeScreen: Reloading restaurant info for restaurant owner"
-        );
-        loadRestaurantInfo();
-      } else {
-        // For regular users, load balances
-        loadBalances();
-      }
-      // Note: loadRestaurantInfo and loadBalances are stable functions from hooks
-      // They don't need to be in dependencies to avoid infinite loops
+      loadBalances();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [auth.isAuthenticated, isRestaurant])
+    }, [auth.isAuthenticated]),
   );
-
-  useEffect(() => {
-    // Fade in animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
-    // Fade out and hide after 8 seconds
-    const fadeOutTimeout = setTimeout(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowWelcome(false);
-      });
-    }, 8000);
-
-    return () => clearTimeout(fadeOutTimeout);
-  }, []);
 
   const handleScanCode = () => {
     router.push("/camera/scan");
-  };
-
-  const handleScanMenuCode = () => {
-    router.push("/camera/menu-scan");
   };
 
   const handlePayWithDrink = () => {
@@ -146,46 +103,22 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "transparent" }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        style={[styles.scrollView, { backgroundColor: "transparent" }]}
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           styles.scrollContent,
-          { backgroundColor: "transparent" },
+          { backgroundColor: colors.background },
         ]}
       >
-        {showWelcome && !isRestaurant && (
-          <Animated.View
-            style={{
-              opacity: fadeAnim,
-            }}
-          >
-            <LinearGradient
-              colors={
-                isDark
-                  ? (colors as any).gradientAccent || colors.gradient
-                  : colors.gradient
-              }
-              style={styles.welcomeSection}
-            >
-              <Text style={styles.welcomeText}>{t("home.welcomeToNux")}</Text>
-            </LinearGradient>
-          </Animated.View>
-        )}
-
         <View style={styles.content}>
-          {isRestaurant ? (
-            <RestaurantQRCodes />
-          ) : (
-            <>
-              <LinearGradient
+          <>
+            <LinearGradient
                 colors={
-                  isDark
-                    ? (colors as any).gradientButton || [
-                        colors.primary,
-                        colors.primary,
-                      ]
-                    : [colors.primary, colors.primary]
+                  (colors as any).gradientButton || [
+                    colors.primary,
+                    colors.primary,
+                  ]
                 }
                 style={styles.primaryButton}
                 start={{ x: 0, y: 0 }}
@@ -194,41 +127,19 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.primaryButtonInner}
                   onPress={handleScanCode}
+                  activeOpacity={0.85}
                 >
-                  <Camera size={32} color="white" />
+                  <Scan
+                    size={28}
+                    color="white"
+                    style={styles.primaryButtonIcon}
+                  />
                   <View style={styles.buttonTextContainer}>
-                    <Text style={styles.primaryButtonText}>
+                    <Text style={styles.primaryButtonText} numberOfLines={1}>
                       {t("home.scanCode")}
                     </Text>
-                    <Text style={styles.primaryButtonDesc}>
+                    <Text style={styles.primaryButtonDesc} numberOfLines={2}>
                       {t("home.scanCodeDesc")}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </LinearGradient>
-
-              {/* Menu Scan Button */}
-              <LinearGradient
-                colors={
-                  isDark
-                    ? (colors as any).gradientAccent || colors.gradient
-                    : colors.gradient
-                }
-                style={[styles.primaryButton, { marginTop: 16 }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <TouchableOpacity
-                  style={styles.primaryButtonInner}
-                  onPress={handleScanMenuCode}
-                >
-                  <Menu size={32} color="white" />
-                  <View style={styles.buttonTextContainer}>
-                    <Text style={styles.primaryButtonText}>
-                      {t("home.scanMenuCode")}
-                    </Text>
-                    <Text style={styles.primaryButtonDesc}>
-                      {t("home.scanMenuCodeDesc")}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -265,6 +176,39 @@ export default function HomeScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
+              ) : loading?.balances ? (
+                <View
+                  style={[
+                    styles.selectorSkeleton,
+                    {
+                      backgroundColor: isDark ? colors.surface : colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.selectorSkeletonLogo,
+                      { backgroundColor: colors.border + "50" },
+                    ]}
+                  />
+                  <View style={styles.selectorSkeletonContent}>
+                    <View
+                      style={[
+                        styles.selectorSkeletonLine,
+                        styles.selectorSkeletonLabel,
+                        { backgroundColor: colors.border + "50" },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.selectorSkeletonLine,
+                        styles.selectorSkeletonText,
+                        { backgroundColor: colors.border + "40" },
+                      ]}
+                    />
+                  </View>
+                </View>
               ) : restaurantsWithBalances.length > 0 ? (
                 <RestaurantSelector
                   restaurants={restaurantsWithBalances}
@@ -274,7 +218,10 @@ export default function HomeScreen() {
                 <View
                   style={[
                     styles.noBalanceCard,
-                    { backgroundColor: colors.surface },
+                    {
+                      backgroundColor: isDark ? colors.surface : "transparent",
+                      marginBottom: 24,
+                    },
                   ]}
                 >
                   <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
@@ -291,15 +238,19 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Payment Buttons */}
+              {/* Payment Buttons - same surface treatment in light and dark (no white box in light) */}
               <View style={styles.paymentButtons}>
                 <TouchableOpacity
                   style={[
                     styles.paymentButton,
                     {
                       backgroundColor: selectedRestaurant
-                        ? colors.surface
-                        : colors.surface + "50",
+                        ? isDark
+                          ? colors.surface
+                          : colors.background
+                        : isDark
+                          ? colors.surface + "50"
+                          : colors.background + "99",
                       opacity: selectedRestaurant ? 1 : 0.5,
                     },
                   ]}
@@ -309,7 +260,11 @@ export default function HomeScreen() {
                   <View
                     style={[
                       styles.iconContainer,
-                      { backgroundColor: colors.success + "20" },
+                      {
+                        backgroundColor: isDark
+                          ? colors.success + "20"
+                          : colors.success + "15",
+                      },
                     ]}
                   >
                     <View style={styles.balanceCol}>
@@ -349,19 +304,57 @@ export default function HomeScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
+
+            {/* Explore restaurants - below payment */}
+            <LinearGradient
+              colors={
+                (colors as any).gradientButton || [
+                  colors.primary,
+                  colors.primary,
+                ]
+              }
+              style={[styles.exploreButton, styles.exploreButtonGradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <TouchableOpacity
+                style={styles.exploreButtonInner}
+                onPress={() => router.push("/(tabs)/explore-restaurants")}
+                activeOpacity={0.85}
+              >
+                <Search size={22} color="#fff" style={styles.exploreButtonIcon} />
+                <Text style={styles.exploreButtonText}>
+                  {t("home.exploreRestaurants")}
+                </Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </>
         </View>
       </ScrollView>
 
-      {!isRestaurant && (
-        <PaymentModal
+      <PaymentModal
           visible={paymentModalVisible}
           onClose={() => setPaymentModalVisible(false)}
           initialPaymentType={selectedPaymentType}
           restaurantId={selectedRestaurant?.id}
-        />
-      )}
+      />
+
+      {/* Floating scan button */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={[
+          styles.fabScan,
+          {
+            bottom: fabBottom,
+            ...(isRTL ? { right: 20 } : { left: 20 }),
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+          },
+        ]}
+        onPress={handleScanCode}
+      >
+        <Scan size={28} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -371,6 +364,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
+  fabScan: {
+    position: "absolute",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   scrollView: {
     flex: 1,
     backgroundColor: "transparent",
@@ -379,24 +384,9 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Extra space for tabs
     backgroundColor: "transparent",
   },
-  welcomeSection: {
-    padding: 24,
-    paddingBottom: 40,
-    borderTopLeftRadius: 60,
-    borderBottomRightRadius: 60,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 20,
-    overflow: "hidden",
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    textAlign: "center",
-  },
   content: {
     padding: 20,
-    marginTop: 20,
+    marginTop: 8,
     backgroundColor: "transparent",
   },
   primaryButton: {
@@ -406,28 +396,92 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 2,
+    overflow: "hidden",
   },
   primaryButtonInner: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    justifyContent: "center",
+    padding: 16,
+    minHeight: 56,
+  },
+  primaryButtonIcon: {
+    flexShrink: 0,
   },
   buttonTextContainer: {
-    marginLeft: 16,
+    marginLeft: 14,
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
   },
   primaryButtonText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "bold",
     color: "white",
   },
   primaryButtonDesc: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.85)",
     marginTop: 2,
   },
   paymentButtons: {
     gap: 16,
+  },
+  selectorSkeleton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  selectorSkeletonLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginRight: 12,
+  },
+  selectorSkeletonContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  selectorSkeletonLine: {
+    borderRadius: 4,
+  },
+  selectorSkeletonLabel: {
+    height: 12,
+    width: 72,
+    marginBottom: 8,
+  },
+  selectorSkeletonText: {
+    height: 16,
+    width: "60%",
+  },
+  exploreButton: {
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#00D9FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  exploreButtonGradient: {},
+  exploreButtonInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  exploreButtonIcon: {},
+  exploreButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
   },
   paymentButton: {
     padding: 16,
@@ -504,12 +558,6 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 20,
     alignItems: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
   },
   noBalanceTitle: {
     fontSize: 18,

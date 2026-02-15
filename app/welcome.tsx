@@ -102,7 +102,7 @@ export default function WelcomeScreen() {
           <TouchableOpacity
             style={[
               styles.languageButton,
-              { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+              { backgroundColor: (colors as any).inputBackground ?? colors.surface },
             ]}
             onPress={() => setShowLanguagePicker(!showLanguagePicker)}
           >
@@ -123,7 +123,7 @@ export default function WelcomeScreen() {
             <View
               style={[
                 styles.languageOptions,
-                { backgroundColor: "rgba(26, 31, 58, 0.95)" },
+                { backgroundColor: (colors as any).inputBackground ?? colors.surface },
               ]}
             >
               {languages.map((lang) => (

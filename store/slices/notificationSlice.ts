@@ -118,6 +118,10 @@ const notificationSlice = createSlice({
       state.unreadCount = 0;
       state.pagination = initialState.pagination;
     },
+    /** Increment unread count when a new notification is received via WebSocket */
+    incrementUnreadCount: (state) => {
+      state.unreadCount += 1;
+    },
   },
   extraReducers: (builder) => {
     // Fetch notifications
@@ -187,6 +191,10 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { clearError, clearNotifications } = notificationSlice.actions;
+export const {
+  clearError,
+  clearNotifications,
+  incrementUnreadCount,
+} = notificationSlice.actions;
 
 export default notificationSlice.reducer;
