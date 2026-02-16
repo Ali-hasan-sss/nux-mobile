@@ -1,25 +1,18 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image, BackHandler } from "react-native";
+import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff, LogIn, Headphones, ArrowLeft } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/CustomAlert";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
-import { loginUser } from "@/store/slices/authSlice";
+import { loginUser, RESTAURANT_OWNER_NOT_ALLOWED } from "@/store/slices/authSlice";
 import { getProfile } from "@/store/slices/profileSlice";
 import type { AppDispatch, RootState } from "@/store/store";
 
@@ -42,6 +35,7 @@ export default function LoginScreen() {
     user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const isRTL = i18n.language === "ar";
 
   useEffect(() => {
@@ -49,6 +43,15 @@ export default function LoginScreen() {
       router.replace("/auth/verify-email");
     }
   }, [isAuthenticated, mustVerify]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.replace("/choose-action");
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -83,9 +86,14 @@ export default function LoginScreen() {
         router.replace("/(tabs)");
       }
     } catch (error: any) {
+      const isRestaurantOwner =
+        error === RESTAURANT_OWNER_NOT_ALLOWED ||
+        error?.message === RESTAURANT_OWNER_NOT_ALLOWED;
       setErrorAlert({
         visible: true,
-        message: error.message || t("common.loginFailed"),
+        message: isRestaurantOwner
+          ? t("auth.restaurantOwnerNotAllowed")
+          : (error?.message || t("common.loginFailed")),
       });
     } finally {
       setLoading(false);
@@ -109,6 +117,32 @@ export default function LoginScreen() {
         enabled={Platform.OS === "ios"}
       >
         <View style={styles.content}>
+          <TouchableOpacity
+            style={[
+              styles.backIconBtn,
+              {
+                top: insets.top + 12,
+                [isRTL ? "right" : "left"]: 20,
+              },
+            ]}
+            onPress={() => router.replace("/choose-action")}
+            accessibilityLabel={t("common.back")}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.supportIconBtn,
+              {
+                top: insets.top + 12,
+                [isRTL ? "left" : "right"]: 20,
+              },
+            ]}
+            onPress={() => router.push("/contact")}
+            accessibilityLabel={t("contact.title")}
+          >
+            <Headphones size={24} color={colors.text} />
+          </TouchableOpacity>
           <Image
             source={require("@/assets/images/logo.png")}
             style={styles.logo}
@@ -348,6 +382,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
     backgroundColor: "transparent",
+  },
+  backIconBtn: {
+    position: "absolute",
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  supportIconBtn: {
+    position: "absolute",
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   logo: {
     width: 200,

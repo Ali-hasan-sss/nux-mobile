@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { Text } from "@/components/AppText";
 import { useAuth } from '../../hooks/useAuth';
 
 /** تطبيق للعميل فقط - لا يعرض أي واجهة لصاحب المطعم */

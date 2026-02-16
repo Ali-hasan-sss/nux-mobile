@@ -17,7 +17,6 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-
     steps:
       - name: 🏗 Checkout code
         uses: actions/checkout@v4
@@ -58,6 +57,10 @@ jobs:
 
       - name: 📦 Install dependencies
         run: npm ci
+
+      # GOOGLE_MAPS_API_KEY: add in repo Settings → Secrets and variables → Actions
+      - name: 🔐 Set build env (Google Maps API key)
+        run: echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" >> $GITHUB_ENV
 
       - name: 📦 Cache Expo
         uses: actions/cache@v4

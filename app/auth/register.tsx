@@ -1,17 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-  Animated,
-  Dimensions,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image, Animated, Dimensions, BackHandler } from "react-native";
+import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -26,8 +15,10 @@ import {
   ArrowLeft,
   User,
   CheckCircle,
+  Headphones,
 } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/CustomAlert";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
@@ -65,6 +56,7 @@ export default function RegisterScreen() {
     user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const isRTL = i18n.language === "ar";
 
   useEffect(() => {
@@ -72,6 +64,15 @@ export default function RegisterScreen() {
       router.replace("/auth/verify-email");
     }
   }, [isAuthenticated, mustVerify]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.replace("/choose-action");
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -255,6 +256,32 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
+            <TouchableOpacity
+              style={[
+                styles.backIconBtn,
+                {
+                  top: insets.top + 12,
+                  [isRTL ? "right" : "left"]: 20,
+                },
+              ]}
+              onPress={() => router.replace("/choose-action")}
+              accessibilityLabel={t("common.back")}
+            >
+              <ArrowLeft size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.supportIconBtn,
+                {
+                  top: insets.top + 12,
+                  [isRTL ? "left" : "right"]: 20,
+                },
+              ]}
+              onPress={() => router.push("/contact")}
+              accessibilityLabel={t("contact.title")}
+            >
+              <Headphones size={24} color={colors.text} />
+            </TouchableOpacity>
             <Image
               source={require("@/assets/images/logo.png")}
               style={styles.logo}
@@ -716,6 +743,26 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     backgroundColor: "transparent",
     overflow: "hidden",
+  },
+  backIconBtn: {
+    position: "absolute",
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  supportIconBtn: {
+    position: "absolute",
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   stepContainer: {
     width: "100%",

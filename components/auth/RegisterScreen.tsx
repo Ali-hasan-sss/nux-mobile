@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from "react-native";
+import { Text } from "@/components/AppText";
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store/store';
 import { registerUser, clearError } from '../../store/slices/authSlice';
@@ -263,7 +253,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f0f0f0',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -305,7 +295,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
   },
   inputIcon: {
     marginLeft: 12,
@@ -317,6 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
     textAlign: 'right',
+    backgroundColor: 'transparent',
   },
   passwordInput: {
     paddingRight: 50,

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import { Text } from "@/components/AppText";
 import { Camera } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { router } from "expo-router";

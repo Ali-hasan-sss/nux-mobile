@@ -1,12 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  TouchableOpacity,
-} from "react-native";
+import { View, StyleSheet, Animated, Dimensions, TouchableOpacity } from "react-native";
+import { Text } from "@/components/AppText";
 import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

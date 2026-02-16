@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Text } from "@/components/AppText";
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '../../store/store';
-import { loginUser, clearError } from '../../store/slices/authSlice';
+import { loginUser, clearError, RESTAURANT_OWNER_NOT_ALLOWED } from '../../store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 
 interface LoginScreenProps {
@@ -23,6 +15,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onNavigateToRegister,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useTranslation();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
   const [email, setEmail] = useState('');
@@ -39,7 +32,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       await dispatch(loginUser({ email: email.trim(), password })).unwrap();
       console.log('✅ Login successful, user will be redirected');
     } catch (error: any) {
-      Alert.alert('خطأ في تسجيل الدخول', error);
+      const msg =
+        error === RESTAURANT_OWNER_NOT_ALLOWED
+          ? t('auth.restaurantOwnerNotAllowed')
+          : (error?.message ?? error);
+      Alert.alert(t('common.error') || 'خطأ', msg);
     }
   };
 
@@ -172,7 +169,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f0f0f0',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -214,7 +211,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
   },
   inputIcon: {
     marginLeft: 12,
@@ -226,6 +223,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
     textAlign: 'right',
+    backgroundColor: 'transparent',
   },
   passwordInput: {
     paddingRight: 50,

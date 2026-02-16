@@ -1,12 +1,6 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Animated,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, Animated } from "react-native";
+import { Text } from "@/components/AppText";
 import { useTheme } from "@/hooks/useTheme";
 import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";

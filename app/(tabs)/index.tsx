@@ -1,11 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
@@ -38,7 +33,8 @@ const TAB_BAR_HEIGHT = 88;
 /** الشاشة الرئيسية - للتطبيق المخصص للعميل فقط (لا عرض لصاحب المطعم) */
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const fabBottom = insets.bottom + TAB_BAR_HEIGHT + 12;
@@ -135,10 +131,10 @@ export default function HomeScreen() {
                     style={styles.primaryButtonIcon}
                   />
                   <View style={styles.buttonTextContainer}>
-                    <Text style={styles.primaryButtonText} numberOfLines={1}>
+                    <Text style={[styles.primaryButtonText, font]} numberOfLines={1}>
                       {t("home.scanCode")}
                     </Text>
-                    <Text style={styles.primaryButtonDesc} numberOfLines={2}>
+                    <Text style={[styles.primaryButtonDesc, font]} numberOfLines={2}>
                       {t("home.scanCodeDesc")}
                     </Text>
                   </View>
@@ -156,11 +152,11 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.errorTitle, { color: colors.error }]}>
+                  <Text style={[styles.errorTitle, { color: colors.error }, font]}>
                     {t("home.errorLoadingData")}
                   </Text>
                   <Text
-                    style={[styles.errorDesc, { color: colors.textSecondary }]}
+                    style={[styles.errorDesc, { color: colors.textSecondary }, font]}
                   >
                     {error.balances}
                   </Text>
@@ -171,7 +167,7 @@ export default function HomeScreen() {
                     ]}
                     onPress={loadBalances}
                   >
-                    <Text style={styles.retryButtonText}>
+                    <Text style={[styles.retryButtonText, font]}>
                       {t("home.retry")}
                     </Text>
                   </TouchableOpacity>
@@ -224,13 +220,14 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
+                  <Text style={[styles.noBalanceTitle, { color: colors.text }, font]}>
                     {t("home.noBalances")}
                   </Text>
                   <Text
                     style={[
                       styles.noBalanceDesc,
                       { color: colors.textSecondary },
+                      font,
                     ]}
                   >
                     {t("home.noBalancesDesc")}
@@ -296,6 +293,7 @@ export default function HomeScreen() {
                           ? colors.text
                           : colors.textSecondary,
                       },
+                      font,
                     ]}
                   >
                     {selectedRestaurant
@@ -323,7 +321,7 @@ export default function HomeScreen() {
                 activeOpacity={0.85}
               >
                 <Search size={22} color="#fff" style={styles.exploreButtonIcon} />
-                <Text style={styles.exploreButtonText}>
+                <Text style={[styles.exploreButtonText, font]}>
                   {t("home.exploreRestaurants")}
                 </Text>
               </TouchableOpacity>
@@ -417,8 +415,8 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 17,
-    fontWeight: "bold",
     color: "white",
+    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
   },
   primaryButtonDesc: {
     fontSize: 13,
@@ -480,8 +478,8 @@ const styles = StyleSheet.create({
   exploreButtonIcon: {},
   exploreButtonText: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#fff",
+    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
   },
   paymentButton: {
     padding: 16,

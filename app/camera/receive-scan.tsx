@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { Text } from "@/components/AppText";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useTranslation } from "react-i18next";
 import { X, CheckCircle, XCircle } from "lucide-react-native";

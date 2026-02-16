@@ -1,12 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Image,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, Image } from "react-native";
+import { Text } from "@/components/AppText";
 import { Bell, Menu } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/hooks/useTheme";

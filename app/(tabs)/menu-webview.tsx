@@ -1,19 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Image,
-  useWindowDimensions,
-  RefreshControl,
-  Modal,
-  TextInput,
-  FlatList,
-  BackHandler,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, useWindowDimensions, RefreshControl, Modal, TextInput, FlatList, BackHandler } from "react-native";
+import { Text } from "@/components/AppText";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/useTheme";

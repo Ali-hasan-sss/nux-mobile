@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -12,6 +11,8 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { I18nManager } from "react-native";
+import { useRouter } from "expo-router";
+import { Text } from "@/components/AppText";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "@/store/store";
 import { useTranslation } from "react-i18next";
@@ -21,6 +22,7 @@ import {
   FileText,
   Shield,
   Info,
+  MessageCircle,
   X,
   Moon,
   Sun,
@@ -33,6 +35,7 @@ import { setTheme } from "@/store/slices/themeSlice";
 import { useTheme } from "@/hooks/useTheme";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
+import { AboutAppModal } from "@/components/AboutAppModal";
 
 interface DrawerMenuProps {
   onClose: () => void;
@@ -40,11 +43,18 @@ interface DrawerMenuProps {
 
 export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { t, i18n } = useTranslation();
   const { colors, mode } = useTheme();
   const { currentLanguage } = useSelector((state: RootState) => state.language);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [aboutModalVisible, setAboutModalVisible] = useState(false);
+
+  const handleContactUs = () => {
+    onClose();
+    router.push("/contact");
+  };
 
   const slideX = useRef(new Animated.Value(-300)).current;
 
@@ -98,20 +108,15 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
         ]}
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.title, { color: colors.text }]}>Menu</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t("drawer.title")}
+          </Text>
           <TouchableOpacity onPress={handleCloseAnimated}>
             <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Settings size={20} color={colors.primary} />
-            <Text style={[styles.menuText, { color: colors.text }]}>
-              {t("drawer.accountSettings")}
-            </Text>
-          </TouchableOpacity>
-
           <View style={styles.section}>
             <View style={styles.menuItem}>
               <Globe size={20} color={colors.primary} />
@@ -188,7 +193,7 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
                     ]}
                     onPress={() =>
                       handleThemeChange(
-                        theme.code as "light" | "dark" | "system"
+                        theme.code as "light" | "dark" | "system",
                       )
                     }
                   >
@@ -233,10 +238,20 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => setAboutModalVisible(true)}
+          >
             <Info size={20} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>
               {t("drawer.aboutApp")}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleContactUs}>
+            <MessageCircle size={20} color={colors.primary} />
+            <Text style={[styles.menuText, { color: colors.text }]}>
+              {t("drawer.contactUs")}
             </Text>
           </TouchableOpacity>
 
@@ -256,6 +271,11 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
         <TermsOfUseModal
           visible={termsModalVisible}
           onClose={() => setTermsModalVisible(false)}
+        />
+
+        <AboutAppModal
+          visible={aboutModalVisible}
+          onClose={() => setAboutModalVisible(false)}
         />
       </Animated.View>
     </View>

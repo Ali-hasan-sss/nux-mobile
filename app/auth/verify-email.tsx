@@ -1,15 +1,6 @@
 import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image } from "react-native";
+import { Text } from "@/components/AppText";
 import { router, useLocalSearchParams } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -42,38 +33,48 @@ export default function VerifyEmailScreen() {
   const codeInputRefs = useRef<(TextInput | null)[]>([]);
 
   const handleCodeChange = (index: number, value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (numericValue.length > 1) {
-      const chars = numericValue.slice(0, CODE_LENGTH).split("");
-      const newCode = [...code];
-      let startIndex = index;
-      for (let i = 0; i < index; i++) {
-        if (newCode[i] === "") {
-          startIndex = i;
-          break;
-        }
-      }
-      chars.forEach((char, idx) => {
-        const targetIndex = startIndex + idx;
-        if (targetIndex < CODE_LENGTH) newCode[targetIndex] = char;
+    const digits = value.replace(/[^0-9]/g, "");
+    if (digits.length > 1) {
+      const chars = digits.slice(0, CODE_LENGTH).split("");
+      const newCode = Array(CODE_LENGTH).fill("");
+      chars.forEach((c, i) => {
+        newCode[i] = c;
       });
       setCode(newCode);
-      const nextEmpty = newCode.findIndex((val, idx) => idx >= startIndex && val === "");
-      const focusIndex = nextEmpty !== -1 ? nextEmpty : Math.min(startIndex + chars.length, CODE_LENGTH - 1);
-      codeInputRefs.current[focusIndex]?.focus();
-    } else {
+      const nextFocus = chars.length >= CODE_LENGTH ? CODE_LENGTH - 1 : chars.length;
+      requestAnimationFrame(() => {
+        codeInputRefs.current[nextFocus]?.focus();
+      });
+      return;
+    }
+    if (digits.length === 1) {
       const newCode = [...code];
-      newCode[index] = numericValue;
+      newCode[index] = digits;
       setCode(newCode);
-      if (numericValue !== "" && index < CODE_LENGTH - 1) {
-        codeInputRefs.current[index + 1]?.focus();
+      if (index < CODE_LENGTH - 1) {
+        requestAnimationFrame(() => {
+          codeInputRefs.current[index + 1]?.focus();
+        });
+      }
+      return;
+    }
+    if (value === "") {
+      const newCode = [...code];
+      newCode[index] = "";
+      setCode(newCode);
+      if (index > 0) {
+        requestAnimationFrame(() => {
+          codeInputRefs.current[index - 1]?.focus();
+        });
       }
     }
   };
 
   const handleCodeKeyPress = (index: number, key: string) => {
     if (key === "Backspace" && code[index] === "" && index > 0) {
-      codeInputRefs.current[index - 1]?.focus();
+      requestAnimationFrame(() => {
+        codeInputRefs.current[index - 1]?.focus();
+      });
     }
   };
 
@@ -193,7 +194,7 @@ export default function VerifyEmailScreen() {
                 </View>
               ) : null}
 
-              <View style={[styles.codeRow, isRTL && styles.codeRowRTL]}>
+              <View style={[styles.codeRow, styles.codeRowLTR]}>
                 {code.map((digit, index) => (
                   <TextInput
                     key={index}
@@ -204,6 +205,8 @@ export default function VerifyEmailScreen() {
                         color: colors.text,
                         borderColor: colors.border,
                         backgroundColor: (colors as any).inputBackground ?? colors.surface,
+                        writingDirection: "ltr",
+                        textAlign: "center",
                       },
                     ]}
                     value={digit}
@@ -330,8 +333,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 24,
   },
-  codeRowRTL: {
-    flexDirection: "row-reverse",
+  codeRowLTR: {
+    flexDirection: "row",
   },
   codeInput: {
     width: 44,

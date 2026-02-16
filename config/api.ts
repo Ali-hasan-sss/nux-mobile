@@ -37,6 +37,9 @@ export const API_CONFIG = {
     ORDERS: {
       CREATE: "/customer/orders",
     },
+    CONTACT: {
+      SEND: "/contact",
+    },
   },
 
   // Timeouts

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { Provider, useSelector } from "react-redux";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { store, RootState } from "@/store/store";
@@ -15,6 +16,9 @@ import "react-native-gesture-handler";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
+// Arabic: Cairo. Other languages: Poppins
+import { Cairo_400Regular } from "@expo-google-fonts/cairo/400Regular";
+import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -35,15 +39,18 @@ if (typeof global !== "undefined") {
 
 export default function RootLayout() {
   const isFrameworkReady = useFrameworkReady();
+  const [fontsLoaded, fontError] = useFonts({
+    Cairo_400Regular,
+    Poppins_400Regular,
+  });
 
   useEffect(() => {
-    if (isFrameworkReady) {
-      // Hide splash screen when app is ready
+    if (isFrameworkReady && (fontsLoaded || fontError)) {
       SplashScreen.hideAsync();
     }
-  }, [isFrameworkReady]);
+  }, [isFrameworkReady, fontsLoaded, fontError]);
 
-  if (!isFrameworkReady) {
+  if (!isFrameworkReady || (!fontsLoaded && !fontError)) {
     return null;
   }
 
@@ -124,6 +131,14 @@ export default function RootLayout() {
                         options={{
                           headerShown: false,
                           contentStyle: { backgroundColor: "transparent" },
+                        }}
+                      />
+                      <Stack.Screen
+                        name="contact"
+                        options={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "card",
                         }}
                       />
                       <Stack.Screen

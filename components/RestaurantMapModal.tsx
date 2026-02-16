@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Platform,
-  Alert,
-  Linking,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, Platform, Alert, Linking } from "react-native";
+import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { X, MapPin } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";

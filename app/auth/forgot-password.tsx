@@ -1,15 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image } from "react-native";
+import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Mail, Loader2 } from "lucide-react-native";

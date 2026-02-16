@@ -1,15 +1,12 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text } from "@/components/AppText";
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
+
+const TAB_BAR_HEIGHT = 80;
 
 interface TermsOfUseModalProps {
   visible: boolean;
@@ -19,6 +16,9 @@ interface TermsOfUseModalProps {
 export function TermsOfUseModal({ visible, onClose }: TermsOfUseModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const p = (key: string) => t(`legal.terms.${key}`);
+  const contentBottomPadding = insets.bottom + TAB_BAR_HEIGHT;
 
   return (
     <Modal
@@ -37,61 +37,72 @@ export function TermsOfUseModal({ visible, onClose }: TermsOfUseModalProps) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: contentBottomPadding }}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Terms of Use
+            {p('title')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            Welcome to our loyalty rewards application. By using our service, you agree to comply with and be bound by the following terms and conditions.
+            {p('intro')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Acceptance of Terms
+            {p('aboutApp')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            By accessing and using this application, you accept and agree to be bound by the terms and provision of this agreement.
+            {p('aboutAppContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Use License
+            {p('acceptanceOfTerms')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            Permission is granted to temporarily use this application for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.
+            {p('acceptanceOfTermsContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            User Account
+            {p('useLicense')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            You are responsible for safeguarding the password and for maintaining the confidentiality of your account. You agree not to disclose your password to any third party.
+            {p('useLicenseContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Loyalty Points
+            {p('userAccount')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            Loyalty points earned through this application have no cash value and cannot be transferred or sold. Points may expire according to the terms set by participating restaurants.
+            {p('userAccountContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Prohibited Uses
+            {p('loyaltyPoints')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            You may not use our service for any unlawful purpose, to violate any laws, to infringe upon intellectual property rights, or to transmit any harmful or malicious code.
+            {p('loyaltyPointsContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Limitation of Liability
+            {p('prohibitedUses')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            In no event shall the company be liable for any damages arising out of the use or inability to use the materials on this application.
+            {p('prohibitedUsesContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Contact Information
+            {p('limitationOfLiability')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            If you have any questions about these Terms of Use, please contact us at terms@loyaltyapp.com
+            {p('limitationOfLiabilityContent')}
+          </Text>
+
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {p('contactInformation')}
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            {p('contactInformationContent')}
           </Text>
         </ScrollView>
       </View>

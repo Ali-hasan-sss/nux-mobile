@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Platform,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Platform } from "react-native";
+import { Text } from "@/components/AppText";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { useSelector, useDispatch } from "react-redux";
@@ -35,7 +27,10 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAlert } from "@/contexts/AlertContext";
 export default function AccountScreen() {
   const { t } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
+  const titleStyle = { color: colors.text, fontFamily: defaultFontFamily, fontWeight: "400" as const };
+  const sectionTitleStyle = { color: colors.text, fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const { showToast, showAlert } = useAlert();
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
@@ -146,9 +141,25 @@ export default function AccountScreen() {
         return;
       }
 
-      if (newPassword.length < 6) {
+      if (newPassword.length < 8) {
         showToast({
           message: t("auth.passwordMinLength"),
+          type: "error",
+        });
+        return;
+      }
+
+      if (!/[A-Z]/.test(newPassword)) {
+        showToast({
+          message: t("auth.passwordRequiresUppercase"),
+          type: "error",
+        });
+        return;
+      }
+
+      if (!/\d/.test(newPassword)) {
+        showToast({
+          message: t("auth.passwordRequiresNumber"),
           type: "error",
         });
         return;
@@ -262,21 +273,21 @@ export default function AccountScreen() {
         ]}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, titleStyle]}>
             {t("account.title")}
           </Text>
         </View>
 
         <View style={styles.content}>
           <View style={[styles.section, { backgroundColor: sectionBg }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            <Text style={[styles.sectionTitle, sectionTitleStyle]}>
               {t("account.profile")}
             </Text>
 
             <View style={styles.inputGroup}>
               <User size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.name")}
                 placeholderTextColor={colors.textSecondary}
                 value={name}
@@ -287,7 +298,7 @@ export default function AccountScreen() {
             <View style={styles.inputGroup}>
               <Mail size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.email")}
                 placeholderTextColor={colors.textSecondary}
                 value={email}
@@ -299,7 +310,7 @@ export default function AccountScreen() {
             <View style={styles.inputGroup}>
               <Phone size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.phone")}
                 placeholderTextColor={colors.textSecondary}
                 value={phone}
@@ -331,22 +342,22 @@ export default function AccountScreen() {
                 ) : (
                   <Save size={20} color="white" />
                 )}
-                <Text style={styles.saveButtonText}>
-                  {updateLoading ? "Saving..." : t("account.save")}
+                <Text style={[styles.saveButtonText, font]}>
+                  {updateLoading ? t("account.saving") : t("account.save")}
                 </Text>
               </TouchableOpacity>
             </LinearGradient>
           </View>
 
           <View style={[styles.section, { backgroundColor: sectionBg }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            <Text style={[styles.sectionTitle, sectionTitleStyle]}>
               {t("account.updatePassword")}
             </Text>
 
             <View style={styles.inputGroup}>
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.currentPassword")}
                 placeholderTextColor={colors.textSecondary}
                 value={currentPassword}
@@ -369,7 +380,7 @@ export default function AccountScreen() {
             <View style={styles.inputGroup}>
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.newPassword")}
                 placeholderTextColor={colors.textSecondary}
                 value={newPassword}
@@ -392,7 +403,7 @@ export default function AccountScreen() {
             <View style={styles.inputGroup}>
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.confirmNewPassword")}
                 placeholderTextColor={colors.textSecondary}
                 value={confirmNewPassword}
@@ -435,9 +446,9 @@ export default function AccountScreen() {
                 ) : (
                   <Lock size={20} color="white" />
                 )}
-                <Text style={styles.saveButtonText}>
+                <Text style={[styles.saveButtonText, font]}>
                   {passwordChangeLoading
-                    ? "Updating..."
+                    ? t("account.updating")
                     : t("account.updatePassword")}
                 </Text>
               </TouchableOpacity>
@@ -445,11 +456,11 @@ export default function AccountScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: sectionBg }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={[styles.sectionTitle, sectionTitleStyle]}>
                 {t("account.myQRCode")}
               </Text>
               <Text
-                style={[styles.qrDescription, { color: colors.textSecondary }]}
+                style={[styles.qrDescription, { color: colors.textSecondary }, font]}
               >
                 {t("account.qrCodeDesc")}
               </Text>
@@ -471,11 +482,11 @@ export default function AccountScreen() {
                         />
                         <View style={styles.qrUserInfo}>
                           {profile.fullName && (
-                            <Text style={styles.qrShareName}>
+                            <Text style={[styles.qrShareName, font]}>
                               {profile.fullName}
                             </Text>
                           )}
-                          <Text style={styles.qrShareEmail}>
+                          <Text style={[styles.qrShareEmail, font]}>
                             {auth.user?.email || profile.email}
                           </Text>
                         </View>
@@ -493,6 +504,7 @@ export default function AccountScreen() {
                         style={[
                           styles.shareButtonText,
                           { color: colors.primary },
+                          font,
                         ]}
                       >
                         {t("account.shareCode")}
@@ -510,9 +522,10 @@ export default function AccountScreen() {
                       style={[
                         styles.qrPlaceholderText,
                         { color: colors.textSecondary },
+                        font,
                       ]}
                     >
-                      {isLoading ? "Loading..." : "No QR Code Available"}
+                      {isLoading ? t("account.loadingQR") : t("account.noQRCodeAvailable")}
                     </Text>
                   </View>
                 )}
@@ -521,23 +534,23 @@ export default function AccountScreen() {
 
           {/* Delete Account Section */}
           <View style={[styles.section, { backgroundColor: sectionBg }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Danger Zone
+            <Text style={[styles.sectionTitle, sectionTitleStyle]}>
+              {t("account.dangerZone")}
             </Text>
             <Text
               style={[
                 styles.dangerDescription,
                 { color: colors.textSecondary },
+                font,
               ]}
             >
-              Once you delete your account, there is no going back. Please be
-              certain.
+              {t("account.dangerZoneDescription")}
             </Text>
 
             <View style={styles.inputGroup}>
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: colors.text }, font]}
                 placeholder={t("account.enterPasswordConfirmDelete", "Enter your password to confirm deletion")}
                 placeholderTextColor={colors.textSecondary}
                 value={deletePassword}
@@ -573,8 +586,8 @@ export default function AccountScreen() {
               ) : (
                 <Trash2 size={20} color="white" />
               )}
-              <Text style={styles.deleteButtonText}>
-                {deleteLoading ? "Deleting..." : "Delete Account"}
+              <Text style={[styles.deleteButtonText, font]}>
+                {deleteLoading ? t("account.deletingAccount") : t("account.deleteAccount")}
               </Text>
             </TouchableOpacity>
           </View>

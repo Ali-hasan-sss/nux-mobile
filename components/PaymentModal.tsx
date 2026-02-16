@@ -1,30 +1,13 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  I18nManager,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import { Text } from "@/components/AppText";
 import {
   GestureHandlerRootView,
   ScrollView,
 } from "react-native-gesture-handler";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
-import {
-  Coffee,
-  UtensilsCrossed,
-  Wallet,
-  ArrowRight,
-  X,
-} from "lucide-react-native";
+import { Coffee, UtensilsCrossed, Wallet } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { updateRestaurantBalance } from "@/store/slices/restaurantSlice";
 import { processPayment } from "@/store/slices/balanceSlice";
@@ -264,27 +247,17 @@ export function PaymentModal({
 
   const translateX = useSharedValue(0);
 
+  // Swipe to pay: always left-to-right (LTR), regardless of app language/RTL
   const panGesture = Gesture.Pan()
     .enabled(!isProcessing)
     .onUpdate((event) => {
       const max = 220;
-      if (I18nManager.isRTL) {
-        // Drag to left (negative). Clamp to [-max, 0]
-        const delta = Math.min(0, event.translationX);
-        const magnitude = Math.min(Math.abs(delta), max);
-        translateX.value = -magnitude;
-      } else {
-        // Drag to right (positive). Clamp to [0, max]
-        const delta = Math.max(0, event.translationX);
-        translateX.value = Math.min(delta, max);
-      }
+      const delta = Math.max(0, event.translationX);
+      translateX.value = Math.min(delta, max);
     })
     .onEnd(() => {
       const threshold = 200;
-      const passed = I18nManager.isRTL
-        ? Math.abs(translateX.value) > threshold
-        : translateX.value > threshold;
-      if (passed) {
+      if (translateX.value > threshold) {
         runOnJS(handleSlideConfirm)();
       } else {
         translateX.value = withSpring(0);
@@ -442,18 +415,18 @@ export function PaymentModal({
                   },
                 ]}
               >
-                {/* أسهم الخلفية كدلالة سحب */}
+                {/* Arrow hints: always LTR (left-to-right swipe) — use Text so icons show in release build */}
                 <View style={styles.slideHints}>
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <ArrowRight
+                    <Text
                       key={index}
-                      size={18}
-                      color={colors.textSecondary}
-                      style={{
-                        marginHorizontal: 4,
-                        transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }],
-                      }}
-                    />
+                      style={[
+                        styles.slideHintArrow,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      →
+                    </Text>
                   ))}
                 </View>
 
@@ -467,18 +440,12 @@ export function PaymentModal({
                           ? colors.primary + "50"
                           : colors.primary,
                         opacity: isProcessing ? 0.5 : 1,
-                        // Anchor start position per direction
-                        ...(I18nManager.isRTL
-                          ? { right: 4, left: undefined }
-                          : { left: 4, right: undefined }),
+                        left: 4,
+                        right: undefined,
                       },
                     ]}
                   >
-                    <ArrowRight
-                      size={24}
-                      color="white"
-                      style={{ transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }}
-                    />
+                    <Text style={styles.slideButtonArrow}>→</Text>
                   </Animated.View>
                 </GestureDetector>
               </View>
@@ -491,9 +458,7 @@ export function PaymentModal({
                 onPress={isProcessing ? undefined : onClose}
                 disabled={isProcessing}
               >
-                <Text style={[styles.cancelButtonText, { color: colors.text }]}>
-                  <X size={24} color="white" />
-                </Text>
+                <Text style={styles.cancelButtonText}>×</Text>
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -606,6 +571,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
+  slideHintArrow: {
+    fontSize: 18,
+    marginHorizontal: 4,
+  },
+  slideButtonArrow: {
+    fontSize: 26,
+    color: "white",
+    fontWeight: "600",
+  },
   slideButton: {
     position: "absolute",
     left: 4,
@@ -675,7 +649,12 @@ const styles = StyleSheet.create({
     backgroundColor: "red",
   },
   cancelButtonText: {
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "300",
+    color: "white",
+    lineHeight: 32,
+    width: 32,
+    textAlign: "center",
+    ...(Platform.OS === "android" && { includeFontPadding: false }),
   },
 });

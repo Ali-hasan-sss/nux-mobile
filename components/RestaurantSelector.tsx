@@ -1,13 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  FlatList,
-  Image,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, FlatList, Image } from "react-native";
+import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Check, X, Store } from "lucide-react-native";
@@ -122,7 +115,8 @@ export function RestaurantSelector({
   onRestaurantChange,
 }: RestaurantSelectorProps) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const dispatch = useDispatch();
   const selectedRestaurant = useSelector(
     (state: RootState) => state.restaurant.selectedRestaurant
@@ -230,21 +224,21 @@ export function RestaurantSelector({
               );
             })()}
             <View style={styles.selectorContent}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Restaurant
+              <Text style={[styles.label, { color: colors.textSecondary }, font]}>
+                {t("home.restaurant")}
               </Text>
-              <Text style={[styles.selectedText, { color: colors.text }]}>
+              <Text style={[styles.selectedText, { color: colors.text }, font]}>
                 {selectedRestaurant.name}
               </Text>
             </View>
           </>
         ) : (
           <View style={styles.selectorContent}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Restaurant
+            <Text style={[styles.label, { color: colors.textSecondary }, font]}>
+              {t("home.restaurant")}
             </Text>
-            <Text style={[styles.selectedText, { color: colors.text }]}>
-              Select Restaurant
+            <Text style={[styles.selectedText, { color: colors.text }, font]}>
+              {t("home.selectRestaurant")}
             </Text>
           </View>
         )}
@@ -267,8 +261,8 @@ export function RestaurantSelector({
             <View
               style={[styles.modalHeader, { borderBottomColor: colors.border }]}
             >
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Select Restaurant
+              <Text style={[styles.modalTitle, { color: colors.text }, font]}>
+                {t("home.selectRestaurantTitle")}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <X size={24} color={colors.text} />
@@ -323,7 +317,7 @@ const styles = StyleSheet.create({
   },
   selectedText: {
     fontSize: 16,
-    fontWeight: "500",
+    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
   },
   modalOverlay: {
     flex: 1,
@@ -345,7 +339,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
   },
   restaurantList: {
     maxHeight: 400,

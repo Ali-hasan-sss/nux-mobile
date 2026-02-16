@@ -1,15 +1,12 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text } from "@/components/AppText";
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
+
+const TAB_BAR_HEIGHT = 80;
 
 interface PrivacyPolicyModalProps {
   visible: boolean;
@@ -19,6 +16,9 @@ interface PrivacyPolicyModalProps {
 export function PrivacyPolicyModal({ visible, onClose }: PrivacyPolicyModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const p = (key: string) => t(`legal.privacy.${key}`);
+  const contentBottomPadding = insets.bottom + TAB_BAR_HEIGHT;
 
   return (
     <Modal
@@ -37,47 +37,58 @@ export function PrivacyPolicyModal({ visible, onClose }: PrivacyPolicyModalProps
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: contentBottomPadding }}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Privacy Policy
+            {p('title')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            This Privacy Policy describes how we collect, use, and protect your personal information when you use our loyalty rewards application.
+            {p('intro')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Information We Collect
+            {p('aboutApp')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We collect information you provide directly to us, such as when you create an account, make purchases, or contact us for support. This may include your name, email address, phone number, and payment information.
+            {p('aboutAppContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            How We Use Your Information
+            {p('informationWeCollect')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and communicate with you about products, services, and promotional offers.
+            {p('informationWeCollectContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Information Sharing
+            {p('howWeUse')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy or as required by law.
+            {p('howWeUseContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Data Security
+            {p('informationSharing')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+            {p('informationSharingContent')}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Contact Us
+            {p('dataSecurity')}
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            If you have any questions about this Privacy Policy, please contact us at privacy@loyaltyapp.com
+            {p('dataSecurityContent')}
+          </Text>
+
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {p('contactUs')}
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            {p('contactUsContent')}
           </Text>
         </ScrollView>
       </View>

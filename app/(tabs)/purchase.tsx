@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  FlatList,
-  Platform,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, ScrollView, Alert, FlatList, Platform } from "react-native";
+import { Text } from "@/components/AppText";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "react-i18next";
@@ -46,7 +38,8 @@ export default function PurchaseScreen() {
   const { t } = useTranslation();
   const { showToast } = useAlert();
   const dispatch = useDispatch();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const auth = useSelector((state: RootState) => state.auth);
   const { profile, fetchProfile } = useProfile();
   const selectedRestaurant = useSelector(
@@ -162,7 +155,7 @@ export default function PurchaseScreen() {
     <>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.text }, font]}>
             {t("purchase.title")}
           </Text>
         </View>
@@ -177,17 +170,17 @@ export default function PurchaseScreen() {
               },
             ]}
           >
-            <Text style={[styles.errorTitle, { color: colors.error }]}>
+            <Text style={[styles.errorTitle, { color: colors.error }, font]}>
               {t("home.errorLoadingData")}
             </Text>
-            <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>
+            <Text style={[styles.errorDesc, { color: colors.textSecondary }, font]}>
               {error.balances}
             </Text>
             <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: colors.error }]}
               onPress={loadBalances}
             >
-              <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
+              <Text style={[styles.retryButtonText, font]}>{t("home.retry")}</Text>
             </TouchableOpacity>
           </View>
         ) : restaurantsWithBalances.length > 0 ? (
@@ -199,11 +192,11 @@ export default function PurchaseScreen() {
           <View
             style={[styles.noBalanceCard, { backgroundColor: cardBg }]}
           >
-            <Text style={[styles.noBalanceTitle, { color: colors.text }]}>
+            <Text style={[styles.noBalanceTitle, { color: colors.text }, font]}>
               {t("home.noBalances")}
             </Text>
             <Text
-              style={[styles.noBalanceDesc, { color: colors.textSecondary }]}
+              style={[styles.noBalanceDesc, { color: colors.textSecondary }, font]}
             >
               {t("home.noBalancesDesc")}
             </Text>
@@ -242,11 +235,12 @@ export default function PurchaseScreen() {
                     style={[
                       styles.balanceLabel,
                       { color: colors.textSecondary },
+                      font,
                     ]}
                   >
                     {t("purchase.mealPoints")}
                   </Text>
-                  <Text style={[styles.balanceValue, { color: colors.text }]}>
+                  <Text style={[styles.balanceValue, { color: colors.text }, font]}>
                     {currentBalance.mealPoints}
                   </Text>
                 </View>
@@ -273,11 +267,12 @@ export default function PurchaseScreen() {
                     style={[
                       styles.balanceLabel,
                       { color: colors.textSecondary },
+                      font,
                     ]}
                   >
                     {t("purchase.drinkPoints")}
                   </Text>
-                  <Text style={[styles.balanceValue, { color: colors.text }]}>
+                  <Text style={[styles.balanceValue, { color: colors.text }, font]}>
                     {currentBalance.drinkPoints}
                   </Text>
                 </View>
@@ -299,11 +294,12 @@ export default function PurchaseScreen() {
                     style={[
                       styles.balanceLabel,
                       { color: colors.textSecondary },
+                      font,
                     ]}
                   >
                     {t("purchase.walletBalance")}
                   </Text>
-                  <Text style={[styles.walletValue, { color: colors.text }]}>
+                  <Text style={[styles.walletValue, { color: colors.text }, font]}>
                     ${currentBalance.walletBalance.toFixed(2)}
                   </Text>
                 </View>
@@ -323,13 +319,14 @@ export default function PurchaseScreen() {
               <CreditCard size={32} color={colors.primary} />
             </View>
             <View style={styles.cardContent}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>
+              <Text style={[styles.cardTitle, { color: colors.text }, font]}>
                 {t("purchase.recharge")}
               </Text>
               <Text
                 style={[
                   styles.cardDescription,
                   { color: colors.textSecondary },
+                  font,
                 ]}
               >
                 {t("purchase.rechargeDesc")}
@@ -350,13 +347,14 @@ export default function PurchaseScreen() {
               <Gift size={32} color={colors.secondary} />
             </View>
             <View style={styles.cardContent}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>
+              <Text style={[styles.cardTitle, { color: colors.text }, font]}>
                 {t("purchase.gift")}
               </Text>
               <Text
                 style={[
                   styles.cardDescription,
                   { color: colors.textSecondary },
+                  font,
                 ]}
               >
                 {t("purchase.giftDesc")}
@@ -384,7 +382,7 @@ export default function PurchaseScreen() {
                   { backgroundColor: cardBg },
                 ]}
               >
-                <Text style={[styles.qrCardTitle, { color: colors.text }]}>
+                <Text style={[styles.qrCardTitle, { color: colors.text }, font]}>
                   {t("account.myQRCode")}
                 </Text>
               </View>
@@ -392,6 +390,7 @@ export default function PurchaseScreen() {
                 style={[
                   styles.qrDescription,
                   { color: colors.textSecondary },
+                  font,
                 ]}
               >
                 {t("account.qrCodeDesc")}
@@ -413,11 +412,11 @@ export default function PurchaseScreen() {
                         />
                         <View style={styles.qrUserInfo}>
                           {profile.fullName && (
-                            <Text style={styles.qrShareName}>
+                            <Text style={[styles.qrShareName, font]}>
                               {profile.fullName}
                             </Text>
                           )}
-                          <Text style={styles.qrShareEmail}>
+                          <Text style={[styles.qrShareEmail, font]}>
                             {auth.user?.email || profile.email}
                           </Text>
                         </View>
@@ -435,6 +434,7 @@ export default function PurchaseScreen() {
                         style={[
                           styles.shareButtonText,
                           { color: colors.primary },
+                          font,
                         ]}
                       >
                         {t("account.shareCode")}

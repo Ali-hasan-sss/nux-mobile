@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { X, CreditCard, Star, Package } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";

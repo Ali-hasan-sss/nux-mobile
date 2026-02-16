@@ -34,27 +34,12 @@ export default function Index() {
             router.replace("/choose-action");
           }
         } else {
-          await AsyncStorage.setItem("user-language", "en");
-          setHasLanguage(true);
-          if (isAuthenticated) {
-            if (mustVerify) {
-              router.replace("/auth/verify-email");
-            } else {
-              router.replace("/(tabs)");
-            }
-          } else {
-            router.replace("/choose-action");
-          }
+          // أول فتح للتطبيق: لا نعيّن لغة افتراضية، نوجّه لشاشة اختيار اللغة
+          router.replace("/welcome");
         }
       } catch (error) {
         console.error("Error checking language:", error);
-        // Set default language to English on error
-        try {
-          await AsyncStorage.setItem("user-language", "en");
-        } catch (e) {
-          console.error("Error setting default language:", e);
-        }
-        router.replace("/choose-action");
+        router.replace("/welcome");
       } finally {
         setIsLoading(false);
       }

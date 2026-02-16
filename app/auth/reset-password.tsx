@@ -1,15 +1,6 @@
 import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image } from "react-native";
+import { Text } from "@/components/AppText";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react-native";
@@ -40,36 +31,48 @@ export default function ResetPasswordScreen() {
   const codeInputRefs = useRef<(TextInput | null)[]>([]);
 
   const handleCodeChange = (index: number, value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (numericValue.length > 1) {
-      // Paste: always fill from box 0, left to right
-      const chars = numericValue.slice(0, CODE_LENGTH).split("");
-      const newCode = [...code];
-      chars.forEach((char, idx) => {
-        if (idx < CODE_LENGTH) newCode[idx] = char;
+    const digits = value.replace(/[^0-9]/g, "");
+    if (digits.length > 1) {
+      const chars = digits.slice(0, CODE_LENGTH).split("");
+      const newCode = Array(CODE_LENGTH).fill("");
+      chars.forEach((c, i) => {
+        newCode[i] = c;
       });
       setCode(newCode);
-      const focusIndex =
-        chars.length >= CODE_LENGTH
-          ? CODE_LENGTH - 1
-          : Math.min(chars.length, CODE_LENGTH - 1);
-      setTimeout(
-        () => codeInputRefs.current[focusIndex]?.focus(),
-        0
-      );
-    } else {
+      const nextFocus = chars.length >= CODE_LENGTH ? CODE_LENGTH - 1 : chars.length;
+      requestAnimationFrame(() => {
+        codeInputRefs.current[nextFocus]?.focus();
+      });
+      return;
+    }
+    if (digits.length === 1) {
       const newCode = [...code];
-      newCode[index] = numericValue;
+      newCode[index] = digits;
       setCode(newCode);
-      if (numericValue !== "" && index < CODE_LENGTH - 1) {
-        codeInputRefs.current[index + 1]?.focus();
+      if (index < CODE_LENGTH - 1) {
+        requestAnimationFrame(() => {
+          codeInputRefs.current[index + 1]?.focus();
+        });
+      }
+      return;
+    }
+    if (value === "") {
+      const newCode = [...code];
+      newCode[index] = "";
+      setCode(newCode);
+      if (index > 0) {
+        requestAnimationFrame(() => {
+          codeInputRefs.current[index - 1]?.focus();
+        });
       }
     }
   };
 
   const handleCodeKeyPress = (index: number, key: string) => {
     if (key === "Backspace" && code[index] === "" && index > 0) {
-      codeInputRefs.current[index - 1]?.focus();
+      requestAnimationFrame(() => {
+        codeInputRefs.current[index - 1]?.focus();
+      });
     }
   };
 
@@ -219,8 +222,7 @@ export default function ResetPasswordScreen() {
               </View>
 
               <View style={[styles.codeRow, styles.codeRowLTR]}>
-                {(isRTL ? [5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5]).map(
-                  (index) => (
+                {[0, 1, 2, 3, 4, 5].map((index) => (
                     <TextInput
                       key={index}
                       ref={(el) => {
@@ -245,8 +247,7 @@ export default function ResetPasswordScreen() {
                       maxLength={6}
                       selectTextOnFocus
                     />
-                  )
-                )}
+                ))}
               </View>
 
               <View

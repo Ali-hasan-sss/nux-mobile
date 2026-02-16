@@ -55,9 +55,7 @@
     "android": {
       "package": "com.lolity.app",
       "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyAQLryLiSJFySJZjjNxgsYIvBe1FrXwu2Y"
-        }
+        "googleMaps": {}
       },
       "versionCode": 1,
       "icon": "./assets/icon.png",

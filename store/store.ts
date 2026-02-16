@@ -8,10 +8,6 @@ import restaurantSlice from "./slices/restaurantSlice";
 import profileSlice from "./slices/profileSlice";
 import notificationReducer from "./slices/notificationSlice";
 import adsReducer from "./slices/adsSlice";
-import restaurantQRReducer from "./slices/restaurantQRSlice";
-import restaurantActivityReducer from "./slices/restaurantActivitySlice";
-import restaurantInfoReducer from "./slices/restaurantInfoSlice";
-import plansReducer from "./slices/plansSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,10 +20,6 @@ export const store = configureStore({
     profile: profileSlice.reducer,
     notifications: notificationReducer,
     ads: adsReducer,
-    restaurantQR: restaurantQRReducer,
-    restaurantActivity: restaurantActivityReducer,
-    restaurantInfo: restaurantInfoReducer,
-    plans: plansReducer,
   },
 });
 

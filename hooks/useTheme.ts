@@ -9,9 +9,17 @@ import {
   loadThemePreference,
 } from "@/store/slices/themeSlice";
 
+const FONT_ARABIC = "Cairo_400Regular";
+const FONT_DEFAULT = "Poppins_400Regular";
+
 export const useTheme = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { mode, isDark } = useSelector((state: RootState) => state.theme);
+  const currentLanguage = useSelector(
+    (state: RootState) => state.language.currentLanguage
+  );
+  const defaultFontFamily =
+    currentLanguage === "ar" ? FONT_ARABIC : FONT_DEFAULT;
 
   // Load theme preference on mount
   useEffect(() => {
@@ -40,5 +48,6 @@ export const useTheme = () => {
     colors: colorScheme,
     isDark,
     mode,
+    defaultFontFamily,
   };
 };

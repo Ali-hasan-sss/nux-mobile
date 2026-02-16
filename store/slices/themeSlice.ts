@@ -17,8 +17,8 @@ const getSystemIsDark = (): boolean => {
 
 // Initialize with default (will be updated when preference is loaded)
 const initialState: ThemeState = {
-  mode: "dark", // Default to dark
-  isDark: true, // Default to dark
+  mode: "system",
+  isDark: getSystemIsDark(),
 };
 
 const themeSlice = createSlice({
@@ -77,7 +77,7 @@ export const loadThemePreference = async (): Promise<ThemeMode> => {
   } catch (error) {
     console.warn("Failed to load theme preference:", error);
   }
-  return "dark"; // Default to dark
+  return "system"; // Default: follow system
 };
 
 export default themeSlice;

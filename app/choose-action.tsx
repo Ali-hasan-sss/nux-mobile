@@ -1,31 +1,60 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Animated,
-  Dimensions,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Image, Animated, Dimensions, Modal, Pressable } from "react-native";
+import { Text } from "@/components/AppText";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
 import { router, Redirect } from "expo-router";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/hooks/useTheme";
-import { UserPlus, LogIn } from "lucide-react-native";
-import { RootState } from "@/store/store";
+import { UserPlus, LogIn, Globe, Sun, Moon, Monitor } from "lucide-react-native";
+import { RootState, AppDispatch } from "@/store/store";
+import { setLanguage } from "@/store/slices/languageSlice";
+import { setTheme } from "@/store/slices/themeSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+const LANGUAGES = [
+  { code: "ar", label: "العربية" },
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+];
+
+type ThemeMode = "light" | "dark" | "system";
+const THEME_CYCLE: ThemeMode[] = ["system", "light", "dark"];
+
 export default function ChooseActionScreen() {
   const [slideAnim] = useState(new Animated.Value(SCREEN_WIDTH));
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
+  const dispatch = useDispatch<AppDispatch>();
+  const { colors, mode } = useTheme();
   const isRTL = i18n.language === "ar";
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  const currentLanguage = useSelector(
+    (state: RootState) => state.language.currentLanguage
+  );
+  const insets = useSafeAreaInsets();
+
+  const handleLanguageChange = async (language: string) => {
+    dispatch(setLanguage(language));
+    await i18n.changeLanguage(language);
+    await AsyncStorage.setItem("user-language", language);
+    setLanguageModalVisible(false);
+  };
+
+  const cycleTheme = () => {
+    const idx = THEME_CYCLE.indexOf(mode as ThemeMode);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    dispatch(setTheme(next));
+  };
+
+  const ThemeIcon =
+    mode === "light" ? Sun : mode === "dark" ? Moon : Monitor;
+  const themeIconSize = 24;
 
   useEffect(() => {
     // If user is authenticated, redirect to tabs
@@ -57,6 +86,94 @@ export default function ChooseActionScreen() {
 
   return (
     <View style={styles.container}>
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: "transparent",
+            paddingTop: insets.top,
+          },
+        ]}
+      >
+        <View style={[styles.topBarRow, isRTL && styles.topBarRowRTL]}>
+          <TouchableOpacity
+            onPress={() => setLanguageModalVisible(true)}
+            style={[styles.iconButton, { backgroundColor: colors.surface + "99" }]}
+            activeOpacity={0.7}
+          >
+            <Globe size={24} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={cycleTheme}
+            style={[styles.iconButton, { backgroundColor: colors.surface + "99" }]}
+            activeOpacity={0.7}
+          >
+            <ThemeIcon size={themeIconSize} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={[
+              styles.languageModalContent,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.languageModalTitle, { color: colors.text }]}>
+              {t("chooseAction.selectLanguage") || "Select Language"}
+            </Text>
+            {LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.languageOption,
+                  currentLanguage === lang.code && {
+                    backgroundColor: colors.primary + "30",
+                  },
+                ]}
+                onPress={() => handleLanguageChange(lang.code)}
+              >
+                <Text
+                  style={[
+                    styles.languageOptionText,
+                    {
+                      color:
+                        currentLanguage === lang.code
+                          ? colors.primary
+                          : colors.text,
+                    },
+                  ]}
+                >
+                  {lang.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.languageModalClose, { borderTopColor: colors.border }]}
+              onPress={() => setLanguageModalVisible(false)}
+            >
+              <Text style={[styles.languageModalCloseText, { color: colors.primary }]}>
+                {t("common.close") || "Close"}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Animated.View
         style={[
           styles.content,
@@ -248,5 +365,65 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 4,
     lineHeight: 16,
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  topBarRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  topBarRowRTL: {
+    flexDirection: "row-reverse",
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  languageModalContent: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  languageModalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingVertical: 16,
+  },
+  languageOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  languageOptionText: {
+    fontSize: 16,
+  },
+  languageModalClose: {
+    borderTopWidth: 1,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  languageModalCloseText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

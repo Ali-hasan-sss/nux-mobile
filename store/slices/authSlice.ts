@@ -19,12 +19,21 @@ const initialState: AuthState = {
   isAuthenticated: false,
 };
 
+/** Error code when login is rejected because user is a restaurant owner (app is customer-only). */
+export const RESTAURANT_OWNER_NOT_ALLOWED = "RESTAURANT_OWNER_NOT_ALLOWED";
+
 // Async thunks
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
+
+      // Customer app only: reject restaurant owners and do not store session
+      const role = (response.user?.role ?? "") as string;
+      if (String(role).toUpperCase() === "RESTAURANT_OWNER") {
+        return rejectWithValue(RESTAURANT_OWNER_NOT_ALLOWED);
+      }
 
       // Save to secure storage (customer app: no restaurant data)
       await CrossPlatformStorage.saveTokens(response.tokens);
@@ -64,38 +73,6 @@ export const registerUser = createAsyncThunk(
       console.error("❌ User registration error in slice:", error);
 
       let errorMessage = "Registration failed";
-
-      if (error.message?.includes("Network Error")) {
-        errorMessage = "Network Error - Please check your internet connection";
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      return rejectWithValue(errorMessage);
-    }
-  }
-);
-
-export const registerRestaurant = createAsyncThunk(
-  "auth/registerRestaurant",
-  async (restaurantData: RegisterRestaurantRequest, { rejectWithValue }) => {
-    try {
-      const response = await authService.registerRestaurant(restaurantData);
-
-      // Save to secure storage
-      await CrossPlatformStorage.saveTokens(response.tokens);
-      await CrossPlatformStorage.saveUser(response.user);
-      if (response.restaurant) {
-        await CrossPlatformStorage.saveRestaurant(response.restaurant);
-      }
-
-      return response;
-    } catch (error: any) {
-      console.error("❌ Restaurant registration error in slice:", error);
-
-      let errorMessage = "Restaurant registration failed";
 
       if (error.message?.includes("Network Error")) {
         errorMessage = "Network Error - Please check your internet connection";
@@ -282,34 +259,6 @@ const authSlice = createSlice({
         // Log the error for debugging
         console.error("❌ Register user rejected:", action.payload);
         console.log("⚠️ User registration failed");
-      });
-
-    // Register restaurant
-    builder
-      .addCase(registerRestaurant.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-        console.log("🔄 Registering restaurant...");
-        state.isAuthenticated = false;
-      })
-      .addCase(registerRestaurant.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload.user;
-        state.restaurant = action.payload.restaurant || null;
-        state.tokens = action.payload.tokens;
-        state.isAuthenticated = true;
-        state.error = null;
-        console.log("✅ Restaurant registration successful");
-        console.log("👤 User:", action.payload.user?.email);
-        console.log("🏪 Restaurant:", action.payload.restaurant?.name);
-      })
-      .addCase(registerRestaurant.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-        state.isAuthenticated = false;
-
-        // Log the error for debugging
-        console.error("❌ Register restaurant rejected:", action.payload);
       });
 
     // Logout

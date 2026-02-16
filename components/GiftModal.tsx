@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  Modal,
-  ActivityIndicator,
-  DeviceEventEmitter,
-  ScrollView,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, TextInput, Modal, ActivityIndicator, DeviceEventEmitter, ScrollView } from "react-native";
+import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -776,7 +767,7 @@ export default function GiftModal({
             <View style={styles.processingOverlay}>
               <View style={styles.processingContent}>
                 <ActivityIndicator size="large" color="#fff" />
-                <Text style={styles.processingText}>Sending gift...</Text>
+                <Text style={styles.processingText}>{t("purchase.sendingGift")}</Text>
               </View>
             </View>
           )}

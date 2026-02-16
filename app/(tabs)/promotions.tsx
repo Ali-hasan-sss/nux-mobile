@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-} from "react-native";
+import { View, StyleSheet, FlatList, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Animated } from "react-native";
+import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Search, Filter, MapPin, Plus } from "lucide-react-native";
@@ -119,7 +108,8 @@ function AdCardSkeleton({
 
 export default function PromotionsScreen() {
   const { t } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch<AppDispatch>();
   const listBottomPadding = insets.bottom + TAB_BAR_HEIGHT;
@@ -243,25 +233,26 @@ export default function PromotionsScreen() {
         <Image source={{ uri: imageUri }} style={styles.promotionImage} />
         <View style={styles.promotionContent}>
           <View style={styles.restaurantHeader}>
-            <Text style={[styles.restaurantName, { color: colors.primary }]}>
+            <Text style={[styles.restaurantName, { color: colors.primary }, font]}>
               {item.restaurant.name}
             </Text>
             <TouchableOpacity onPress={() => handleRestaurantLocation(item)}>
               <MapPin size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <Text style={[styles.promotionTitle, { color: colors.text }]}>
+          <Text style={[styles.promotionTitle, { color: colors.text }, font]}>
             {item.title}
           </Text>
           <Text
             style={[
               styles.promotionDescription,
               { color: colors.textSecondary },
+              font,
             ]}
           >
             {item.description}
           </Text>
-          <Text style={[styles.validUntil, { color: colors.textSecondary }]}>
+          <Text style={[styles.validUntil, { color: colors.textSecondary }, font]}>
             {new Date(item.createdAt).toLocaleDateString()}
           </Text>
         </View>
@@ -282,7 +273,7 @@ export default function PromotionsScreen() {
     if (loading) return null;
     return (
       <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }, font]}>
           {error || t("promotions.noPromotions")}
         </Text>
         {error && (
@@ -290,7 +281,7 @@ export default function PromotionsScreen() {
             style={[styles.retryButton, { backgroundColor: colors.primary }]}
             onPress={() => loadAds(1, false)}
           >
-            <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
+            <Text style={[styles.retryButtonText, font]}>{t("home.retry")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -303,7 +294,7 @@ export default function PromotionsScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.text }, font]}>
             {t("promotions.title")}
           </Text>
 
@@ -371,6 +362,7 @@ export default function PromotionsScreen() {
                               ? "white"
                               : colors.text,
                           },
+                          font,
                         ]}
                       >
                         {filterOpt.label}
@@ -386,7 +378,7 @@ export default function PromotionsScreen() {
                     ]}
                     onPress={() => setSelectedFilters([])}
                   >
-                    <Text style={styles.clearButtonText}>
+                    <Text style={[styles.clearButtonText, font]}>
                       {t("common.clear")}
                     </Text>
                   </TouchableOpacity>

@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  FlatList,
-  Image,
-  I18nManager,
-  ScrollView,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, TextInput, FlatList, Image, I18nManager, ScrollView } from "react-native";
+import { Text } from "@/components/AppText";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/useTheme";
@@ -23,7 +14,8 @@ type SortOption = "name" | "distance" | "newest";
 
 export default function ExploreRestaurantsScreen() {
   const { t, i18n } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily };
   const router = useRouter();
   const isRTL = i18n.language === "ar" || I18nManager.isRTL;
 
@@ -32,6 +24,9 @@ export default function ExploreRestaurantsScreen() {
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [list, setList] = useState<RestaurantListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [locationPermission, setLocationPermission] = useState<
     "granted" | "denied" | "pending"
@@ -49,61 +44,85 @@ export default function ExploreRestaurantsScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const loadRestaurants = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (sortBy === "distance") {
-        let coords = userCoords;
-        if (!coords) {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          setLocationPermission(status === "granted" ? "granted" : "denied");
-          if (status !== "granted") {
-            setError(t("exploreRestaurants.locationRequired"));
-            setList([]);
-            setLoading(false);
-            return;
-          }
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          coords = {
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          };
-          setUserCoords(coords);
-        }
-        const nearby = await getNearbyRestaurants({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          radius: 50,
-          limit: 50,
-        });
-        setList(nearby);
-      } else {
-        const res = await getRestaurants({
-          page: 1,
-          limit: 100,
-          search: debouncedSearch || undefined,
-        });
-        let items = res.restaurants || [];
-        if (sortBy === "name") {
-          items = [...items].sort((a, b) =>
-            (a.name || "").localeCompare(b.name || "", undefined, {
-              sensitivity: "base",
-            })
-          );
-        }
-        // newest: backend already returns createdAt desc
-        setList(items);
+  const PAGE_SIZE = 50;
+
+  const loadRestaurants = useCallback(
+    async (pageNum: number = 1, append: boolean = false) => {
+      if (!append) {
+        setLoading(true);
       }
-    } catch (e: any) {
-      setError(e?.message || t("exploreRestaurants.errorLoading"));
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [sortBy, debouncedSearch, userCoords, t]);
+      setError(null);
+      try {
+        if (sortBy === "distance") {
+          let coords = userCoords;
+          if (!coords) {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            setLocationPermission(status === "granted" ? "granted" : "denied");
+            if (status !== "granted") {
+              setError(t("exploreRestaurants.locationRequired"));
+              setList([]);
+              setLoading(false);
+              return;
+            }
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            coords = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            };
+            setUserCoords(coords);
+          }
+          const nearby = await getNearbyRestaurants({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            radius: 50,
+            limit: 50,
+          });
+          setList(nearby);
+          setPage(1);
+          setTotalPages(1);
+        } else {
+          const res = await getRestaurants({
+            page: pageNum,
+            limit: PAGE_SIZE,
+            search: debouncedSearch || undefined,
+          });
+          let items = res.restaurants || [];
+          if (sortBy === "name") {
+            items = [...items].sort((a, b) =>
+              (a.name || "").localeCompare(b.name || "", undefined, {
+                sensitivity: "base",
+              })
+            );
+          }
+          const pagination = res.pagination;
+          setTotalPages(pagination?.totalPages ?? 1);
+          setPage(pageNum);
+          if (append) {
+            setList((prev) => [...prev, ...items]);
+          } else {
+            setList(items);
+          }
+        }
+      } catch (e: any) {
+        setError(e?.message || t("exploreRestaurants.errorLoading"));
+        if (!append) setList([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [sortBy, debouncedSearch, userCoords, t]
+  );
+
+  const loadMoreRestaurants = useCallback(() => {
+    if (sortBy === "distance") return;
+    if (loadingMore || loading) return;
+    if (page >= totalPages) return;
+    setLoadingMore(true);
+    loadRestaurants(page + 1, true);
+  }, [sortBy, loadingMore, loading, page, totalPages, loadRestaurants]);
 
   useFocusEffect(
     useCallback(() => {
@@ -234,7 +253,7 @@ export default function ExploreRestaurantsScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.text }, font]}>
           {t("exploreRestaurants.title")}
         </Text>
         <View style={styles.backBtn} />
@@ -271,6 +290,7 @@ export default function ExploreRestaurantsScreen() {
               style={[
                 styles.chipText,
                 { color: sortBy === key ? "#fff" : colors.text },
+                font,
               ]}
             >
               {t(`exploreRestaurants.sortBy${key.charAt(0).toUpperCase() + key.slice(1)}`)}
@@ -312,6 +332,17 @@ export default function ExploreRestaurantsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMoreRestaurants}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={[styles.footerLoader, { paddingVertical: 16 }]}>
+                <Text style={[styles.footerLoaderText, { color: colors.textSecondary }]}>
+                  {t("common.loading")}
+                </Text>
+              </View>
+            ) : null
+          }
         />
       )}
     </View>
@@ -380,6 +411,13 @@ const styles = StyleSheet.create({
   },
   skeletonListContent: {
     paddingBottom: 120,
+  },
+  footerLoader: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerLoaderText: {
+    fontSize: 14,
   },
   skeletonCard: {
     opacity: 0.9,

@@ -18,7 +18,7 @@ export default function TabLayout() {
   const user = useSelector((state: RootState) => state.auth.user);
   const mustVerify =
     user?.emailVerified === false || user?.emailVerified === undefined;
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
@@ -67,6 +67,7 @@ export default function TabLayout() {
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: "500",
+            fontFamily: defaultFontFamily,
           },
         }}
       >

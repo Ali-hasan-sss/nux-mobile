@@ -1,13 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Animated,
-  Dimensions,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
+import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import { router } from "expo-router";
