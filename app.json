@@ -60,7 +60,6 @@
         }
       },
       "versionCode": 1,
-      "softwareKeyboardLayoutMode": "nothing",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
