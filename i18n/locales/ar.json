@@ -127,6 +127,11 @@
     "walletBalance": "رصيد المحفظة",
     "drinkPoints": "نقاط المشروبات",
     "mealPoints": "نقاط الوجبات",
+    "mealVouchers": "{{count}} قسيمة طعام",
+    "mealVouchers_plural": "{{count}} قسائم طعام",
+    "drinkVouchers": "قسيمة شراب واحدة",
+    "drinkVouchers_plural": "{{count}} قسائم شراب",
+    "pointsTowardNext": "{{current}}/{{total}} للقسيمة التالية",
     "scanOrUpload": "امسح رمز QR أو ارفع صورة",
     "chooseAmountFirst": "اختر كمية أولاً",
     "fromGallery": "تحميل من المعرض",
@@ -411,11 +416,18 @@
   },
   "payment": {
     "selectPaymentMethod": "اختر طريقة الدفع",
+    "selectedMethod": "الطريقة المختارة",
+    "selectRestaurantFirst": "اختر مطعماً أولاً",
     "currentBalance": "الرصيد الحالي",
     "paymentAmount": "مبلغ الدفع",
     "slideToConfirm": "اسحب للتأكيد",
     "paymentSuccessful": "تم الدفع بنجاح",
-    "insufficientBalance": "رصيد غير كافي"
+    "insufficientBalance": "رصيد غير كافي",
+    "noBalanceData": "لا يوجد رصيد",
+    "points": "نقاط",
+    "payOneVoucher": "الدفع بقسيمة واحدة",
+    "oneVoucher": "قسيمة واحدة = {{points}} نقاط",
+    "processingPayment": "جاري معالجة الدفع"
   },
   "notifications": {
     "title": "الإشعارات",

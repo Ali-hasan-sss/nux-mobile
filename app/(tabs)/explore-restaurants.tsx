@@ -332,6 +332,8 @@ export default function ExploreRestaurantsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           onEndReached={loadMoreRestaurants}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

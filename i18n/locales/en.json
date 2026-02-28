@@ -127,6 +127,11 @@
     "walletBalance": "Wallet Balance",
     "drinkPoints": "Drink Points",
     "mealPoints": "Meal Points",
+    "mealVouchers": "{{count}} Meal Voucher",
+    "mealVouchers_plural": "{{count}} Meal Vouchers",
+    "drinkVouchers": "{{count}} Drink Voucher",
+    "drinkVouchers_plural": "{{count}} Drink Vouchers",
+    "pointsTowardNext": "{{current}}/{{total}} toward next voucher",
     "scanOrUpload": "Scan QR Code or Upload Image",
     "chooseAmountFirst": "Choose amount first",
     "fromGallery": "From Gallery",
@@ -412,11 +417,18 @@
   },
   "payment": {
     "selectPaymentMethod": "Select Payment Method",
+    "selectedMethod": "Selected method",
+    "selectRestaurantFirst": "Select a restaurant first",
     "currentBalance": "Current Balance",
     "paymentAmount": "Payment Amount",
     "slideToConfirm": "Slide to Confirm",
     "paymentSuccessful": "Payment Successful",
-    "insufficientBalance": "Insufficient Balance"
+    "insufficientBalance": "Insufficient Balance",
+    "noBalanceData": "No balance data",
+    "points": "points",
+    "payOneVoucher": "Pay with one voucher",
+    "oneVoucher": "1 voucher = {{points}} points",
+    "processingPayment": "Processing payment"
   },
   "notifications": {
     "title": "Notifications",

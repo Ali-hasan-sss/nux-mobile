@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { Text } from "@/components/AppText";
 import {
   GestureHandlerRootView,
@@ -7,7 +7,7 @@ import {
 } from "react-native-gesture-handler";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Coffee, UtensilsCrossed, Wallet } from "lucide-react-native";
+import { Coffee, UtensilsCrossed, ChevronRight } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { updateRestaurantBalance } from "@/store/slices/restaurantSlice";
 import { processPayment } from "@/store/slices/balanceSlice";
@@ -26,14 +26,15 @@ import { Toast, ToastType } from "./Toast";
 interface PaymentModalProps {
   visible: boolean;
   onClose: () => void;
-  initialPaymentType?: "drink" | "meal" | "wallet";
+  /** Initial choice: meal or drink voucher only (no wallet). */
+  initialPaymentType?: "drink" | "meal";
   restaurantId?: string;
 }
 
 export function PaymentModal({
   visible,
   onClose,
-  initialPaymentType = "wallet",
+  initialPaymentType = "meal",
   restaurantId,
 }: PaymentModalProps) {
   const { t } = useTranslation();
@@ -45,9 +46,8 @@ export function PaymentModal({
   const { refreshBalances, currentBalance } = useBalance();
 
   const [selectedPaymentType, setSelectedPaymentType] = useState<
-    "drink" | "meal" | "wallet"
+    "drink" | "meal"
   >(initialPaymentType);
-  const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{
     visible: boolean;
@@ -73,44 +73,15 @@ export function PaymentModal({
     setToast((prev) => ({ ...prev, visible: false }));
   };
 
-  // Use current balance from useBalance hook (real-time data)
-  // currentBalance is already available from useBalance hook
-
-  // Debug: Log current balance for the selected restaurant
-  React.useEffect(() => {
-    if (restaurantId || selectedRestaurant?.id) {
-      console.log(
-        "🏪 PaymentModal - Restaurant ID:",
-        restaurantId || selectedRestaurant?.id
-      );
-      console.log("💰 PaymentModal - Current Balance:", currentBalance);
-      console.log(
-        "💳 PaymentModal - Selected Payment Type:",
-        selectedPaymentType
-      );
-    }
-  }, [
-    restaurantId,
-    selectedRestaurant?.id,
-    currentBalance,
-    selectedPaymentType,
-  ]);
-
-  // Reset form when modal opens (but preserve payment type selection)
+  // Reset when modal opens and refresh balances
   React.useEffect(() => {
     if (visible) {
-      setAmount("");
-      // Refresh balances when modal opens to ensure we have latest data
       refreshBalances();
-      console.log(
-        "🔄 Modal opened, resetting amount but preserving payment type"
-      );
-      // Reset slider position on open
       translateX.value = 0;
     }
-  }, [visible]); // Remove refreshBalances from dependencies to prevent re-triggering
+  }, [visible]);
 
-  // Only set initial payment type when modal first opens, not on every render
+  // Only set initial payment type when modal first opens
   const [hasSetInitialType, setHasSetInitialType] = React.useState(false);
   React.useEffect(() => {
     if (visible && initialPaymentType && !hasSetInitialType) {
@@ -122,38 +93,40 @@ export function PaymentModal({
     }
   }, [visible, initialPaymentType, hasSetInitialType]);
 
+  // Voucher-only: meal or drink, pay one full voucher (points per voucher)
+  const pointsPerVoucher =
+    selectedPaymentType === "meal"
+      ? currentBalance.mealPerVoucher
+      : currentBalance.drinkPerVoucher;
+  const availablePoints =
+    selectedPaymentType === "meal"
+      ? currentBalance.mealPoints
+      : currentBalance.drinkPoints;
+  const voucherAmount = pointsPerVoucher; // always one voucher
+  const hasInsufficientBalance = availablePoints < voucherAmount;
+
   const paymentOptions = [
     {
-      type: "wallet" as const,
-      label: t("purchase.walletBalance"),
-      icon: Wallet,
-      balance: currentBalance.walletBalance,
-      color: colors.success,
-      prefix: "$",
+      type: "meal" as const,
+      label: t("purchase.mealVouchers", { count: currentBalance.mealVouchers }),
+      icon: UtensilsCrossed,
+      balance: currentBalance.mealPoints,
+      pointsPerVoucher: currentBalance.mealPerVoucher,
+      color: colors.primary,
     },
     {
       type: "drink" as const,
-      label: t("purchase.drinkPoints"),
+      label: t("purchase.drinkVouchers", { count: currentBalance.drinkVouchers }),
       icon: Coffee,
       balance: currentBalance.drinkPoints,
+      pointsPerVoucher: currentBalance.drinkPerVoucher,
       color: colors.secondary,
-      prefix: "",
-    },
-    {
-      type: "meal" as const,
-      label: t("purchase.mealPoints"),
-      icon: UtensilsCrossed,
-      balance: currentBalance.mealPoints,
-      color: colors.primary,
-      prefix: "",
     },
   ];
 
   const selectedOption = paymentOptions.find(
     (option) => option.type === selectedPaymentType
   );
-  const numericAmount = parseFloat(amount) || 0;
-  const hasInsufficientBalance = numericAmount > (selectedOption?.balance || 0);
 
   const handleSlideConfirm = async () => {
     const targetRestaurantId = restaurantId || selectedRestaurant?.id;
@@ -163,19 +136,8 @@ export function PaymentModal({
       return;
     }
 
-    // Check if we have valid balance data
-    if (
-      currentBalance.walletBalance === 0 &&
-      currentBalance.drinkPoints === 0 &&
-      currentBalance.mealPoints === 0
-    ) {
+    if (currentBalance.drinkPoints === 0 && currentBalance.mealPoints === 0) {
       showToast(t("payment.noBalanceData"), "error");
-      return;
-    }
-
-    // منع إعادة السحب إذا لم يتم إدخال قيمة صحيحة
-    if (!amount || numericAmount <= 0) {
-      showToast(t("payment.enterValidAmount"), "error");
       return;
     }
 
@@ -184,56 +146,40 @@ export function PaymentModal({
       return;
     }
 
-    // Start processing
     setIsProcessing(true);
 
     try {
-      // تنفيذ الدفع باستخدام processPayment
       const currencyTypeMap = {
-        wallet: "balance" as const,
         meal: "stars_meal" as const,
         drink: "stars_drink" as const,
       };
 
       const paymentData = {
         targetId: targetRestaurantId,
-        amount: numericAmount,
+        amount: voucherAmount,
         currencyType: currencyTypeMap[selectedPaymentType],
       };
-
-      console.log("💳 Processing payment:", paymentData);
 
       const result = await dispatch(processPayment(paymentData) as any);
       if (result.type.endsWith("/rejected")) {
         throw new Error((result.payload as string) || "Payment failed");
       }
 
-      // تحديث الأرصدة بعد نجاح الدفع
       refreshBalances();
 
-      // تحديث المطعم المحدد في restaurantSlice
-      const newBalance = (selectedOption?.balance || 0) - numericAmount;
+      const newBalance = (selectedOption?.balance || 0) - voucherAmount;
       dispatch(
         updateRestaurantBalance({
           restaurantId: targetRestaurantId,
           balanceType:
-            selectedPaymentType === "wallet"
-              ? "walletBalance"
-              : selectedPaymentType === "meal"
-              ? "mealPoints"
-              : "drinkPoints",
+            selectedPaymentType === "meal" ? "mealPoints" : "drinkPoints",
           amount: newBalance,
         })
       );
 
-      // Show success toast
       showToast(t("payment.paymentSuccessful"), "success");
-
-      // إعادة الحالة
       translateX.value = 0;
-      setAmount("");
 
-      // Close modal after a short delay to show the toast
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -290,7 +236,8 @@ export function PaymentModal({
           )}
 
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
             style={styles.modalContentWrapper}
           >
             <ScrollView
@@ -345,10 +292,6 @@ export function PaymentModal({
                       ]}
                       onPress={() => {
                         if (!isProcessing) {
-                          console.log(
-                            "🔄 Changing payment type to:",
-                            option.type
-                          );
                           setSelectedPaymentType(option.type);
                         }
                       }}
@@ -367,8 +310,7 @@ export function PaymentModal({
                             { color: option.color },
                           ]}
                         >
-                          {option.prefix}
-                          {option.balance}
+                          {option.balance} {t("payment.points")}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -377,28 +319,16 @@ export function PaymentModal({
               </View>
 
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t("payment.paymentAmount")}
+                {t("payment.payOneVoucher")}
               </Text>
-
-              <TextInput
+              <Text
                 style={[
-                  styles.amountInput,
-                  {
-                    backgroundColor: colors.surface,
-                    color: colors.text,
-                    borderColor: hasInsufficientBalance
-                      ? colors.error
-                      : colors.border,
-                    opacity: isProcessing ? 0.5 : 1,
-                  },
+                  styles.voucherDetail,
+                  { color: colors.textSecondary },
                 ]}
-                placeholder="0.00"
-                placeholderTextColor={colors.textSecondary}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="numeric"
-                editable={!isProcessing}
-              />
+              >
+                {t("payment.oneVoucher", { points: pointsPerVoucher })}
+              </Text>
 
               {hasInsufficientBalance && (
                 <Text style={[styles.errorText, { color: colors.error }]}>
@@ -415,18 +345,15 @@ export function PaymentModal({
                   },
                 ]}
               >
-                {/* Arrow hints: always LTR (left-to-right swipe) — use Text so icons show in release build */}
+                {/* Arrow hints: always LTR (left-to-right swipe) — use icon for correct display */}
                 <View style={styles.slideHints}>
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <Text
+                    <ChevronRight
                       key={index}
-                      style={[
-                        styles.slideHintArrow,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      →
-                    </Text>
+                      size={20}
+                      color={colors.textSecondary}
+                      style={styles.slideHintArrow}
+                    />
                   ))}
                 </View>
 
@@ -445,7 +372,7 @@ export function PaymentModal({
                       },
                     ]}
                   >
-                    <Text style={styles.slideButtonArrow}>→</Text>
+                    <ChevronRight size={26} color="#fff" strokeWidth={2.5} />
                   </Animated.View>
                 </GestureDetector>
               </View>
@@ -540,13 +467,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 2,
   },
-  amountInput: {
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 18,
-    textAlign: "center",
-    borderWidth: 1,
-    marginBottom: 8,
+  voucherDetail: {
+    fontSize: 14,
+    marginBottom: 12,
   },
   errorText: {
     fontSize: 14,

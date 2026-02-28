@@ -111,8 +111,8 @@ export default function ContactScreen() {
 
       <KeyboardAvoidingView
         style={styles.keyboard}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 0}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 20}
       >
         <ScrollView
           style={styles.scroll}
@@ -121,6 +121,7 @@ export default function ContactScreen() {
             { paddingBottom: contentBottomPadding },
           ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <Text

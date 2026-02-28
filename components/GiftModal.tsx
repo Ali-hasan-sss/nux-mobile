@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity, StyleSheet, TextInput, Modal, ActivityIndicator, DeviceEventEmitter, ScrollView } from "react-native";
+import { View, TouchableOpacity, StyleSheet, TextInput, Modal, ActivityIndicator, DeviceEventEmitter, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
@@ -558,14 +558,20 @@ export default function GiftModal({
             styles.modalOverlay,
             {
               backgroundColor: "rgba(0, 0, 0, 0.3)",
-              opacity: isScanScreenOpen ? 0 : 1, // Hide visually when scan screen is open
-              pointerEvents: isScanScreenOpen ? "none" : "auto", // Disable interactions when scan screen is open
+              opacity: isScanScreenOpen ? 0 : 1,
+              pointerEvents: isScanScreenOpen ? "none" : "auto",
             },
           ]}
         >
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoid}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <View
@@ -763,6 +769,7 @@ export default function GiftModal({
               </View>
             </View>
           </ScrollView>
+          </KeyboardAvoidingView>
           {isGiftProcessing && (
             <View style={styles.processingOverlay}>
               <View style={styles.processingContent}>
@@ -784,6 +791,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,

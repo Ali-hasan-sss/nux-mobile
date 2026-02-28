@@ -51,7 +51,11 @@ export const scanQrCode = createAsyncThunk(
         return rejectWithValue(response.message);
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to scan QR code");
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to scan QR code";
+      return rejectWithValue(message);
     }
   }
 );
@@ -137,26 +141,48 @@ const balanceSlice = createSlice({
       .addCase(fetchUserBalances.fulfilled, (state, action) => {
         state.loading.balances = false;
 
-        // Transform API response to match our data structure
-        const transformedBalances = action.payload.map((item: any) => ({
-          id: item.targetId || item.id,
-          userId: item.userId || "",
-          restaurantId: item.targetId || item.id,
-          balance: item.balance || 0,
-          stars_meal: item.stars_meal || 0,
-          stars_drink: item.stars_drink || 0,
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-          restaurant: {
+        // Transform API response to match our data structure (include voucher fields for UI)
+        const transformedBalances = action.payload.map((item: any) => {
+          const stars_meal = item.stars_meal || 0;
+          const stars_drink = item.stars_drink || 0;
+          const mealPointsPerVoucher = item.mealPointsPerVoucher ?? null;
+          const drinkPointsPerVoucher = item.drinkPointsPerVoucher ?? null;
+          const vouchers_meal =
+            item.vouchers_meal != null
+              ? item.vouchers_meal
+              : mealPointsPerVoucher && mealPointsPerVoucher > 0
+                ? Math.floor(stars_meal / mealPointsPerVoucher)
+                : 0;
+          const vouchers_drink =
+            item.vouchers_drink != null
+              ? item.vouchers_drink
+              : drinkPointsPerVoucher && drinkPointsPerVoucher > 0
+                ? Math.floor(stars_drink / drinkPointsPerVoucher)
+                : 0;
+          return {
             id: item.targetId || item.id,
-            name: item.name || "Unknown Restaurant",
-            address: item.address || "",
-            latitude: item.latitude || 0,
-            longitude: item.longitude || 0,
-            isActive: true,
+            userId: item.userId || "",
+            restaurantId: item.targetId || item.id,
+            balance: item.balance || 0,
+            stars_meal,
+            stars_drink,
+            mealPointsPerVoucher: mealPointsPerVoucher || undefined,
+            drinkPointsPerVoucher: drinkPointsPerVoucher || undefined,
+            vouchers_meal,
+            vouchers_drink,
             createdAt: item.createdAt || new Date().toISOString(),
-          },
-        }));
+            updatedAt: item.updatedAt || new Date().toISOString(),
+            restaurant: {
+              id: item.targetId || item.id,
+              name: item.name || "Unknown Restaurant",
+              address: item.address || "",
+              latitude: item.latitude || 0,
+              longitude: item.longitude || 0,
+              isActive: true,
+              createdAt: item.createdAt || new Date().toISOString(),
+            },
+          };
+        });
 
         state.userBalances = transformedBalances;
 

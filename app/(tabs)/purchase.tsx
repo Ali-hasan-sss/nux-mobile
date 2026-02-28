@@ -15,9 +15,9 @@ import {
   Coffee,
   UtensilsCrossed,
   Wallet,
-  Clock,
-  Star,
   Share2,
+  Check,
+  Circle,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
@@ -212,72 +212,121 @@ export default function PurchaseScreen() {
         >
           {selectedRestaurant && (
             <View style={styles.balanceSection}>
-              <View style={styles.balanceRow}>
-                <View
-                  style={[
-                    styles.balanceCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderTopWidth: 1,
-                      borderTopColor: colors.border,
-                    },
-                  ]}
-                >
+              {/* Meal Vouchers Card - same as website */}
+              <View
+                style={[
+                  styles.voucherCard,
+                  { backgroundColor: cardBg, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.voucherCardHeader}>
                   <View
                     style={[
-                      styles.balanceIcon,
+                      styles.voucherIcon,
                       { backgroundColor: iconBg(colors.primary) },
                     ]}
                   >
-                    <UtensilsCrossed size={24} color={colors.primary} />
+                    <UtensilsCrossed size={22} color={colors.primary} />
                   </View>
-                  <Text
-                    style={[
-                      styles.balanceLabel,
-                      { color: colors.textSecondary },
-                      font,
-                    ]}
-                  >
-                    {t("purchase.mealPoints")}
-                  </Text>
-                  <Text style={[styles.balanceValue, { color: colors.text }, font]}>
-                    {currentBalance.mealPoints}
-                  </Text>
+                  <View style={styles.voucherTextBlock}>
+                    <Text style={[styles.voucherTitle, { color: colors.text }, font]}>
+                      {t("purchase.mealVouchers", { count: currentBalance.mealVouchers })}
+                    </Text>
+                    {currentBalance.mealPerVoucher > 0 && (
+                      <Text style={[styles.voucherSubtitle, { color: colors.textSecondary }, font]}>
+                        {t("purchase.pointsTowardNext", {
+                          current: currentBalance.mealTowardNext,
+                          total: currentBalance.mealPerVoucher,
+                        })}
+                      </Text>
+                    )}
+                  </View>
                 </View>
+                {currentBalance.mealPerVoucher > 0 && (
+                  <View style={styles.voucherDotsRow}>
+                    {Array.from({ length: currentBalance.mealPerVoucher }, (_, i) => (
+                      <View
+                        key={`meal-${i}`}
+                        style={[
+                          styles.voucherDot,
+                          i < currentBalance.mealTowardNext
+                            ? { backgroundColor: colors.primary }
+                            : {
+                                backgroundColor: "transparent",
+                                borderWidth: 2,
+                                borderColor: colors.textSecondary,
+                              },
+                        ]}
+                      >
+                        {i < currentBalance.mealTowardNext ? (
+                          <Check size={14} color="#fff" strokeWidth={3} />
+                        ) : (
+                          <Circle size={14} color={colors.textSecondary} strokeWidth={1.5} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
 
-                <View
-                  style={[
-                    styles.balanceCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderTopWidth: 1,
-                      borderTopColor: colors.border,
-                    },
-                  ]}
-                >
+              {/* Drink Vouchers Card - same as website */}
+              <View
+                style={[
+                  styles.voucherCard,
+                  { backgroundColor: cardBg, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.voucherCardHeader}>
                   <View
                     style={[
-                      styles.balanceIcon,
+                      styles.voucherIcon,
                       { backgroundColor: iconBg(colors.secondary) },
                     ]}
                   >
-                    <Coffee size={24} color={colors.secondary} />
+                    <Coffee size={22} color={colors.secondary} />
                   </View>
-                  <Text
-                    style={[
-                      styles.balanceLabel,
-                      { color: colors.textSecondary },
-                      font,
-                    ]}
-                  >
-                    {t("purchase.drinkPoints")}
-                  </Text>
-                  <Text style={[styles.balanceValue, { color: colors.text }, font]}>
-                    {currentBalance.drinkPoints}
-                  </Text>
+                  <View style={styles.voucherTextBlock}>
+                    <Text style={[styles.voucherTitle, { color: colors.text }, font]}>
+                      {t("purchase.drinkVouchers", { count: currentBalance.drinkVouchers })}
+                    </Text>
+                    {currentBalance.drinkPerVoucher > 0 && (
+                      <Text style={[styles.voucherSubtitle, { color: colors.textSecondary }, font]}>
+                        {t("purchase.pointsTowardNext", {
+                          current: currentBalance.drinkTowardNext,
+                          total: currentBalance.drinkPerVoucher,
+                        })}
+                      </Text>
+                    )}
+                  </View>
                 </View>
+                {currentBalance.drinkPerVoucher > 0 && (
+                  <View style={styles.voucherDotsRow}>
+                    {Array.from({ length: currentBalance.drinkPerVoucher }, (_, i) => (
+                      <View
+                        key={`drink-${i}`}
+                        style={[
+                          styles.voucherDot,
+                          i < currentBalance.drinkTowardNext
+                            ? { backgroundColor: colors.secondary }
+                            : {
+                                backgroundColor: "transparent",
+                                borderWidth: 2,
+                                borderColor: colors.textSecondary,
+                              },
+                        ]}
+                      >
+                        {i < currentBalance.drinkTowardNext ? (
+                          <Check size={14} color="#fff" strokeWidth={3} />
+                        ) : (
+                          <Circle size={14} color={colors.textSecondary} strokeWidth={1.5} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
 
+              {/* Wallet Balance Card */}
               <View
                 style={[styles.walletCard, { backgroundColor: cardBg }]}
               >
@@ -510,21 +559,52 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingTop: 0,
   },
-  balanceRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  balanceCard: {
-    flex: 1,
+  voucherCard: {
     padding: 16,
     borderRadius: 20,
-    alignItems: "center",
+    marginBottom: 12,
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+  },
+  voucherCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  voucherIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voucherTextBlock: {
+    flex: 1,
+  },
+  voucherTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  voucherSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  voucherDotsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  voucherDot: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   walletCard: {
     flexDirection: "row",

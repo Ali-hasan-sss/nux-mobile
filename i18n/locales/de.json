@@ -127,6 +127,11 @@
     "walletBalance": "Geldbörsen-Guthaben",
     "drinkPoints": "Getränkepunkte",
     "mealPoints": "Mahlzeitpunkte",
+    "mealVouchers": "1 Essens-Gutschein",
+    "mealVouchers_plural": "{{count}} Essens-Gutscheine",
+    "drinkVouchers": "1 Getränke-Gutschein",
+    "drinkVouchers_plural": "{{count}} Getränke-Gutscheine",
+    "pointsTowardNext": "{{current}}/{{total}} zum nächsten Gutschein",
     "scanOrUpload": "QR-Code scannen oder Bild hochladen",
     "chooseAmountFirst": "Wähle zuerst den Betrag",
     "fromGallery": "Aus Galerie",
@@ -411,11 +416,18 @@
   },
   "payment": {
     "selectPaymentMethod": "Zahlungsmethode wählen",
+    "selectedMethod": "Gewählte Methode",
+    "selectRestaurantFirst": "Wählen Sie zuerst ein Restaurant aus",
     "currentBalance": "Aktuelles Guthaben",
     "paymentAmount": "Zahlungsbetrag",
     "slideToConfirm": "Zum Bestätigen wischen",
     "paymentSuccessful": "Zahlung erfolgreich",
-    "insufficientBalance": "Unzureichendes Guthaben"
+    "insufficientBalance": "Unzureichendes Guthaben",
+    "noBalanceData": "Keine Guthabendaten",
+    "points": "Punkte",
+    "payOneVoucher": "Mit einem Gutschein bezahlen",
+    "oneVoucher": "1 Gutschein = {{points}} Punkte",
+    "processingPayment": "Zahlung wird verarbeitet"
   },
   "notifications": {
     "title": "Benachrichtigungen",

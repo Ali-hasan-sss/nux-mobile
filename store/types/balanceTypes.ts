@@ -12,14 +12,25 @@ export interface Restaurant {
 }
 
 export interface UserRestaurantBalance {
-  id: string;
-  userId: string;
-  restaurantId: string;
+  id?: string;
+  targetId?: string;
+  userId?: string;
+  restaurantId?: string;
+  name?: string;
   balance: number; // Wallet balance
   stars_meal: number; // Meal points
   stars_drink: number; // Drink points
-  createdAt: string;
-  updatedAt: string;
+  isGroup?: boolean;
+  /** Restaurant setting: points per food voucher */
+  mealPointsPerVoucher?: number | null;
+  /** Restaurant setting: points per drink voucher */
+  drinkPointsPerVoucher?: number | null;
+  /** Computed: meal points ÷ mealPointsPerVoucher (when set) */
+  vouchers_meal?: number | null;
+  /** Computed: drink points ÷ drinkPointsPerVoucher (when set) */
+  vouchers_drink?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
   restaurant?: Restaurant;
 }
 

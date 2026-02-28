@@ -111,10 +111,9 @@ export default function LoginScreen() {
         onConfirm={() => setErrorAlert({ visible: false, message: "" })}
       />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         style={[styles.keyboardView, { backgroundColor: "transparent" }]}
-        enabled={Platform.OS === "ios"}
       >
         <View style={styles.content}>
           <TouchableOpacity

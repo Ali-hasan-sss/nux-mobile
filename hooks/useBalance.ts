@@ -27,18 +27,46 @@ export const useBalance = () => {
     .map((balanceItem) => balanceItem.restaurant)
     .filter(Boolean) as Restaurant[];
 
-  // Get current selected restaurant balance
-  const currentBalance = balance.selectedRestaurantBalance
-    ? {
-        walletBalance: balance.selectedRestaurantBalance.balance,
-        drinkPoints: balance.selectedRestaurantBalance.stars_drink,
-        mealPoints: balance.selectedRestaurantBalance.stars_meal,
-      }
-    : {
+  // Get current selected restaurant balance (with voucher fields like website)
+  const currentBalance = (() => {
+    const bal = balance.selectedRestaurantBalance;
+    if (!bal) {
+      return {
         walletBalance: 0,
         drinkPoints: 0,
         mealPoints: 0,
+        mealVouchers: 0,
+        drinkVouchers: 0,
+        mealPerVoucher: 1,
+        drinkPerVoucher: 1,
+        mealTowardNext: 0,
+        drinkTowardNext: 0,
       };
+    }
+    const mealVouchers = bal.vouchers_meal ?? 0;
+    const drinkVouchers = bal.vouchers_drink ?? 0;
+    const mealPerVoucher = bal.mealPointsPerVoucher || 1;
+    const drinkPerVoucher = bal.drinkPointsPerVoucher || 1;
+    const mealStars = bal.stars_meal ?? 0;
+    const drinkStars = bal.stars_drink ?? 0;
+    const mealTowardNext = mealPerVoucher > 0
+      ? Math.min(mealStars - mealVouchers * mealPerVoucher, mealPerVoucher)
+      : 0;
+    const drinkTowardNext = drinkPerVoucher > 0
+      ? Math.min(drinkStars - drinkVouchers * drinkPerVoucher, drinkPerVoucher)
+      : 0;
+    return {
+      walletBalance: bal.balance ?? 0,
+      drinkPoints: drinkStars,
+      mealPoints: mealStars,
+      mealVouchers,
+      drinkVouchers,
+      mealPerVoucher,
+      drinkPerVoucher,
+      mealTowardNext,
+      drinkTowardNext,
+    };
+  })();
 
   // Actions
   const loadBalances = useCallback(() => {

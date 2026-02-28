@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Animated } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Animated,
+  Modal,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useTranslation } from "react-i18next";
-import { X, CheckCircle, XCircle } from "lucide-react-native";
+import { X, CheckCircle, XCircle, MapPin } from "lucide-react-native";
 import { router } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
 import { useDispatch, useSelector } from "react-redux";
@@ -52,13 +59,8 @@ const getCurrentLocation = async () => {
       throw new Error("expo-location module not properly loaded");
     }
   } catch (error) {
-    console.warn("Location not available, using fallback coordinates:", error);
-    // For development, use coordinates that might be closer to a restaurant
-    // You can change these to coordinates near your test restaurant
-    return {
-      latitude: 36.020214,
-      longitude: 35.0134549,
-    };
+    console.warn("Location not available:", error);
+    throw error;
   }
 };
 
@@ -68,17 +70,19 @@ export default function ScanScreen() {
   const [isScanning, setIsScanning] = useState(true);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(
-    null
+    null,
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCamera, setShowCamera] = useState(true);
+  const [showLocationErrorModal, setShowLocationErrorModal] = useState(false);
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.balance);
   const auth = useSelector((state: RootState) => state.auth);
   const { refreshBalances } = useBalance();
-  const { showToast, showAlert } = useAlert();
+  const { showToast } = useAlert();
   const hasScanned = useRef(false);
 
   // Animation values
@@ -100,7 +104,7 @@ export default function ScanScreen() {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     const cornerAnimation = Animated.loop(
@@ -115,7 +119,7 @@ export default function ScanScreen() {
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     frameAnimation.start();
@@ -175,21 +179,32 @@ export default function ScanScreen() {
     };
   }, []);
 
-  const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const UUID_REGEX =
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   /** إذا كان الكود رابط قائمة → الدخول لعرض القائمة. وإلا → طلب الحصول على النقاط. */
   const isMenuLink = (raw: string) => /\/menu\//i.test(raw.trim());
 
   const parseMenuParams = (raw: string): { qrCode: string; table?: number } => {
     const trimmed = raw.trim();
-    const uuidOnly = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+    const uuidOnly =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
     if (uuidOnly) return { qrCode: trimmed };
     try {
-      const urlString = /^https?:\/\//i.test(trimmed) ? trimmed : `https://dummy.example${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
+      const urlString = /^https?:\/\//i.test(trimmed)
+        ? trimmed
+        : `https://dummy.example${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
       const url = new URL(urlString);
       const pathMatch = url.pathname.match(/\/menu\/([0-9a-f-]{36})/i);
-      const qrCode = pathMatch ? pathMatch[1] : trimmed.match(UUID_REGEX)?.[0] ?? trimmed;
+      const qrCode = pathMatch
+        ? pathMatch[1]
+        : (trimmed.match(UUID_REGEX)?.[0] ?? trimmed);
       const tableParam = url.searchParams.get("table");
-      const table = tableParam != null && tableParam !== "" ? parseInt(tableParam, 10) : undefined;
+      const table =
+        tableParam != null && tableParam !== ""
+          ? parseInt(tableParam, 10)
+          : undefined;
       const tableValid = table != null && !isNaN(table) && table > 0;
       return { qrCode, table: tableValid ? table : undefined };
     } catch {
@@ -229,7 +244,10 @@ export default function ScanScreen() {
         setIsProcessing(false);
         setShowCamera(false);
         hasScanned.current = false;
-        router.push({ pathname: "/(tabs)/menu-webview", params: navParams } as any);
+        router.push({
+          pathname: "/(tabs)/menu-webview",
+          params: navParams,
+        } as any);
       }, 300);
       return;
     }
@@ -273,7 +291,7 @@ export default function ScanScreen() {
             qrCode: data,
             latitude: location.latitude,
             longitude: location.longitude,
-          })
+          }),
         ).unwrap();
 
         // نجح المسح - إظهار Toast النجاح وتحديث الرصيد
@@ -292,56 +310,19 @@ export default function ScanScreen() {
       } catch (scanError: any) {
         console.log("🔍 Scan error caught:", scanError);
 
-        // Handle specific error cases
-        if (
-          scanError.response?.status === 403 ||
-          scanError.message?.includes("403") ||
-          scanError.message?.includes("You must be at the restaurant location")
-        ) {
-          // For development, show a bypass option
-          if (__DEV__) {
-            showAlert({
-              title: t("camera.scanLocationErrorTitle"),
-              message: t("camera.scanLocationErrorMessage"),
-              type: "warning",
-              confirmText: t("camera.scanBypassForDev"),
-              cancelText: t("camera.cancel"),
-              onConfirm: () => {
-                showToast({
-                  message: t("camera.scanSuccessDev"),
-                  type: "success",
-                });
-                // تحديث الرصيد بعد نجاح المسح
-                refreshBalances();
-                setTimeout(() => {
-                  router.back();
-                }, 2000);
-              },
-              onCancel: () => {
-                setIsProcessing(false);
-                setShowCamera(true);
-                hasScanned.current = false;
-                setIsScanning(true);
-                setScannedData(null);
+        const isLocationError =
+          scanError?.response?.status === 403 ||
+          (typeof scanError === "string" && scanError.includes("restaurant location")) ||
+          scanError?.message?.includes("403") ||
+          scanError?.message?.includes("You must be at the restaurant location");
 
-                // بدء انيميشن المسح مرة أخرى
-                startScanAnimation();
-              },
-            });
-          } else {
-            showToast({
-              message: t("camera.scanErrorForbidden"),
-              type: "error",
-            });
-            setIsProcessing(false);
-            setShowCamera(true);
-            hasScanned.current = false;
-            setIsScanning(true);
-            setScannedData(null);
-
-            // بدء انيميشن المسح مرة أخرى
-            startScanAnimation();
-          }
+        if (isLocationError) {
+          setIsProcessing(false);
+          setShowCamera(false);
+          hasScanned.current = false;
+          setIsScanning(false);
+          setScannedData(null);
+          setShowLocationErrorModal(true);
           return;
         }
 
@@ -370,6 +351,21 @@ export default function ScanScreen() {
     } catch (error: any) {
       console.error("خطأ في مسح الكود:", error);
 
+      const isLocationError =
+        (typeof error === "string" && error.includes("restaurant location")) ||
+        error?.message?.includes("You must be at the restaurant location") ||
+        error?.message?.includes("403");
+
+      if (isLocationError) {
+        setIsProcessing(false);
+        setShowCamera(false);
+        hasScanned.current = false;
+        setIsScanning(false);
+        setScannedData(null);
+        setShowLocationErrorModal(true);
+        return;
+      }
+
       let errorMessage = t("camera.scanErrorGeneric");
       if (error.message?.includes("Network Error")) {
         errorMessage = t("camera.scanErrorNetwork");
@@ -387,8 +383,6 @@ export default function ScanScreen() {
       hasScanned.current = false;
       setIsScanning(true);
       setScannedData(null);
-
-      // بدء انيميشن المسح مرة أخرى
       startScanAnimation();
     }
   };
@@ -552,8 +546,8 @@ export default function ScanScreen() {
                   {isScanning
                     ? t("camera.placeCodeInFrame")
                     : scannedData
-                    ? t("camera.scanSuccess")
-                    : t("camera.tapToRetry")}
+                      ? t("camera.scanSuccess")
+                      : t("camera.tapToRetry")}
                 </Text>
               )}
 
@@ -587,6 +581,58 @@ export default function ScanScreen() {
           </View>
         </CameraView>
       )}
+
+      {/* Location error modal: must be at restaurant — stop camera until user chooses retry or close */}
+      <Modal
+        visible={showLocationErrorModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowLocationErrorModal(false);
+          router.back();
+        }}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
+          <View style={[styles.errorModalCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.errorModalIconWrap, { backgroundColor: colors.error + "20" }]}>
+              <MapPin size={40} color={colors.error} />
+            </View>
+            <Text style={[styles.errorModalTitle, { color: colors.text }]}>
+              {t("camera.scanLocationErrorTitle")}
+            </Text>
+            <Text style={[styles.errorModalMessage, { color: colors.textSecondary }]}>
+              {t("camera.scanErrorForbidden")}
+            </Text>
+            <View style={styles.errorModalActions}>
+              <TouchableOpacity
+                style={[styles.errorModalButton, styles.errorModalButtonSecondary, { borderColor: colors.border }]}
+                onPress={() => {
+                  setShowLocationErrorModal(false);
+                  setShowCamera(true);
+                  setIsScanning(true);
+                  setScannedData(null);
+                  startScanAnimation();
+                }}
+              >
+                <Text style={[styles.errorModalButtonTextSecondary, { color: colors.text }, font]}>
+                  {t("camera.retryScan")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.errorModalButton, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  setShowLocationErrorModal(false);
+                  router.back();
+                }}
+              >
+                <Text style={[styles.errorModalButtonText, font]}>
+                  {t("common.close")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -738,5 +784,69 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  errorModalCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  errorModalIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  errorModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  errorModalMessage: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  errorModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  errorModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorModalButtonSecondary: {
+    backgroundColor: "transparent",
+    borderWidth: 2,
+  },
+  errorModalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  errorModalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

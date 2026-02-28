@@ -402,6 +402,8 @@ export default function PromotionsScreen() {
             ]}
             style={{ backgroundColor: "transparent" }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           />
         ) : (
           <FlatList
@@ -414,6 +416,8 @@ export default function PromotionsScreen() {
             ]}
             style={{ backgroundColor: "transparent" }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

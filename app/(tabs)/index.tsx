@@ -52,8 +52,8 @@ export default function HomeScreen() {
   } = useBalance();
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<
-    "drink" | "meal" | "wallet"
-  >("wallet");
+    "drink" | "meal"
+  >("meal");
 
   useFocusEffect(
     React.useCallback(() => {
@@ -77,8 +77,9 @@ export default function HomeScreen() {
     setPaymentModalVisible(true);
   };
 
-  const handlePayWithWallet = () => {
-    setSelectedPaymentType("wallet");
+  /** Open payment modal (voucher only: meal or drink). Default meal. */
+  const handlePay = () => {
+    setSelectedPaymentType("meal");
     setPaymentModalVisible(true);
   };
 
@@ -251,7 +252,7 @@ export default function HomeScreen() {
                       opacity: selectedRestaurant ? 1 : 0.5,
                     },
                   ]}
-                  onPress={selectedRestaurant ? handlePayWithWallet : undefined}
+                  onPress={selectedRestaurant ? handlePay : undefined}
                   disabled={!selectedRestaurant}
                 >
                   <View

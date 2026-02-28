@@ -167,13 +167,14 @@ export default function ResetPasswordScreen() {
         onConfirm={() => setResendSuccessVisible(false)}
       />
       <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       style={[styles.keyboardView, { backgroundColor: "transparent" }]}
-      enabled={Platform.OS === "ios"}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
