@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState } from "react";
 import { View, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { DeviceEventEmitter } from "react-native";
 import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -9,24 +10,27 @@ import {
   Coffee,
   Star,
   UtensilsCrossed,
-  Wallet,
   Search,
+  Wallet,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBalance } from "@/hooks/useBalance";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PaymentModal } from "@/components/PaymentModal";
 import {
   RestaurantSelector,
   Restaurant,
 } from "@/components/RestaurantSelector";
-import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import {
-  fetchUserBalances,
-  setSelectedRestaurantBalance,
-} from "@/store/slices/balanceSlice";
+  setSelectedRestaurant,
+  type Restaurant as ReduxRestaurant,
+} from "@/store/slices/restaurantSlice";
+import { setSelectedRestaurantBalance } from "@/store/slices/balanceSlice";
+import {
+  fetchWalletBalance,
+  type WalletBalanceData,
+} from "@/api/walletPaymentApi";
 
 const TAB_BAR_HEIGHT = 88;
 
@@ -45,23 +49,68 @@ export default function HomeScreen() {
   );
   const {
     restaurantsWithBalances,
+    userBalances,
     currentBalance,
     loadBalances,
     loading,
     error,
   } = useBalance();
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<
     "drink" | "meal"
   >("meal");
+  const [globalWallet, setGlobalWallet] = useState<WalletBalanceData | null>(
+    null,
+  );
 
   useFocusEffect(
     React.useCallback(() => {
-      if (!auth.isAuthenticated) return;
+      if (!auth.isAuthenticated) {
+        setGlobalWallet(null);
+        return;
+      }
       loadBalances();
+      fetchWalletBalance()
+        .then(setGlobalWallet)
+        .catch(() => setGlobalWallet(null));
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [auth.isAuthenticated]),
   );
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("wallet:balanceChanged", () => {
+      fetchWalletBalance()
+        .then(setGlobalWallet)
+        .catch(() => setGlobalWallet(null));
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
+  const hasLoyaltyPointsAnywhere = userBalances.some(
+    (b) =>
+      (Number(b.stars_meal) || 0) > 0 || (Number(b.stars_drink) || 0) > 0,
+  );
+  const hasLoyaltyAtSelected =
+    !!selectedRestaurant &&
+    (currentBalance.mealPoints > 0 || currentBalance.drinkPoints > 0);
+  const hasGlobalWalletFunds =
+    !!globalWallet && Number(globalWallet.balance) > 0;
+  const canPay =
+    auth.isAuthenticated &&
+    (hasLoyaltyPointsAnywhere || hasGlobalWalletFunds);
+
+  const payButtonLabel = !auth.isAuthenticated
+    ? t("home.selectRestaurantFirst")
+    : !canPay
+      ? t("home.noBalanceToPay")
+      : !selectedRestaurant
+        ? t("home.payPickRestaurantNext")
+        : !hasLoyaltyAtSelected && hasGlobalWalletFunds
+          ? t("wallet.payWithAppWallet")
+          : hasLoyaltyAtSelected && !hasGlobalWalletFunds
+            ? t("home.payWithLoyaltyPoints")
+            : t("home.payWithWalletOrPoints");
 
   const handleScanCode = () => {
     router.push("/camera/scan");
@@ -69,31 +118,53 @@ export default function HomeScreen() {
 
   const handlePayWithDrink = () => {
     setSelectedPaymentType("drink");
-    setPaymentModalVisible(true);
+    router.push({
+      pathname: "/camera/scan",
+      params: {
+        walletPay: "1",
+        openPaymentScreen: "1",
+        paymentType: "drink",
+      },
+    } as never);
   };
 
   const handlePayWithMeal = () => {
     setSelectedPaymentType("meal");
-    setPaymentModalVisible(true);
+    router.push({
+      pathname: "/camera/scan",
+      params: {
+        walletPay: "1",
+        openPaymentScreen: "1",
+        paymentType: "meal",
+      },
+    } as never);
   };
 
   /** Open payment modal (voucher only: meal or drink). Default meal. */
   const handlePay = () => {
-    setSelectedPaymentType("meal");
-    setPaymentModalVisible(true);
+    router.push({
+      pathname: "/camera/scan",
+      params: {
+        walletPay: "1",
+        openPaymentScreen: "1",
+        paymentType: "meal",
+      },
+    } as never);
   };
 
   const handleRestaurantChange = (restaurant: Restaurant) => {
-    // Convert to restaurantSlice format by ensuring userBalance is defined
-    const restaurantForSlice = {
-      ...restaurant,
-      userBalance: restaurant.userBalance || {
-        walletBalance: 0,
-        drinkPoints: 0,
-        mealPoints: 0,
-      },
+    const restaurantForSlice: ReduxRestaurant = {
+      id: restaurant.id,
+      name: restaurant.name,
+      address: restaurant.address ?? "",
+      logo: restaurant.logo,
+      userBalance:
+        restaurant.userBalance ?? {
+          walletBalance: 0,
+          drinkPoints: 0,
+          mealPoints: 0,
+        },
     };
-    // Update selected restaurant
     dispatch(setSelectedRestaurant(restaurantForSlice));
     // Update selected restaurant balance
     dispatch(setSelectedRestaurantBalance(restaurant.id));
@@ -217,21 +288,12 @@ export default function HomeScreen() {
                     styles.noBalanceCard,
                     {
                       backgroundColor: isDark ? colors.surface : "transparent",
-                      marginBottom: 24,
+                      marginBottom: 12,
                     },
                   ]}
                 >
                   <Text style={[styles.noBalanceTitle, { color: colors.text }, font]}>
                     {t("home.noBalances")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.noBalanceDesc,
-                      { color: colors.textSecondary },
-                      font,
-                    ]}
-                  >
-                    {t("home.noBalancesDesc")}
                   </Text>
                 </View>
               )}
@@ -242,64 +304,105 @@ export default function HomeScreen() {
                   style={[
                     styles.paymentButton,
                     {
-                      backgroundColor: selectedRestaurant
+                      backgroundColor: canPay
                         ? isDark
                           ? colors.surface
                           : colors.background
                         : isDark
                           ? colors.surface + "50"
                           : colors.background + "99",
-                      opacity: selectedRestaurant ? 1 : 0.5,
+                      opacity: canPay ? 1 : 0.5,
                     },
                   ]}
-                  onPress={selectedRestaurant ? handlePay : undefined}
-                  disabled={!selectedRestaurant}
+                  onPress={canPay ? handlePay : undefined}
+                  disabled={!canPay}
                 >
                   <View
                     style={[
                       styles.iconContainer,
                       {
+                        flexDirection: isRTL ? "row-reverse" : "row",
                         backgroundColor: isDark
                           ? colors.success + "20"
                           : colors.success + "15",
                       },
                     ]}
                   >
-                    <View style={styles.balanceCol}>
-                      <Wallet size={24} color={colors.success} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.walletBalance.toFixed(2)} $
+                    <View style={styles.payBalanceCell}>
+                      <UtensilsCrossed size={18} color={colors.primary} />
+                      <Text
+                        style={[
+                          styles.payBalanceValue,
+                          { color: colors.success },
+                          font,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {currentBalance.mealPoints}
                       </Text>
+                      <Star size={14} color={colors.success} />
                     </View>
-                    <View style={styles.balanceCol}>
-                      <UtensilsCrossed size={24} color={colors.primary} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.mealPoints}{" "}
-                        <Star size={16} color={colors.success} />
+                    <View style={styles.payBalanceCell}>
+                      <Coffee size={18} color={colors.secondary} />
+                      <Text
+                        style={[
+                          styles.payBalanceValue,
+                          { color: colors.success },
+                          font,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {currentBalance.drinkPoints}
                       </Text>
+                      <Star size={14} color={colors.success} />
                     </View>
-                    <View style={styles.balanceCol}>
-                      <Coffee size={24} color={colors.secondary} />
-                      <Text style={{ color: colors.success }}>
-                        {currentBalance.drinkPoints}{" "}
-                        <Star size={16} color={colors.success} />
-                      </Text>
-                    </View>
+                    {auth.isAuthenticated &&
+                    hasGlobalWalletFunds &&
+                    globalWallet ? (
+                      <>
+                        <View
+                          style={[
+                            styles.payBalanceDivider,
+                            { backgroundColor: colors.border },
+                          ]}
+                        />
+                        <View style={styles.payBalanceCell}>
+                          <Wallet size={18} color={colors.primary} />
+                          <Text
+                            style={[
+                              styles.payBalanceValue,
+                              { color: colors.success, fontSize: 13 },
+                              font,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {Number(globalWallet.balance).toLocaleString(
+                              i18n.language === "ar"
+                                ? "ar-EG"
+                                : i18n.language === "de"
+                                  ? "de-DE"
+                                  : "en-US",
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              },
+                            )}{" "}
+                            {globalWallet.currency}
+                          </Text>
+                        </View>
+                      </>
+                    ) : null}
                   </View>
                   <Text
                     style={[
                       styles.paymentButtonText,
                       {
-                        color: selectedRestaurant
-                          ? colors.text
-                          : colors.textSecondary,
+                        color: canPay ? colors.text : colors.textSecondary,
                       },
                       font,
                     ]}
                   >
-                    {selectedRestaurant
-                      ? t("home.payWallet")
-                      : t("home.selectRestaurantFirst")}
+                    {payButtonLabel}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -330,13 +433,6 @@ export default function HomeScreen() {
           </>
         </View>
       </ScrollView>
-
-      <PaymentModal
-          visible={paymentModalVisible}
-          onClose={() => setPaymentModalVisible(false)}
-          initialPaymentType={selectedPaymentType}
-          restaurantId={selectedRestaurant?.id}
-      />
 
       {/* Floating scan button */}
       <TouchableOpacity
@@ -493,19 +589,34 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     width: "100%",
-    display: "flex",
     flexDirection: "row",
-    gap: 12,
-    padding: 12,
+    flexWrap: "nowrap",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     borderRadius: 24,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-evenly",
     marginBottom: 12,
   },
-  balanceCol: {
-    flex: 1,
+  payBalanceCell: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
+    flexShrink: 1,
+    minWidth: 0,
+    paddingHorizontal: 2,
+  },
+  payBalanceValue: {
+    fontSize: 14,
+  },
+  payBalanceDivider: {
+    width: StyleSheet.hairlineWidth * 2,
+    alignSelf: "stretch",
+    minHeight: 22,
+    marginHorizontal: 4,
+    opacity: 0.85,
   },
   paymentButtonText: {
     fontSize: 16,
@@ -554,20 +665,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   noBalanceCard: {
-    padding: 24,
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     alignItems: "center",
   },
   noBalanceTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
+    fontSize: 13,
     textAlign: "center",
-  },
-  noBalanceDesc: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
   },
   errorCard: {
     padding: 24,

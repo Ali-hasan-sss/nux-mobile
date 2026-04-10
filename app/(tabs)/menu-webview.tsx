@@ -693,7 +693,7 @@ export default function MenuNativeScreen() {
       />
 
       {/* Cart modal */}
-      <Modal visible={cartModalVisible} animationType="slide" transparent>
+      <Modal visible={cartModalVisible} animationType="slide" transparent={false}>
         <View style={styles.modalOverlay}>
           <View style={[styles.cartModal, { backgroundColor: colors.background }]}>
             <View style={[styles.cartModalHeader, { borderBottomColor: colors.border }]}>
@@ -792,7 +792,7 @@ export default function MenuNativeScreen() {
       </Modal>
 
       {/* Extras modal */}
-      <Modal visible={extrasModalVisible} animationType="slide" transparent>
+      <Modal visible={extrasModalVisible} animationType="slide" transparent={false}>
         <View style={styles.modalOverlay}>
           <View style={[styles.extrasModal, { backgroundColor: colors.background }]}>
             <View style={[styles.cartModalHeader, { borderBottomColor: colors.border }]}>

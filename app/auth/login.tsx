@@ -1,5 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image, BackHandler } from "react-native";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  BackHandler,
+  ScrollView,
+  Keyboard,
+  Dimensions,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,6 +27,7 @@ import { TermsOfUseModal } from "@/components/TermsOfUseModal";
 import { loginUser, RESTAURANT_OWNER_NOT_ALLOWED } from "@/store/slices/authSlice";
 import { getProfile } from "@/store/slices/profileSlice";
 import type { AppDispatch, RootState } from "@/store/store";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -34,9 +47,70 @@ export default function LoginScreen() {
   const mustVerify =
     user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, defaultFontFamily } = useTheme();
   const insets = useSafeAreaInsets();
+  const font = { fontFamily: defaultFontFamily };
   const isRTL = i18n.language === "ar";
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
+  const keyboardHeightRef = useRef(0);
+  const inputGroupRefs = useRef<Map<string, View>>(new Map());
+
+  useEffect(() => {
+    const show =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hide =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const s = Keyboard.addListener(show, (e) => {
+      keyboardHeightRef.current = e.endCoordinates.height;
+    });
+    const h = Keyboard.addListener(hide, () => {
+      keyboardHeightRef.current = 0;
+    });
+    return () => {
+      s.remove();
+      h.remove();
+    };
+  }, []);
+
+  const setInputGroupRef = useCallback((id: string) => (node: View | null) => {
+    if (node) inputGroupRefs.current.set(id, node);
+    else inputGroupRefs.current.delete(id);
+  }, []);
+
+  const scrollFocusedGroupIntoView = useCallback((groupId: string) => {
+    const delay = Platform.OS === "ios" ? 280 : 180;
+    setTimeout(() => {
+      const el = inputGroupRefs.current.get(groupId);
+      if (!el || !scrollViewRef.current) return;
+      const kb = keyboardHeightRef.current;
+      const winH = Dimensions.get("window").height;
+      const padding = 24;
+      const safeBottom = kb > 0 ? winH - kb - padding : winH - padding;
+      el.measureInWindow((fx, fy, fw, fh) => {
+        const bottom = fy + fh;
+        if (bottom > safeBottom) {
+          const delta = bottom - safeBottom + 20;
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, scrollYRef.current + delta),
+            animated: true,
+          });
+        }
+      });
+    }, delay);
+  }, []);
+
+  const isEmailVerificationRequiredError = (err: unknown): boolean => {
+    const message =
+      typeof err === "string"
+        ? err
+        : (err as { message?: string })?.message ?? "";
+    return (
+      message.toLowerCase().includes("verify your email") ||
+      message.toLowerCase().includes("email first")
+    );
+  };
 
   useEffect(() => {
     if (isAuthenticated && mustVerify) {
@@ -89,6 +163,16 @@ export default function LoginScreen() {
       const isRestaurantOwner =
         error === RESTAURANT_OWNER_NOT_ALLOWED ||
         error?.message === RESTAURANT_OWNER_NOT_ALLOWED;
+      const requiresEmailVerification = isEmailVerificationRequiredError(error);
+
+      if (requiresEmailVerification) {
+        router.replace({
+          pathname: "/auth/verify-email",
+          params: { email: email.trim() },
+        });
+        return;
+      }
+
       setErrorAlert({
         visible: true,
         message: isRestaurantOwner
@@ -100,6 +184,9 @@ export default function LoginScreen() {
     }
   };
 
+  const LoginFormRoot =
+    Platform.OS === "ios" ? KeyboardAvoidingView : View;
+
   return (
     <>
       <CustomAlert
@@ -110,12 +197,32 @@ export default function LoginScreen() {
         confirmText={t("common.ok")}
         onConfirm={() => setErrorAlert({ visible: false, message: "" })}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      <LoginFormRoot
         style={[styles.keyboardView, { backgroundColor: "transparent" }]}
+        {...(Platform.OS === "ios"
+          ? {
+              behavior: "padding" as const,
+              keyboardVerticalOffset: Math.max(insets.top, 0),
+            }
+          : {})}
       >
-        <View style={styles.content}>
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          onScroll={(e) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
+        >
+          <View
+            style={[
+              styles.content,
+              { paddingTop: Math.max(insets.top, 12) + 8 },
+            ]}
+          >
           <TouchableOpacity
             style={[
               styles.backIconBtn,
@@ -148,8 +255,29 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
 
+          <GoogleSignInButton />
+          <View style={styles.authDividerRow}>
+            <View
+              style={[styles.authDividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text
+              style={[
+                styles.authDividerText,
+                { color: colors.textSecondary },
+                font,
+              ]}
+            >
+              {t("auth.orDivider")}
+            </Text>
+            <View
+              style={[styles.authDividerLine, { backgroundColor: colors.border }]}
+            />
+          </View>
+
           {/* Email Input Container */}
           <View
+            ref={setInputGroupRef("login-email")}
+            collapsable={false}
             style={[
               styles.inputCard,
               {
@@ -166,11 +294,14 @@ export default function LoginScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                onFocus={() => scrollFocusedGroupIntoView("login-email")}
               />
             </View>
 
           {/* Password Input Container */}
           <View
+            ref={setInputGroupRef("login-password")}
+            collapsable={false}
             style={[
               styles.inputCard,
               {
@@ -186,6 +317,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                onFocus={() => scrollFocusedGroupIntoView("login-password")}
               />
               <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
                 {showPassword ? (
@@ -351,8 +483,9 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
             </Link>
-        </View>
-      </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </LoginFormRoot>
 
       <PrivacyPolicyModal
         visible={privacyModalVisible}
@@ -376,11 +509,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 140,
+  },
   content: {
-    flex: 1,
-    justifyContent: "center",
+    flexGrow: 1,
+    justifyContent: "flex-start",
     paddingHorizontal: 20,
+    paddingBottom: 32,
     backgroundColor: "transparent",
+    overflow: "hidden",
+    minHeight: Dimensions.get("window").height * 0.92,
   },
   backIconBtn: {
     position: "absolute",
@@ -406,7 +546,21 @@ const styles = StyleSheet.create({
     width: 200,
     height: 100,
     alignSelf: "center",
-    marginBottom: 40,
+    marginBottom: 24,
+  },
+  authDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 12,
+  },
+  authDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  authDividerText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   inputCard: {
     flexDirection: "row",

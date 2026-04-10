@@ -39,7 +39,7 @@ export default function ScanModal({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      transparent={false}
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
@@ -80,7 +80,7 @@ export default function ScanModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "#000000",
     justifyContent: "center",
     paddingHorizontal: 20,
   },

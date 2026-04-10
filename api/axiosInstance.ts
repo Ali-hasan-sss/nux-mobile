@@ -4,15 +4,11 @@ import { store } from "../store/store";
 import { logout } from "../store/slices/authSlice";
 import { API_CONFIG } from "../config/api";
 
-const DOMAIN = "https://back.nuxapp.de";
+/** Must match authApi — same BASE_URL as local dev / production (see config/api.ts). */
 const api = axios.create({
-  baseURL: `${DOMAIN}/api`,
+  baseURL: API_CONFIG.BASE_URL,
   timeout: 10000,
 });
-// const api = axios.create({
-//   baseURL: "http://localhost:5000/api",
-//   timeout: 10000,
-// });
 
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];

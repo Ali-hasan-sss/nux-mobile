@@ -11,11 +11,16 @@ import { Text } from "@/components/AppText";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useTranslation } from "react-i18next";
 import { X, CheckCircle, XCircle, MapPin } from "lucide-react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
-import { scanQrCode } from "@/store/slices/balanceSlice";
+import {
+  scanQrCode,
+  fetchUserBalances,
+  setSelectedRestaurantBalance,
+} from "@/store/slices/balanceSlice";
+import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import { useBalance } from "@/hooks/useBalance";
 import { useAlert } from "@/contexts/AlertContext";
 // Fallback location if expo-location is not available
@@ -64,6 +69,60 @@ const getCurrentLocation = async () => {
   }
 };
 
+const UUID_REGEX_GLOBAL =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+function parsePaymentQrPayload(rawQr: string): {
+  restaurantId: string | null;
+  restaurantNameEn?: string;
+} {
+  const trimmed = rawQr.trim();
+  const parts = trimmed.split("::");
+  if (parts.length >= 3 && parts[0].toUpperCase() === "PAYMENT") {
+    const restaurantId = parts[1]?.trim() ?? "";
+    const restaurantNameEn = parts.slice(2).join("::").trim();
+    if (UUID_REGEX_GLOBAL.test(restaurantId)) {
+      return {
+        restaurantId,
+        restaurantNameEn: restaurantNameEn || undefined,
+      };
+    }
+  }
+  return {
+    restaurantId: trimmed.match(UUID_REGEX_GLOBAL)?.[0] ?? null,
+  };
+}
+
+/** Resolve restaurant UUID from scan API response and/or raw QR string. */
+function extractRestaurantIdFromScanPayload(
+  payload: unknown,
+  rawQr: string,
+): string | null {
+  const fromRawPayload = parsePaymentQrPayload(rawQr);
+  const fromQr = fromRawPayload.restaurantId;
+  if (payload && typeof payload === "object") {
+    const p = payload as Record<string, unknown>;
+    const d = p.data as Record<string, unknown> | string | undefined | null;
+    if (typeof d === "string") {
+      const m = d.match(UUID_REGEX_GLOBAL);
+      if (m) return m[0];
+    }
+    if (d && typeof d === "object") {
+      for (const key of ["restaurantId", "targetId", "id"] as const) {
+        const v = d[key];
+        if (typeof v === "string" && UUID_REGEX_GLOBAL.test(v)) return v;
+      }
+      const rest = d.restaurant as { id?: string } | undefined;
+      if (rest?.id && UUID_REGEX_GLOBAL.test(rest.id)) return rest.id;
+    }
+    for (const key of ["restaurantId", "targetId", "id"] as const) {
+      const v = p[key];
+      if (typeof v === "string" && UUID_REGEX_GLOBAL.test(v)) return v;
+    }
+  }
+  return fromQr;
+}
+
 export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
@@ -84,6 +143,20 @@ export default function ScanScreen() {
   const { refreshBalances } = useBalance();
   const { showToast } = useAlert();
   const hasScanned = useRef(false);
+  const store = useStore<RootState>();
+  const params = useLocalSearchParams<{
+    walletPay?: string;
+    openPaymentModal?: string;
+    openPaymentScreen?: string;
+    paymentType?: "meal" | "drink";
+  }>();
+  const walletPayMode =
+    params.walletPay === "1" || params.walletPay === "true";
+  const openPaymentModalAfterScan =
+    params.openPaymentModal === "1" ||
+    params.openPaymentModal === "true" ||
+    params.openPaymentScreen === "1" ||
+    params.openPaymentScreen === "true";
 
   // Animation values
   const scanFrameScale = useRef(new Animated.Value(1)).current;
@@ -237,6 +310,19 @@ export default function ScanScreen() {
 
     // إذا كان الرابط رابط قائمة → الدخول لعرض القائمة (بدون طلب نقاط)
     if (isMenuLink(data)) {
+      if (walletPayMode) {
+        setIsProcessing(false);
+        hasScanned.current = false;
+        setIsScanning(true);
+        setShowCamera(true);
+        setScannedData(null);
+        showToast({
+          message: t("payment.scanMenuNotForWalletPay"),
+          type: "error",
+        });
+        startScanAnimation();
+        return;
+      }
       const { qrCode, table } = parseMenuParams(data);
       const navParams: Record<string, string> = { qrCode: qrCode || data };
       if (table != null) navParams.table = String(table);
@@ -259,6 +345,87 @@ export default function ScanScreen() {
         setIsProcessing(false);
         setShowCamera(true);
         setTimeout(() => router.back(), 2000);
+        return;
+      }
+
+      // Wallet pay QR is parsed locally (restaurant id + english name),
+      // no scanQrCode API call is needed here.
+      if (walletPayMode) {
+        const parsedPaymentQr = parsePaymentQrPayload(data);
+        const rid = parsedPaymentQr.restaurantId;
+        if (!rid) {
+          showToast({
+            message: t("payment.scanRestaurantInvalid"),
+            type: "error",
+          });
+          setIsProcessing(false);
+          setShowCamera(true);
+          hasScanned.current = false;
+          setIsScanning(true);
+          setScannedData(null);
+          startScanAnimation();
+          return;
+        }
+
+        await dispatch(fetchUserBalances()).unwrap();
+        const balances = store.getState().balance.userBalances;
+        const item = balances.find(
+          (b) => b.restaurantId === rid || b.restaurant?.id === rid || b.id === rid,
+        );
+
+        if (!item) {
+          showToast({
+            message: t("payment.scanRestaurantNotFound"),
+            type: "error",
+          });
+          setIsProcessing(false);
+          setShowCamera(true);
+          hasScanned.current = false;
+          setIsScanning(true);
+          setScannedData(null);
+          startScanAnimation();
+          return;
+        }
+
+        const resolvedRestaurantId =
+          item.restaurantId ?? item.restaurant?.id ?? item.id ?? rid;
+        const rest = item.restaurant;
+        dispatch(
+          setSelectedRestaurant({
+            id: resolvedRestaurantId,
+            name: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? t("home.restaurant"),
+            address: rest?.address ?? "",
+            logo: rest?.logo,
+            userBalance: {
+              walletBalance: item.balance ?? 0,
+              mealPoints: item.stars_meal ?? 0,
+              drinkPoints: item.stars_drink ?? 0,
+            },
+          }),
+        );
+        dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
+        refreshBalances();
+
+        showToast({
+          message: t("camera.walletPayScanSuccess", {
+            name: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+          }),
+          type: "success",
+        });
+        setTimeout(() => {
+          if (openPaymentModalAfterScan) {
+            router.replace({
+              pathname: "/payment",
+              params: {
+                paymentType: params.paymentType === "drink" ? "drink" : "meal",
+                restaurantId: resolvedRestaurantId,
+                restaurantName: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+              },
+            } as never);
+          } else {
+            router.back();
+          }
+        }, 900);
         return;
       }
 
@@ -286,13 +453,100 @@ export default function ScanScreen() {
 
       // إرسال طلب مسح الكود
       try {
-        await dispatch(
+        const scanPayload = await dispatch(
           scanQrCode({
             qrCode: data,
             latitude: location.latitude,
             longitude: location.longitude,
           }),
         ).unwrap();
+
+        if (walletPayMode) {
+          const rid = extractRestaurantIdFromScanPayload(scanPayload, data);
+          const parsedPaymentQr = parsePaymentQrPayload(data);
+          if (!rid) {
+            showToast({
+              message: t("payment.scanRestaurantInvalid"),
+              type: "error",
+            });
+            setIsProcessing(false);
+            setShowCamera(true);
+            hasScanned.current = false;
+            setIsScanning(true);
+            setScannedData(null);
+            startScanAnimation();
+            return;
+          }
+
+          await dispatch(fetchUserBalances()).unwrap();
+          const balances = store.getState().balance.userBalances;
+          const item = balances.find(
+            (b) =>
+              b.restaurantId === rid ||
+              b.restaurant?.id === rid ||
+              b.id === rid,
+          );
+
+          if (!item) {
+            showToast({
+              message: t("payment.scanRestaurantNotFound"),
+              type: "error",
+            });
+            setIsProcessing(false);
+            setShowCamera(true);
+            hasScanned.current = false;
+            setIsScanning(true);
+            setScannedData(null);
+            startScanAnimation();
+            return;
+          }
+
+          const resolvedRestaurantId =
+            item.restaurantId ?? item.restaurant?.id ?? item.id ?? rid;
+
+          const rest = item.restaurant;
+          dispatch(
+            setSelectedRestaurant({
+              id: resolvedRestaurantId,
+              name:
+                rest?.name ??
+                parsedPaymentQr.restaurantNameEn ??
+                t("home.restaurant"),
+              address: rest?.address ?? "",
+              logo: rest?.logo,
+              userBalance: {
+                walletBalance: item.balance ?? 0,
+                mealPoints: item.stars_meal ?? 0,
+                drinkPoints: item.stars_drink ?? 0,
+              },
+            }),
+          );
+          dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
+          refreshBalances();
+
+          showToast({
+            message: t("camera.walletPayScanSuccess", {
+              name: rest?.name ?? "",
+            }),
+            type: "success",
+          });
+          setTimeout(() => {
+            if (openPaymentModalAfterScan) {
+              router.replace({
+                pathname: "/payment",
+                params: {
+                  paymentType:
+                    params.paymentType === "drink" ? "drink" : "meal",
+                  restaurantId: resolvedRestaurantId,
+                  restaurantName: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+                },
+              } as never);
+            } else {
+              router.back();
+            }
+          }, 900);
+          return;
+        }
 
         // نجح المسح - إظهار Toast النجاح وتحديث الرصيد
         showToast({
@@ -329,6 +583,7 @@ export default function ScanScreen() {
         // إذا فشل الطلب، اعرض رسالة نجاح وهمية للتطوير
         if (
           __DEV__ &&
+          !walletPayMode &&
           (scanError.message?.includes("Network Error") ||
             scanError.code === "NETWORK_ERROR")
         ) {
@@ -493,6 +748,33 @@ export default function ScanScreen() {
               </TouchableOpacity>
             </View>
 
+            {walletPayMode ? (
+              <View
+                style={[
+                  styles.walletPayBanner,
+                  {
+                    backgroundColor: "rgba(0,0,0,0.78)",
+                    borderColor: "rgba(255,255,255,0.22)",
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.walletPayBannerTitle, styles.walletPayBannerTextLight, font]}
+                >
+                  {t("camera.walletPayScannerTitle")}
+                </Text>
+                <Text
+                  style={[
+                    styles.walletPayBannerSubtitle,
+                    styles.walletPayBannerTextLightMuted,
+                    font,
+                  ]}
+                >
+                  {t("camera.walletPayBannerSubtitle")}
+                </Text>
+              </View>
+            ) : null}
+
             <View style={styles.scanArea}>
               <Animated.View
                 style={[
@@ -542,9 +824,16 @@ export default function ScanScreen() {
                 />
               </Animated.View>
               {!isProcessing && (
-                <Text style={styles.instructionText}>
+                <Text
+                  style={[
+                    styles.instructionText,
+                    walletPayMode ? styles.instructionTextOnCamera : null,
+                  ]}
+                >
                   {isScanning
-                    ? t("camera.placeCodeInFrame")
+                    ? walletPayMode
+                      ? t("camera.walletPayPlaceCode")
+                      : t("camera.placeCodeInFrame")
                     : scannedData
                       ? t("camera.scanSuccess")
                       : t("camera.tapToRetry")}
@@ -585,14 +874,14 @@ export default function ScanScreen() {
       {/* Location error modal: must be at restaurant — stop camera until user chooses retry or close */}
       <Modal
         visible={showLocationErrorModal}
-        transparent
+        transparent={false}
         animationType="fade"
         onRequestClose={() => {
           setShowLocationErrorModal(false);
           router.back();
         }}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: "#000000" }]}>
           <View style={[styles.errorModalCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.errorModalIconWrap, { backgroundColor: colors.error + "20" }]}>
               <MapPin size={40} color={colors.error} />
@@ -669,6 +958,39 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  walletPayBanner: {
+    marginHorizontal: 16,
+    marginTop: -8,
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  walletPayBannerTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  walletPayBannerSubtitle: {
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  /** Camera overlay: always light text (theme text is dark in light mode). */
+  walletPayBannerTextLight: {
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  walletPayBannerTextLightMuted: {
+    color: "rgba(255,255,255,0.92)",
+    textShadowColor: "rgba(0,0,0,0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   closeButton: {
     padding: 12,
     borderRadius: 24,
@@ -728,6 +1050,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     paddingHorizontal: 40,
+  },
+  /** Extra contrast on live camera (wallet hint under frame). */
+  instructionTextOnCamera: {
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+    fontWeight: "600",
   },
   retryButton: {
     marginTop: 20,

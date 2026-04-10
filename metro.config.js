@@ -2,9 +2,10 @@ const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 
-// Add resolver alias for web platform
+// Nested @expo/metro-runtime (under expo-router) must resolve hoisted deps from the app root.
 config.resolver.alias = {
   ...config.resolver.alias,
+  "expo-constants": require.resolve("expo-constants"),
 };
 
 config.resolver.platforms = ["ios", "android", "native", "web"];
@@ -23,6 +24,14 @@ config.resolver.resolverMainFields = ["react-native", "browser", "main"];
 // Platform-specific module resolution
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Force hoisted package (nested @expo/metro-runtime under expo-router cannot see it otherwise).
+  if (moduleName === "expo-constants") {
+    return {
+      filePath: require.resolve("expo-constants"),
+      type: "sourceFile",
+    };
+  }
+
   // Handle react-native-maps for web platform
   if (platform === "web" && moduleName === "react-native-maps") {
     return {

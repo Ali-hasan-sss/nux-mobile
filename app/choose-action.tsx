@@ -115,7 +115,7 @@ export default function ChooseActionScreen() {
 
       <Modal
         visible={languageModalVisible}
-        transparent
+        transparent={false}
         animationType="fade"
         onRequestClose={() => setLanguageModalVisible(false)}
       >
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,

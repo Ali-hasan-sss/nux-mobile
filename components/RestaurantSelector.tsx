@@ -1,109 +1,43 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, StyleSheet, Modal, FlatList, Image } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  FlatList,
+  Image,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Check, X, Store } from "lucide-react-native";
 import { RootState } from "@/store/store";
-import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
+import {
+  setSelectedRestaurant,
+  type Restaurant as ReduxRestaurant,
+} from "@/store/slices/restaurantSlice";
 import { useTheme } from "@/hooks/useTheme";
-import { Restaurant as BalanceRestaurant } from "@/store/types/balanceTypes";
 import { getImageUrl } from "@/config/api";
 
-export interface Restaurant extends BalanceRestaurant {
+/**
+ * Rows from balance API may omit `userBalance` (it lives on the balance item).
+ * Redux `selectedRestaurant` matches {@link ReduxRestaurant} and is a valid row here too.
+ */
+export interface Restaurant {
+  id: string;
+  name: string;
+  address?: string;
+  logo?: string;
   userBalance?: {
     walletBalance: number;
     drinkPoints: number;
     mealPoints: number;
   };
+  latitude?: number;
+  longitude?: number;
+  isActive?: boolean;
+  createdAt?: string;
 }
-
-export const mockRestaurants: Restaurant[] = [
-  {
-    id: "1",
-    name: "Café Central",
-    address: "123 Coffee Street, Downtown",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 150.75,
-      drinkPoints: 25,
-      mealPoints: 12,
-    },
-  },
-  {
-    id: "2",
-    name: "Pizza Palace",
-    address: "456 Italian Avenue, City Center",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 89.5,
-      drinkPoints: 18,
-      mealPoints: 8,
-    },
-  },
-  {
-    id: "3",
-    name: "Burger Barn",
-    address: "789 Grill Road, Food District",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 203.25,
-      drinkPoints: 32,
-      mealPoints: 15,
-    },
-  },
-  {
-    id: "4",
-    name: "Sushi House",
-    address: "321 Asian Street, Food District",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 120.5,
-      drinkPoints: 20,
-      mealPoints: 10,
-    },
-  },
-  {
-    id: "5",
-    name: "Taco Fiesta",
-    address: "654 Mexican Avenue, Food District",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 95.75,
-      drinkPoints: 15,
-      mealPoints: 7,
-    },
-  },
-  {
-    id: "6",
-    name: "Pasta Corner",
-    address: "987 Italian Road, Food District",
-    latitude: 36.020214,
-    longitude: 35.0134549,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    userBalance: {
-      walletBalance: 180.25,
-      drinkPoints: 28,
-      mealPoints: 14,
-    },
-  },
-];
 
 interface RestaurantSelectorProps {
   restaurants?: Restaurant[];
@@ -111,7 +45,7 @@ interface RestaurantSelectorProps {
 }
 
 export function RestaurantSelector({
-  restaurants = mockRestaurants,
+  restaurants = [],
   onRestaurantChange,
 }: RestaurantSelectorProps) {
   const { t } = useTranslation();
@@ -124,39 +58,43 @@ export function RestaurantSelector({
   const [modalVisible, setModalVisible] = useState(false);
 
   const handleSelectRestaurant = (restaurant: Restaurant) => {
-    // Convert to restaurantSlice format by ensuring userBalance is defined
-    const restaurantForSlice = {
-      ...restaurant,
-      userBalance: restaurant.userBalance || {
-        walletBalance: 0,
-        drinkPoints: 0,
-        mealPoints: 0,
-      },
+    const restaurantForSlice: ReduxRestaurant = {
+      id: restaurant.id,
+      name: restaurant.name,
+      address: restaurant.address ?? "",
+      logo: restaurant.logo,
+      userBalance:
+        restaurant.userBalance ?? {
+          walletBalance: 0,
+          drinkPoints: 0,
+          mealPoints: 0,
+        },
     };
     dispatch(setSelectedRestaurant(restaurantForSlice));
     onRestaurantChange?.(restaurant);
     setModalVisible(false);
   };
 
-  const renderRestaurantLogo = (restaurant: Restaurant) => {
+  const renderRestaurantLogo = (restaurant: Restaurant, size: "row" | "list") => {
     const logoUri = getImageUrl(restaurant.logo);
+    const logoStyle = size === "row" ? styles.selectorLogo : styles.restaurantLogo;
+    const phStyle =
+      size === "row"
+        ? styles.selectorLogoPlaceholder
+        : styles.restaurantLogoPlaceholder;
+    const iconSize = size === "row" ? 16 : 18;
     if (logoUri) {
       return (
         <Image
           source={{ uri: logoUri }}
-          style={styles.restaurantLogo}
+          style={logoStyle}
           resizeMode="cover"
         />
       );
     }
     return (
-      <View
-        style={[
-          styles.restaurantLogoPlaceholder,
-          { backgroundColor: colors.border },
-        ]}
-      >
-        <Store size={20} color={colors.textSecondary} />
+      <View style={[phStyle, { backgroundColor: colors.border }]}>
+        <Store size={iconSize} color={colors.textSecondary} />
       </View>
     );
   };
@@ -176,19 +114,15 @@ export function RestaurantSelector({
       ]}
       onPress={() => handleSelectRestaurant(item)}
     >
-      {renderRestaurantLogo(item)}
-      <View style={styles.restaurantInfo}>
-        <Text style={[styles.restaurantName, { color: colors.text }]}>
-          {item.name}
-        </Text>
-        <Text
-          style={[styles.restaurantAddress, { color: colors.textSecondary }]}
-        >
-          {item.address}
-        </Text>
-      </View>
+      {renderRestaurantLogo(item, "list")}
+      <Text
+        style={[styles.restaurantName, { color: colors.text }, font]}
+        numberOfLines={1}
+      >
+        {item.name}
+      </Text>
       {selectedRestaurant?.id === item.id && (
-        <Check size={20} color={colors.primary} />
+        <Check size={18} color={colors.primary} />
       )}
     </TouchableOpacity>
   );
@@ -201,54 +135,33 @@ export function RestaurantSelector({
           { backgroundColor: colors.surface, borderColor: colors.border },
         ]}
         onPress={() => setModalVisible(true)}
+        activeOpacity={0.85}
       >
         {selectedRestaurant ? (
           <>
-            {(() => {
-              const logoUri = getImageUrl(selectedRestaurant.logo);
-              return logoUri ? (
-                <Image
-                  source={{ uri: logoUri }}
-                  style={styles.selectorLogo}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.selectorLogoPlaceholder,
-                    { backgroundColor: colors.border },
-                  ]}
-                >
-                  <Store size={22} color={colors.textSecondary} />
-                </View>
-              );
-            })()}
-            <View style={styles.selectorContent}>
-              <Text style={[styles.label, { color: colors.textSecondary }, font]}>
-                {t("home.restaurant")}
-              </Text>
-              <Text style={[styles.selectedText, { color: colors.text }, font]}>
-                {selectedRestaurant.name}
-              </Text>
-            </View>
+            {renderRestaurantLogo(selectedRestaurant, "row")}
+            <Text
+              style={[styles.selectorSingleLine, { color: colors.text }, font]}
+              numberOfLines={1}
+            >
+              {selectedRestaurant.name}
+            </Text>
           </>
         ) : (
-          <View style={styles.selectorContent}>
-            <Text style={[styles.label, { color: colors.textSecondary }, font]}>
-              {t("home.restaurant")}
-            </Text>
-            <Text style={[styles.selectedText, { color: colors.text }, font]}>
-              {t("home.selectRestaurant")}
-            </Text>
-          </View>
+          <Text
+            style={[styles.selectorSingleLine, { color: colors.textSecondary }, font]}
+            numberOfLines={1}
+          >
+            {t("home.selectRestaurant")}
+          </Text>
         )}
-        <ChevronDown size={20} color={colors.textSecondary} />
+        <ChevronDown size={18} color={colors.textSecondary} />
       </TouchableOpacity>
 
       <Modal
         visible={modalVisible}
         animationType="slide"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
@@ -264,8 +177,8 @@ export function RestaurantSelector({
               <Text style={[styles.modalTitle, { color: colors.text }, font]}>
                 {t("home.selectRestaurantTitle")}
               </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={colors.text} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={8}>
+                <X size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -287,98 +200,82 @@ const styles = StyleSheet.create({
   selector: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 12,
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   selectorLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    marginRight: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
   },
   selectorLogoPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    marginRight: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  selectorContent: {
+  selectorSingleLine: {
     flex: 1,
     minWidth: 0,
-  },
-  label: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  selectedText: {
-    fontSize: 16,
-    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "#000000",
     justifyContent: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   modalContent: {
-    borderRadius: 16,
-    maxHeight: "70%",
+    borderRadius: 14,
+    maxHeight: "65%",
     overflow: "hidden",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 18,
-    // no fontWeight: avoids overriding custom font (Cairo/Poppins) on Android
+    fontSize: 16,
   },
   restaurantList: {
-    maxHeight: 400,
-    paddingVertical: 20,
+    maxHeight: 320,
+    paddingVertical: 8,
   },
   restaurantItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    marginHorizontal: 20,
-    marginVertical: 4,
-    borderRadius: 12,
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginVertical: 3,
+    borderRadius: 10,
     borderWidth: 1,
   },
   restaurantLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   restaurantLogoPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  restaurantInfo: {
+  restaurantName: {
     flex: 1,
     minWidth: 0,
-  },
-  restaurantName: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  restaurantAddress: {
     fontSize: 14,
   },
 });

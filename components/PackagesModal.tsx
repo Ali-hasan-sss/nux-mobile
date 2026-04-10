@@ -120,7 +120,7 @@ export default function PackagesModal({
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent={false}
       animationType="slide"
       onRequestClose={onClose}
     >
@@ -275,7 +275,7 @@ export default function PackagesModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "#000000",
     justifyContent: "flex-end",
   },
   modalContent: {

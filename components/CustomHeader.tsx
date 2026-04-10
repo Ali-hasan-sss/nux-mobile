@@ -82,7 +82,7 @@ export function CustomHeader() {
       <Modal
         visible={drawerOpen}
         animationType="fade"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setDrawerOpen(false)}
       >
         <DrawerMenu onClose={() => setDrawerOpen(false)} />

@@ -99,6 +99,8 @@ export default function TabLayout() {
           options={{
             title: t("tabs.account", "Account"),
             tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
+            /** Avoid tab bar sitting above the keyboard on the profile / forms screen */
+            tabBarHideOnKeyboard: true,
           }}
         />
         <Tabs.Screen

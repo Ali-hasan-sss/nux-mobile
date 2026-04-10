@@ -9,6 +9,7 @@ const authApi = axios.create({
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     "Content-Type": "application/json",
+    "X-Client-Channel": "mobile",
   },
 });
 
@@ -58,6 +59,7 @@ authApi.interceptors.response.use(
     const isAuthRoute =
       originalRequest.url?.includes("/auth/login") ||
       originalRequest.url?.includes("/auth/register") ||
+      originalRequest.url?.includes("/auth/google") ||
       originalRequest.url?.includes("/auth/refresh");
 
     if (

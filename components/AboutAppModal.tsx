@@ -26,7 +26,7 @@ export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
   return (
     <Modal
       visible={visible}
-      transparent
+      transparent={false}
       animationType="fade"
       onRequestClose={onClose}
     >
@@ -80,7 +80,7 @@ export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,

@@ -1,5 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image, Animated, Dimensions, BackHandler } from "react-native";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image,
+  Animated,
+  Dimensions,
+  BackHandler,
+  Keyboard,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,6 +33,7 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/CustomAlert";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
@@ -55,9 +69,59 @@ export default function RegisterScreen() {
   const mustVerify =
     user?.emailVerified === false || user?.emailVerified === undefined;
   const { t, i18n } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, defaultFontFamily } = useTheme();
+  const font = { fontFamily: defaultFontFamily };
   const insets = useSafeAreaInsets();
   const isRTL = i18n.language === "ar";
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
+  const keyboardHeightRef = useRef(0);
+  const inputGroupRefs = useRef<Map<string, View>>(new Map());
+
+  useEffect(() => {
+    const show =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hide =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const s = Keyboard.addListener(show, (e) => {
+      keyboardHeightRef.current = e.endCoordinates.height;
+    });
+    const h = Keyboard.addListener(hide, () => {
+      keyboardHeightRef.current = 0;
+    });
+    return () => {
+      s.remove();
+      h.remove();
+    };
+  }, []);
+
+  const setInputGroupRef = useCallback((id: string) => (node: View | null) => {
+    if (node) inputGroupRefs.current.set(id, node);
+    else inputGroupRefs.current.delete(id);
+  }, []);
+
+  const scrollFocusedGroupIntoView = useCallback((groupId: string) => {
+    const delay = Platform.OS === "ios" ? 280 : 180;
+    setTimeout(() => {
+      const el = inputGroupRefs.current.get(groupId);
+      if (!el || !scrollViewRef.current) return;
+      const kb = keyboardHeightRef.current;
+      const winH = Dimensions.get("window").height;
+      const padding = 24;
+      const safeBottom = kb > 0 ? winH - kb - padding : winH - padding;
+      el.measureInWindow((fx, fy, fw, fh) => {
+        const bottom = fy + fh;
+        if (bottom > safeBottom) {
+          const delta = bottom - safeBottom + 20;
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, scrollYRef.current + delta),
+            animated: true,
+          });
+        }
+      });
+    }, delay);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && mustVerify) {
@@ -234,6 +298,9 @@ export default function RegisterScreen() {
     }
   };
 
+  const RegisterFormRoot =
+    Platform.OS === "ios" ? KeyboardAvoidingView : View;
+
   return (
     <>
       <CustomAlert
@@ -244,18 +311,33 @@ export default function RegisterScreen() {
         confirmText={t("common.ok")}
         onConfirm={() => setErrorAlert({ visible: false, message: "" })}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      {/** iOS: KAV padding. Android release: plain View + adjustResize + scroll-into-view on focus. */}
+      <RegisterFormRoot
         style={[styles.keyboardView, { backgroundColor: "transparent" }]}
-        enabled={Platform.OS === "ios"}
+        {...(Platform.OS === "ios"
+          ? {
+              behavior: "padding" as const,
+              keyboardVerticalOffset: Math.max(insets.top, 0),
+            }
+          : {})}
       >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
+          onScroll={(e) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
         >
-          <View style={styles.content}>
+          <View
+            style={[
+              styles.content,
+              { paddingTop: Math.max(insets.top, 12) + 8 },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.backIconBtn,
@@ -344,10 +426,35 @@ export default function RegisterScreen() {
                   },
                 ]}
               >
-             
+                <GoogleSignInButton />
+                <View style={styles.authDividerRow}>
+                  <View
+                    style={[
+                      styles.authDividerLine,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.authDividerText,
+                      { color: colors.textSecondary },
+                      font,
+                    ]}
+                  >
+                    {t("auth.orDivider")}
+                  </Text>
+                  <View
+                    style={[
+                      styles.authDividerLine,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                </View>
 
                 {/* Full name (optional) */}
                 <View
+                  ref={setInputGroupRef("reg-fullName")}
+                  collapsable={false}
                   style={[
                     styles.inputCard,
                     { backgroundColor: (colors as any).inputBackground ?? colors.surface },
@@ -361,10 +468,13 @@ export default function RegisterScreen() {
                     value={fullName}
                     onChangeText={setFullName}
                     autoCapitalize="words"
+                    onFocus={() => scrollFocusedGroupIntoView("reg-fullName")}
                   />
                 </View>
    {/* Email Input */}
                <View
+                  ref={setInputGroupRef("reg-email")}
+                  collapsable={false}
                   style={[
                     styles.inputCard,
                     { backgroundColor: (colors as any).inputBackground ?? colors.surface },
@@ -379,6 +489,7 @@ export default function RegisterScreen() {
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    onFocus={() => scrollFocusedGroupIntoView("reg-email")}
                   />
                 </View>
                 {/* Next Button */}
@@ -444,6 +555,8 @@ export default function RegisterScreen() {
               >
                 {/* Password Input Container */}
                 <View
+                  ref={setInputGroupRef("reg-password")}
+                  collapsable={false}
                   style={[
                     styles.inputCard,
                     { backgroundColor: (colors as any).inputBackground ?? colors.surface },
@@ -457,6 +570,7 @@ export default function RegisterScreen() {
                     value={password}
                     onChangeText={handlePasswordChange}
                     secureTextEntry={!showPassword}
+                    onFocus={() => scrollFocusedGroupIntoView("reg-password")}
                   />
                   <TouchableOpacity onPress={() => setShowPassword((p) => !p)}>
                     {showPassword ? (
@@ -494,6 +608,8 @@ export default function RegisterScreen() {
 
                 {/* Confirm Password Input Container */}
                 <View
+                  ref={setInputGroupRef("reg-confirm")}
+                  collapsable={false}
                   style={[
                     styles.inputCard,
                     { backgroundColor: (colors as any).inputBackground ?? colors.surface },
@@ -507,6 +623,7 @@ export default function RegisterScreen() {
                     value={confirmPassword}
                     onChangeText={handleConfirmPasswordChange}
                     secureTextEntry={!showConfirmPassword}
+                    onFocus={() => scrollFocusedGroupIntoView("reg-confirm")}
                   />
                   <TouchableOpacity
                     onPress={() => setShowConfirmPassword((p) => !p)}
@@ -709,7 +826,7 @@ export default function RegisterScreen() {
             </Link>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </RegisterFormRoot>
 
       <PrivacyPolicyModal
         visible={privacyModalVisible}
@@ -735,14 +852,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 140,
   },
   content: {
-    flex: 1,
-    justifyContent: "center",
+    flexGrow: 1,
+    justifyContent: "flex-start",
     paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingBottom: 32,
     backgroundColor: "transparent",
     overflow: "hidden",
+    minHeight: Dimensions.get("window").height * 0.92,
   },
   backIconBtn: {
     position: "absolute",
@@ -801,7 +920,21 @@ const styles = StyleSheet.create({
     width: 200,
     height: 100,
     alignSelf: "center",
-    marginBottom: 40,
+    marginBottom: 24,
+  },
+  authDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 12,
+  },
+  authDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  authDividerText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   inputCard: {
     flexDirection: "row",

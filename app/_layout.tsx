@@ -18,7 +18,9 @@ import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 // Arabic: Cairo. Other languages: Poppins
 import { Cairo_400Regular } from "@expo-google-fonts/cairo/400Regular";
+import { Cairo_700Bold } from "@expo-google-fonts/cairo/700Bold";
 import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
+import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -41,7 +43,9 @@ export default function RootLayout() {
   const isFrameworkReady = useFrameworkReady();
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
+    Cairo_700Bold,
     Poppins_400Regular,
+    Poppins_700Bold,
   });
 
   useEffect(() => {
@@ -91,15 +95,15 @@ export default function RootLayout() {
                       screenOptions={{
                         headerShown: false,
                         animation: "fade",
-                        contentStyle: { backgroundColor: "transparent" },
-                        presentation: "transparentModal",
+                        contentStyle: { backgroundColor: "#000000" },
+                        presentation: "card",
                       }}
                     >
                       <Stack.Screen
                         name="index"
                         options={{
-                          contentStyle: { backgroundColor: "transparent" },
-                          presentation: "transparentModal",
+                          contentStyle: { backgroundColor: "#000000" },
+                          presentation: "card",
                         }}
                       />
                       <Stack.Screen
@@ -142,10 +146,19 @@ export default function RootLayout() {
                         }}
                       />
                       <Stack.Screen
+                        name="payment"
+                        options={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: "transparent" },
+                          presentation: "card",
+                          animation: "slide_from_right",
+                        }}
+                      />
+                      <Stack.Screen
                         name="+not-found"
                         options={{
-                          contentStyle: { backgroundColor: "transparent" },
-                          presentation: "transparentModal",
+                          contentStyle: { backgroundColor: "#000000" },
+                          presentation: "card",
                         }}
                       />
                     </Stack>

@@ -90,4 +90,16 @@ export const authService = {
     });
     console.log("✅ Password reset successful");
   },
+
+  /** Same contract as website: backend verifies idToken with GOOGLE_CLIENT_ID (Web client ID). */
+  async loginWithGoogle(idToken: string): Promise<AuthResponse> {
+    console.log("🔐 Google sign-in: exchanging id token with API");
+    const response = await authApi.post("/auth/google", { idToken });
+    console.log("✅ Google sign-in API OK");
+    return {
+      user: response.data.data.user,
+      restaurant: response.data.data.restaurant ?? null,
+      tokens: response.data.data.tokens,
+    };
+  },
 };

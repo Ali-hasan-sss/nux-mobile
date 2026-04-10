@@ -104,7 +104,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent={false}
       animationType="none"
       onRequestClose={onCancel || onConfirm}
     >
@@ -204,7 +204,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,

@@ -75,6 +75,10 @@ function getTranslatedNotification(
   if (type === "PAYMENT") {
     const atMatch = body.match(/You spent ([\d.]+) (\S+) at (.+)/);
     const groupMatch = body.match(/You spent ([\d.]+) (\S+) across group (.+)/);
+    const walletPaidMatch = body.match(/^Paid\s+([\d.]+)\s+(\S+)\s+to\s+(.+)\.?$/i);
+    const walletReceivedMatch = body.match(
+      /^Received\s+([\d.]+)\s+(\S+)\s+from\s+(.+)\.?$/i,
+    );
     if (atMatch) {
       const amount = atMatch[1];
       const currency = getCurrencyLabel(atMatch[2], t);
@@ -96,6 +100,26 @@ function getTranslatedNotification(
           amount,
           currency: currency,
           place: groupMatch[3].trim(),
+        }),
+      };
+    }
+    if (walletPaidMatch) {
+      return {
+        title: t("notifications.paymentTitle"),
+        body: t("notifications.walletPaymentPaidBody", {
+          amount: walletPaidMatch[1],
+          currency: walletPaidMatch[2],
+          place: walletPaidMatch[3].trim(),
+        }),
+      };
+    }
+    if (walletReceivedMatch) {
+      return {
+        title: t("notifications.walletPaymentReceivedTitle"),
+        body: t("notifications.walletPaymentReceivedBody", {
+          amount: walletReceivedMatch[1],
+          currency: walletReceivedMatch[2],
+          customer: walletReceivedMatch[3].trim(),
         }),
       };
     }
@@ -306,7 +330,7 @@ export function NotificationDropdown({
     <Modal
       visible={visible}
       animationType="fade"
-      transparent={true}
+      transparent={false}
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
@@ -428,7 +452,7 @@ export function NotificationDropdown({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "#000000",
     justifyContent: "flex-start",
     paddingTop: 100,
     paddingHorizontal: 0,

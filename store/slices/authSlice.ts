@@ -58,6 +58,40 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+export const loginWithGoogle = createAsyncThunk(
+  "auth/loginWithGoogle",
+  async (idToken: string, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithGoogle(idToken);
+
+      const role = (response.user?.role ?? "") as string;
+      if (String(role).toUpperCase() === "RESTAURANT_OWNER") {
+        return rejectWithValue(RESTAURANT_OWNER_NOT_ALLOWED);
+      }
+
+      await CrossPlatformStorage.saveTokens(response.tokens);
+      await CrossPlatformStorage.saveUser(response.user);
+
+      return response;
+    } catch (error: any) {
+      console.error("❌ Google login error in slice:", error);
+
+      let errorMessage = "Google sign-in failed";
+
+      if (error.message?.includes("Network Error")) {
+        errorMessage =
+          "Network Error - Please check your internet connection";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (userData: RegisterUserRequest, { rejectWithValue }) => {
@@ -232,6 +266,26 @@ const authSlice = createSlice({
         // Log the error for debugging
         console.error("❌ Login user rejected:", action.payload);
         console.log("⚠️ User login failed");
+      });
+
+    builder
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+        state.isAuthenticated = false;
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.restaurant = action.payload.restaurant || null;
+        state.tokens = action.payload.tokens;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+        state.isAuthenticated = false;
       });
 
     // Register user

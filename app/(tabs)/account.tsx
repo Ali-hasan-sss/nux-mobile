@@ -1,5 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Platform, KeyboardAvoidingView } from "react-native";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
+  Keyboard,
+  Dimensions,
+  Switch,
+  DeviceEventEmitter,
+  InteractionManager,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
@@ -25,8 +39,23 @@ import { updatePhoneNumber } from "@/store/slices/userSlice";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
 import { useAlert } from "@/contexts/AlertContext";
+import {
+  fetchPaymentSecurity,
+  setPaymentPin,
+  setPaymentBiometricEnabled,
+} from "@/api/walletPaymentApi";
+import {
+  normalizePaymentPinDigits,
+  isAsciiPinDigits,
+} from "@/lib/normalizePinDigits";
+import { getOrCreateWalletDeviceId } from "@/lib/deviceId";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { useFocusEffect, router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 export default function AccountScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { colors, isDark, defaultFontFamily } = useTheme();
   const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const titleStyle = { color: colors.text, fontFamily: defaultFontFamily, fontWeight: "400" as const };
@@ -54,6 +83,14 @@ export default function AccountScreen() {
   const sectionBg = isDark ? colors.surface : colors.background;
   const iconBg = (hex: string) => (isDark ? hex + "20" : hex + "15");
   const qrViewShotRef = useRef<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
+  const keyboardHeightRef = useRef(0);
+  const inputGroupRefs = useRef<Map<string, View>>(new Map());
+  /** Cumulative layout for Fabric-safe scroll (avoid measureLayout + findNodeHandle on ScrollView). */
+  const headerHeightRef = useRef(0);
+  const paymentPinYInContentRef = useRef(0);
+  const { focusPaymentPin } = useLocalSearchParams<{ focusPaymentPin?: string }>();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,12 +104,143 @@ export default function AccountScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showDeletePassword, setShowDeletePassword] = useState(false);
 
+  const [payPinNew, setPayPinNew] = useState("");
+  const [payPinConfirm, setPayPinConfirm] = useState("");
+  const [payPinCurrent, setPayPinCurrent] = useState("");
+  const [payHasPin, setPayHasPin] = useState(false);
+  const [payBio, setPayBio] = useState(false);
+  const [paySecLoading, setPaySecLoading] = useState(false);
+  const [payPinSaving, setPayPinSaving] = useState(false);
+
+  /** Emitted after navigating to this tab so scroll runs when layout is ready (stack → tabs). */
+  const SCROLL_TO_PAYMENT_PIN_EVENT = "account:scrollToPaymentPin";
+
+  const scrollToPaymentPinSection = useCallback(() => {
+    const tryScroll = (attempt: number) => {
+      const headerH = headerHeightRef.current;
+      const pinY = paymentPinYInContentRef.current;
+      const targetY = headerH + pinY - 20;
+      if ((!headerH || !pinY) && attempt < 20) {
+        setTimeout(() => tryScroll(attempt + 1), 80);
+        return;
+      }
+      if (headerH > 0 && pinY > 0) {
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, targetY),
+          animated: true,
+        });
+      } else if (attempt >= 20) {
+        scrollViewRef.current?.scrollTo({ y: 560, animated: true });
+      }
+    };
+    tryScroll(0);
+  }, []);
+
+  const scheduleScrollToPaymentPin = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(scrollToPaymentPinSection, 120);
+      setTimeout(scrollToPaymentPinSection, 450);
+      setTimeout(scrollToPaymentPinSection, 900);
+    });
+  }, [scrollToPaymentPinSection]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusPaymentPin !== "1") return undefined;
+      const timer = setTimeout(() => {
+        scheduleScrollToPaymentPin();
+        try {
+          router.setParams({ focusPaymentPin: undefined } as never);
+        } catch {
+          /* ignore */
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }, [focusPaymentPin, scheduleScrollToPaymentPin]),
+  );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(SCROLL_TO_PAYMENT_PIN_EVENT, () => {
+      scheduleScrollToPaymentPin();
+    });
+    return () => sub.remove();
+  }, [scheduleScrollToPaymentPin]);
+
+  useEffect(() => {
+    const show =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hide =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const s = Keyboard.addListener(show, (e) => {
+      keyboardHeightRef.current = e.endCoordinates.height;
+    });
+    const h = Keyboard.addListener(hide, () => {
+      keyboardHeightRef.current = 0;
+    });
+    return () => {
+      s.remove();
+      h.remove();
+    };
+  }, []);
+
+  const setInputGroupRef = useCallback((id: string) => (node: View | null) => {
+    if (node) inputGroupRefs.current.set(id, node);
+    else inputGroupRefs.current.delete(id);
+  }, []);
+
+  const scrollFocusedGroupIntoView = useCallback((groupId: string) => {
+    const delay = Platform.OS === "ios" ? 300 : 160;
+    setTimeout(() => {
+      const el = inputGroupRefs.current.get(groupId);
+      if (!el || !scrollViewRef.current) return;
+      const kb = keyboardHeightRef.current;
+      const winH = Dimensions.get("window").height;
+      const padding = 20;
+      const safeBottom = kb > 0 ? winH - kb - padding : winH - padding;
+      el.measureInWindow((fx, fy, fw, fh) => {
+        const bottom = fy + fh;
+        if (bottom > safeBottom) {
+          const delta = bottom - safeBottom + 16;
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, scrollYRef.current + delta),
+            animated: true,
+          });
+        }
+      });
+    }, delay);
+  }, []);
+
   // Load profile on component mount
   useEffect(() => {
     if (auth.isAuthenticated) {
       fetchProfile();
     }
   }, [auth.isAuthenticated, fetchProfile]);
+
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    let cancelled = false;
+    setPaySecLoading(true);
+    getOrCreateWalletDeviceId()
+      .then((deviceId) => fetchPaymentSecurity(deviceId))
+      .then((s) => {
+        if (!cancelled) {
+          setPayHasPin(s.hasPin);
+          setPayBio(s.biometricEnabled);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPayHasPin(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPaySecLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.isAuthenticated]);
 
   // Update form fields when profile is loaded
   useEffect(() => {
@@ -234,6 +402,83 @@ export default function AccountScreen() {
     }
   };
 
+  const handleSavePaymentPin = async () => {
+    const pinNew = normalizePaymentPinDigits(payPinNew);
+    const pinConfirm = normalizePaymentPinDigits(payPinConfirm);
+    const pinCur = payHasPin ? normalizePaymentPinDigits(payPinCurrent) : "";
+    if (!isAsciiPinDigits(pinNew)) {
+      showToast({
+        message: t(
+          "walletPayment.pinFormatInvalid",
+          "Enter 6–12 digits (0–9 only). Eastern Arabic / Persian digits are accepted."
+        ),
+        type: "error",
+      });
+      return;
+    }
+    if (pinNew !== pinConfirm) {
+      showToast({ message: t("account.paymentPinMismatch"), type: "error" });
+      return;
+    }
+    if (payHasPin && !pinCur) {
+      showToast({
+        message: t("account.fillPasswordFields", "Please fill all fields"),
+        type: "error",
+      });
+      return;
+    }
+    setPayPinSaving(true);
+    try {
+      await setPaymentPin(pinNew, payHasPin ? pinCur : undefined);
+      setPayHasPin(true);
+      setPayPinNew("");
+      setPayPinConfirm("");
+      setPayPinCurrent("");
+      showToast({ message: t("account.paymentPinSaved"), type: "success" });
+      try {
+        const deviceId = await getOrCreateWalletDeviceId();
+        const s = await fetchPaymentSecurity(deviceId);
+        setPayHasPin(s.hasPin);
+        setPayBio(s.biometricEnabled);
+      } catch {
+        /* ignore */
+      }
+    } catch (e: unknown) {
+      showToast({
+        message: getApiErrorMessage(
+          e,
+          t("walletPayment.pinSaveFailed", "Could not save PIN")
+        ),
+        type: "error",
+      });
+    } finally {
+      setPayPinSaving(false);
+    }
+  };
+
+  const handleTogglePaymentBio = async (enabled: boolean) => {
+    if (enabled && !payHasPin) {
+      showToast({ message: t("walletPayment.needPin"), type: "error" });
+      return;
+    }
+    try {
+      await setPaymentBiometricEnabled(enabled);
+      setPayBio(enabled);
+      showToast({
+        message: t("account.paymentBiometricUpdated", "Biometric step updated"),
+        type: "success",
+      });
+    } catch (e: unknown) {
+      showToast({
+        message: getApiErrorMessage(
+          e,
+          t("account.paymentBiometricSaveFailed", "Could not update biometric setting")
+        ),
+        type: "error",
+      });
+    }
+  };
+
   const handleShareMyCode = async () => {
     if (!profile?.qrCode || !qrViewShotRef.current) return;
     try {
@@ -263,13 +508,21 @@ export default function AccountScreen() {
     }
   };
 
+  const AccountRoot =
+    Platform.OS === "ios" ? KeyboardAvoidingView : View;
+
   return (
-    <KeyboardAvoidingView
+    <AccountRoot
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+      {...(Platform.OS === "ios"
+        ? {
+            behavior: "padding" as const,
+            keyboardVerticalOffset: Math.max(insets.top, 0) + 74,
+          }
+        : {})}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           styles.scrollContent,
@@ -277,8 +530,17 @@ export default function AccountScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
-        <View style={styles.header}>
+        <View
+          style={styles.header}
+          onLayout={(e) => {
+            headerHeightRef.current = e.nativeEvent.layout.height;
+          }}
+        >
           <Text style={[styles.title, titleStyle]}>
             {t("account.title")}
           </Text>
@@ -290,7 +552,11 @@ export default function AccountScreen() {
               {t("account.profile")}
             </Text>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("profile-name")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -298,10 +564,15 @@ export default function AccountScreen() {
                 placeholderTextColor={colors.textSecondary}
                 value={name}
                 onChangeText={setName}
+                onFocus={() => scrollFocusedGroupIntoView("profile-name")}
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("profile-email")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Mail size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -310,10 +581,15 @@ export default function AccountScreen() {
                 value={email}
                 editable={false}
                 keyboardType="email-address"
+                onFocus={() => scrollFocusedGroupIntoView("profile-email")}
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("profile-phone")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Phone size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -322,6 +598,7 @@ export default function AccountScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+                onFocus={() => scrollFocusedGroupIntoView("profile-phone")}
               />
             </View>
 
@@ -360,7 +637,11 @@ export default function AccountScreen() {
               {t("account.updatePassword")}
             </Text>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("password-current")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -369,6 +650,7 @@ export default function AccountScreen() {
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry={!showCurrentPassword}
+                onFocus={() => scrollFocusedGroupIntoView("password-current")}
               />
               <TouchableOpacity
                 onPress={() => setShowCurrentPassword((s) => !s)}
@@ -383,7 +665,11 @@ export default function AccountScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("password-new")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -392,6 +678,7 @@ export default function AccountScreen() {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry={!showNewPassword}
+                onFocus={() => scrollFocusedGroupIntoView("password-new")}
               />
               <TouchableOpacity
                 onPress={() => setShowNewPassword((s) => !s)}
@@ -406,7 +693,11 @@ export default function AccountScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("password-confirm")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -415,6 +706,7 @@ export default function AccountScreen() {
                 value={confirmNewPassword}
                 onChangeText={setConfirmNewPassword}
                 secureTextEntry={!showConfirmPassword}
+                onFocus={() => scrollFocusedGroupIntoView("password-confirm")}
               />
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword((s) => !s)}
@@ -459,6 +751,133 @@ export default function AccountScreen() {
                 </Text>
               </TouchableOpacity>
             </LinearGradient>
+          </View>
+
+          <View
+            style={[styles.section, { backgroundColor: sectionBg }]}
+            onLayout={(e) => {
+              paymentPinYInContentRef.current = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.sectionTitle, sectionTitleStyle]}>
+              {t("account.paymentPinSection")}
+            </Text>
+            <Text
+              style={[styles.qrDescription, { color: colors.textSecondary }, font]}
+            >
+              {t("account.paymentPinDesc")}
+            </Text>
+            {paySecLoading ? (
+              <ActivityIndicator style={{ marginVertical: 12 }} color={colors.primary} />
+            ) : (
+              <>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={[{ color: colors.text, flex: 1 }, font]}>
+                    {t("account.paymentBiometric")}
+                  </Text>
+                  <Switch
+                    value={payBio}
+                    onValueChange={(v) => void handleTogglePaymentBio(v)}
+                    trackColor={{ false: "#767577", true: colors.primary + "99" }}
+                    thumbColor={payBio ? colors.primary : "#f4f3f4"}
+                  />
+                </View>
+                {payHasPin ? (
+                  <View
+                    ref={setInputGroupRef("payment-pin-current")}
+                    style={styles.inputGroup}
+                    collapsable={false}
+                  >
+                    <Lock size={20} color={colors.textSecondary} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }, font]}
+                      placeholder={t("account.paymentPinCurrent")}
+                      placeholderTextColor={colors.textSecondary}
+                      value={payPinCurrent}
+                      onChangeText={setPayPinCurrent}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      maxLength={12}
+                      onFocus={() =>
+                        scrollFocusedGroupIntoView("payment-pin-current")
+                      }
+                    />
+                  </View>
+                ) : null}
+                <View
+                  ref={setInputGroupRef("payment-pin-new")}
+                  style={styles.inputGroup}
+                  collapsable={false}
+                >
+                  <Lock size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }, font]}
+                    placeholder={t("account.paymentPinNew")}
+                    placeholderTextColor={colors.textSecondary}
+                    value={payPinNew}
+                    onChangeText={setPayPinNew}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    maxLength={12}
+                    onFocus={() =>
+                      scrollFocusedGroupIntoView("payment-pin-new")
+                    }
+                  />
+                </View>
+                <View
+                  ref={setInputGroupRef("payment-pin-confirm")}
+                  style={styles.inputGroup}
+                  collapsable={false}
+                >
+                  <Lock size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }, font]}
+                    placeholder={t("account.paymentPinConfirm")}
+                    placeholderTextColor={colors.textSecondary}
+                    value={payPinConfirm}
+                    onChangeText={setPayPinConfirm}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    maxLength={12}
+                    onFocus={() =>
+                      scrollFocusedGroupIntoView("payment-pin-confirm")
+                    }
+                  />
+                </View>
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? ["#4facfe", "#00f2fe"]
+                      : [colors.primary, colors.primary]
+                  }
+                  style={[styles.saveButton, { opacity: payPinSaving ? 0.7 : 1 }]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <TouchableOpacity
+                    style={styles.saveButtonInner}
+                    onPress={() => void handleSavePaymentPin()}
+                    disabled={payPinSaving}
+                  >
+                    {payPinSaving ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Lock size={20} color="white" />
+                    )}
+                    <Text style={[styles.saveButtonText, font]}>
+                      {t("account.paymentPinSave")}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </>
+            )}
           </View>
 
           <View style={[styles.section, { backgroundColor: sectionBg }]}>
@@ -553,7 +972,11 @@ export default function AccountScreen() {
               {t("account.dangerZoneDescription")}
             </Text>
 
-            <View style={styles.inputGroup}>
+            <View
+              ref={setInputGroupRef("delete-password")}
+              style={styles.inputGroup}
+              collapsable={false}
+            >
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.input, { color: colors.text }, font]}
@@ -562,6 +985,7 @@ export default function AccountScreen() {
                 value={deletePassword}
                 onChangeText={setDeletePassword}
                 secureTextEntry={!showDeletePassword}
+                onFocus={() => scrollFocusedGroupIntoView("delete-password")}
               />
               <TouchableOpacity
                 onPress={() => setShowDeletePassword((s) => !s)}
@@ -600,7 +1024,7 @@ export default function AccountScreen() {
         </View>
 
       </ScrollView>
-    </KeyboardAvoidingView>
+    </AccountRoot>
   );
 }
 

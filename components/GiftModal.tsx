@@ -7,7 +7,6 @@ import {
   Camera,
   Coffee,
   UtensilsCrossed,
-  Wallet,
   Image as ImageIcon,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -61,9 +60,9 @@ export default function GiftModal({
   const { showToast, showAlert } = useAlert();
 
   // State for gift form
-  const [selectedGiftType, setSelectedGiftType] = useState<
-    "wallet" | "drink" | "meal"
-  >("wallet");
+  const [selectedGiftType, setSelectedGiftType] = useState<"drink" | "meal">(
+    "meal",
+  );
   const [giftAmount, setGiftAmount] = useState("");
   const [scannedQRCode, setScannedQRCode] = useState("");
   const [isGiftProcessing, setIsGiftProcessing] = useState(false);
@@ -78,7 +77,7 @@ export default function GiftModal({
   useEffect(() => {
     if (visible) {
       setGiftAmount("");
-      setSelectedGiftType("wallet");
+      setSelectedGiftType("meal");
       setScannedQRCode("");
       setQrScanned(false);
       setScanModalVisible(false);
@@ -105,10 +104,6 @@ export default function GiftModal({
     let balanceType = "";
 
     switch (selectedGiftType) {
-      case "wallet":
-        availableBalance = currentBalance.walletBalance;
-        balanceType = "$";
-        break;
       case "meal":
         availableBalance = currentBalance.mealPoints;
         balanceType = t("purchase.mealPoints");
@@ -207,9 +202,6 @@ export default function GiftModal({
     let availableBalance = 0;
 
     switch (selectedGiftType) {
-      case "wallet":
-        availableBalance = currentBalance.walletBalance;
-        break;
       case "meal":
         availableBalance = currentBalance.mealPoints;
         break;
@@ -220,11 +212,9 @@ export default function GiftModal({
 
     if (amount > availableBalance) {
       const symbol =
-        selectedGiftType === "wallet"
-          ? "$"
-          : selectedGiftType === "meal"
-            ? t("purchase.mealPoints")
-            : t("purchase.drinkPoints");
+        selectedGiftType === "meal"
+          ? t("purchase.mealPoints")
+          : t("purchase.drinkPoints");
       showToast({
         message: t("purchase.insufficientBalance", {
           balance: availableBalance,
@@ -256,9 +246,6 @@ export default function GiftModal({
     let availableBalance = 0;
 
     switch (selectedGiftType) {
-      case "wallet":
-        availableBalance = currentBalance.walletBalance;
-        break;
       case "meal":
         availableBalance = currentBalance.mealPoints;
         break;
@@ -269,11 +256,9 @@ export default function GiftModal({
 
     if (amount > availableBalance) {
       const symbol =
-        selectedGiftType === "wallet"
-          ? "$"
-          : selectedGiftType === "meal"
-            ? t("purchase.mealPoints")
-            : t("purchase.drinkPoints");
+        selectedGiftType === "meal"
+          ? t("purchase.mealPoints")
+          : t("purchase.drinkPoints");
       showToast({
         message: t("purchase.insufficientBalance", {
           balance: availableBalance,
@@ -434,9 +419,6 @@ export default function GiftModal({
     let availableBalance = 0;
 
     switch (selectedGiftType) {
-      case "wallet":
-        availableBalance = currentBalance.walletBalance;
-        break;
       case "meal":
         availableBalance = currentBalance.mealPoints;
         break;
@@ -447,11 +429,9 @@ export default function GiftModal({
 
     if (amount > availableBalance) {
       const symbol =
-        selectedGiftType === "wallet"
-          ? "$"
-          : selectedGiftType === "meal"
-            ? t("purchase.mealPoints")
-            : t("purchase.drinkPoints");
+        selectedGiftType === "meal"
+          ? t("purchase.mealPoints")
+          : t("purchase.drinkPoints");
       showToast({
         message: t("purchase.insufficientBalance", {
           balance: availableBalance,
@@ -468,11 +448,9 @@ export default function GiftModal({
       const giftData = {
         targetId: targetId,
         amount: parseFloat(giftAmount),
-        currencyType: (selectedGiftType === "wallet"
-          ? "balance"
-          : selectedGiftType === "meal"
-            ? "stars_meal"
-            : "stars_drink") as "balance" | "stars_meal" | "stars_drink",
+        currencyType: (selectedGiftType === "meal"
+          ? "stars_meal"
+          : "stars_drink") as "stars_meal" | "stars_drink",
         qrCode: effectiveQr,
       };
 
@@ -536,7 +514,7 @@ export default function GiftModal({
   const handleClose = () => {
     // Reset form when closing modal
     setGiftAmount("");
-    setSelectedGiftType("wallet");
+    setSelectedGiftType("meal");
     setScannedQRCode("");
     setQrScanned(false);
     setScanModalVisible(false);
@@ -549,7 +527,7 @@ export default function GiftModal({
       <Modal
         visible={visible}
         animationType="slide"
-        transparent={true}
+        transparent={false}
         onRequestClose={handleClose}
         statusBarTranslucent
       >
@@ -557,7 +535,7 @@ export default function GiftModal({
           style={[
             styles.modalOverlay,
             {
-              backgroundColor: "rgba(0, 0, 0, 0.3)",
+              backgroundColor: "#000000",
               opacity: isScanScreenOpen ? 0 : 1,
               pointerEvents: isScanScreenOpen ? "none" : "auto",
             },
@@ -587,15 +565,7 @@ export default function GiftModal({
               <View style={styles.giftTypeContainer}>
                 {[
                   {
-                    type: "wallet",
-                    label: t("purchase.walletBalance"),
-                    balance: currentBalance.walletBalance,
-                    symbol: "$",
-                    icon: Wallet,
-                    iconColor: colors.success,
-                  },
-                  {
-                    type: "drink",
+                    type: "drink" as const,
                     label: t("purchase.drinkPoints"),
                     balance: currentBalance.drinkPoints,
                     symbol: "",
@@ -603,7 +573,7 @@ export default function GiftModal({
                     iconColor: colors.secondary,
                   },
                   {
-                    type: "meal",
+                    type: "meal" as const,
                     label: t("purchase.mealPoints"),
                     balance: currentBalance.mealPoints,
                     symbol: "",
@@ -629,7 +599,7 @@ export default function GiftModal({
                           borderWidth: 1,
                         },
                       ]}
-                      onPress={() => setSelectedGiftType(option.type as any)}
+                      onPress={() => setSelectedGiftType(option.type)}
                     >
                       <View style={styles.giftTypeContent}>
                         <Icon

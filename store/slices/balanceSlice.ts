@@ -202,18 +202,21 @@ const balanceSlice = createSlice({
           );
           if (updatedSelectedBalance) {
             state.selectedRestaurantBalance = updatedSelectedBalance;
-            console.log(
-              "🔄 Updated selected restaurant balance:",
-              updatedSelectedBalance
-            );
+            if (__DEV__) {
+              console.log(
+                "🔄 Updated selected restaurant balance:",
+                updatedSelectedBalance
+              );
+            }
 
             // Also update the restaurantSlice
             // Note: We can't dispatch from within a reducer, so this will be handled in the component
           }
         }
 
-        // Log the updated balances for debugging
-        console.log("📊 Updated balances:", transformedBalances);
+        if (__DEV__) {
+          console.log("📊 Updated balances:", transformedBalances);
+        }
       })
       .addCase(fetchUserBalances.rejected, (state, action) => {
         state.loading.balances = false;
@@ -238,7 +241,9 @@ const balanceSlice = createSlice({
 
           // Add fallback data for development
           if (__DEV__) {
-            console.log("🔄 Using fallback data due to network error");
+            if (__DEV__) {
+              console.log("🔄 Using fallback data due to network error");
+            }
             const fallbackData = [
               {
                 id: "fallback-1",
@@ -284,7 +289,9 @@ const balanceSlice = createSlice({
         state.error.qrScan = action.payload as string;
 
         // Log the error for debugging
-        console.log("🔍 QR Scan rejected:", action.payload);
+        if (__DEV__) {
+          console.log("🔍 QR Scan rejected:", action.payload);
+        }
 
         // Don't clear balances on QR scan error - it's not an auth error
         // The component will handle the specific error display

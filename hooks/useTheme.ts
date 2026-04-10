@@ -10,7 +10,9 @@ import {
 } from "@/store/slices/themeSlice";
 
 const FONT_ARABIC = "Cairo_400Regular";
+const FONT_ARABIC_BOLD = "Cairo_700Bold";
 const FONT_DEFAULT = "Poppins_400Regular";
+const FONT_DEFAULT_BOLD = "Poppins_700Bold";
 
 export const useTheme = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -20,6 +22,8 @@ export const useTheme = () => {
   );
   const defaultFontFamily =
     currentLanguage === "ar" ? FONT_ARABIC : FONT_DEFAULT;
+  const defaultFontFamilyBold =
+    currentLanguage === "ar" ? FONT_ARABIC_BOLD : FONT_DEFAULT_BOLD;
 
   // Load theme preference on mount
   useEffect(() => {
@@ -49,5 +53,6 @@ export const useTheme = () => {
     isDark,
     mode,
     defaultFontFamily,
+    defaultFontFamilyBold,
   };
 };
