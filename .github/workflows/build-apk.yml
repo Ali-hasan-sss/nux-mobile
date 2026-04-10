@@ -101,6 +101,19 @@ jobs:
         env:
           EXPO_NO_DOTENV: 1
 
+      # Prebuild may reset android/gradle.properties; enforce heap for R8 (minifyRelease).
+      - name: Ensure Gradle JVM heap (R8)
+        run: |
+          GP="$GITHUB_WORKSPACE/android/gradle.properties"
+          if [ ! -f "$GP" ]; then echo "Missing $GP"; exit 1; fi
+          HEAP='org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8'
+          if grep -q '^org.gradle.jvmargs=' "$GP"; then
+            sed -i "s|^org.gradle.jvmargs=.*|$HEAP|" "$GP"
+          else
+            echo "$HEAP" >> "$GP"
+          fi
+          grep '^org.gradle.jvmargs=' "$GP"
+
       - name: 📝 Setup release keystore
         run: |
           mkdir -p android/app
@@ -120,6 +133,7 @@ jobs:
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
         env:
           EXPO_NO_DOTENV: 1
+          # Daemon off in CI; parallel + cache on. Heap comes from org.gradle.jvmargs in gradle.properties.
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
       - name: 📦 Upload APK artifact
