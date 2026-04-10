@@ -32,4 +32,10 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
+# Stripe (@stripe/stripe-react-native) — bridge + optional Push Provisioning
+# The RN SDK references com.stripe.android.pushProvisioning.* for “add to Google Wallet”.
+# Those classes are not always on the classpath; R8 otherwise fails release minify.
+-dontwarn com.stripe.android.pushProvisioning.**
+-keep class com.reactnativestripesdk.** { *; }
+
 # Add any project specific keep options here:
