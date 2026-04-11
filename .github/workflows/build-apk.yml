@@ -1,3 +1,12 @@
+# Required GitHub Actions secrets (Repository → Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+#   GOOGLE_MAPS_API_KEY          — Android Maps SDK (ads / restaurant map modal); injected at expo prebuild
+#   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID — same Web client as backend GOOGLE_CLIENT_ID (Google button + native sign-in)
+#   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY — pk_live_… / pk_test_… (NOT NEXT_PUBLIC_*; Expo embeds EXPO_PUBLIC_* at bundle time)
+#   EXPO_PUBLIC_API_URL          — e.g. https://api.example.com/api
+# Optional:
+#   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID — Android OAuth client id (recommended for release; add release SHA-1 in Google Cloud)
+
 name: Build Android APK (Local)
 
 on:
@@ -17,6 +26,13 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    # Map secrets into env once (valid context). Avoid ${{ secrets.* }} inside `run:` — linters flag it.
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
     steps:
       - name: 🏗 Checkout code
         uses: actions/checkout@v4
@@ -58,9 +74,11 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      # GOOGLE_MAPS_API_KEY: add in repo Settings → Secrets and variables → Actions
-      - name: 🔐 Set build env (Google Maps API key)
-        run: echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" >> $GITHUB_ENV
+      - name: 🔐 Check required configuration
+        run: |
+          if [ -z "$GOOGLE_MAPS_API_KEY" ]; then echo "::warning::GOOGLE_MAPS_API_KEY secret is empty — MapView may crash when opening an ad location."; fi
+          if [ -z "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID" ]; then echo "::warning::EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID secret is empty — Google sign-in button is hidden."; fi
+          if [ -z "$EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then echo "::warning::EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY secret is empty — wallet card top-up disabled."; fi
 
       - name: 📦 Cache Expo
         uses: actions/cache@v4

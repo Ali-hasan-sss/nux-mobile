@@ -114,7 +114,7 @@
     "topUpSyncPending": "Zahlung OK, aber Synchronisierung fehlgeschlagen. Seite später aktualisieren oder Verbindung prüfen; der Webhook kann das Guthaben noch gutschreiben.",
     "topUpFailed": "Zahlung fehlgeschlagen",
     "minAmount": "Mindestbetrag ist 1 EUR",
-    "stripeNotConfigured": "Stripe ist nicht konfiguriert. Setzen Sie NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY für Kartenaufladung.",
+    "stripeNotConfigured": "Stripe ist nicht konfiguriert. Setzen Sie EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (und CI-Secrets für Release-Builds).",
     "noClientSecret": "Kartenzahlung konnte nicht gestartet werden",
     "selectRestaurant": "Restaurant auswählen",
     "searchRestaurant": "Restaurants suchen…",

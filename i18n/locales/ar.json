@@ -114,7 +114,7 @@
     "topUpSyncPending": "تم الدفع لكن تعذر مزامنة الرصيد. حدّث الصفحة لاحقاً أو تحقق من الاتصال؛ قد يُضاف الرصيد تلقائياً عبر Stripe.",
     "topUpFailed": "فشل الدفع",
     "minAmount": "الحد الأدنى للمبلغ 1 يورو",
-    "stripeNotConfigured": "Stripe غير مُعد. اضبط NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY لشحن البطاقة.",
+    "stripeNotConfigured": "Stripe غير مُعد. اضبط EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (وسرّ CI لبناء الإصدار).",
     "noClientSecret": "تعذر بدء الدفع بالبطاقة",
     "selectRestaurant": "اختر مطعماً",
     "searchRestaurant": "البحث عن مطاعم…",

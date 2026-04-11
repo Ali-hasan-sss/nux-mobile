@@ -114,7 +114,7 @@
     "topUpSyncPending": "Payment succeeded but balance sync failed. Refresh in a moment or check your connection; the webhook may still apply the credit.",
     "topUpFailed": "Payment failed",
     "minAmount": "Minimum amount is 1 EUR",
-    "stripeNotConfigured": "Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY for card top-ups.",
+    "stripeNotConfigured": "Stripe is not configured. Set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (and CI secrets for release builds).",
     "noClientSecret": "Could not start card payment",
     "selectRestaurant": "Select a restaurant",
     "searchRestaurant": "Search restaurants…",
