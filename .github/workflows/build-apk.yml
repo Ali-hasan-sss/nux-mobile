@@ -1,11 +1,9 @@
-# Required GitHub Actions secrets (Repository → Settings → Secrets and variables → Actions):
-#   ANDROID_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-#   GOOGLE_MAPS_API_KEY          — Android Maps SDK (ads / restaurant map modal); injected at expo prebuild
-#   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID — same Web client as backend GOOGLE_CLIENT_ID (Google button + native sign-in)
-#   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY — pk_live_… / pk_test_… (NOT NEXT_PUBLIC_*; Expo embeds EXPO_PUBLIC_* at bundle time)
-#   EXPO_PUBLIC_API_URL          — e.g. https://api.example.com/api
-# Optional:
-#   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID — Android OAuth client id (recommended for release; add release SHA-1 in Google Cloud)
+# Use this workflow when the Git repository ROOT is this Expo app (not the monorepo).
+# If your remote is lolityapp-v2 with folder mobile_app_new/, use instead:
+#   .github/workflows/mobile-android-apk.yml at repository root.
+#
+# Keystore: ANDROID_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (secrets)
+# Stripe/Google/Maps/API: secrets OR fill config/build-time-env.js (see .env.example)
 
 name: Build Android APK (Local)
 
@@ -26,7 +24,6 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    # Map secrets into env once (valid context). Avoid ${{ secrets.* }} inside `run:` — linters flag it.
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
@@ -34,116 +31,59 @@ jobs:
       EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
       EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
     steps:
-      - name: 🏗 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Apply config/build-time-env.js to runner env
+        run: node scripts/write-github-env-from-defaults.cjs
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: 🏗 Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
-          cache: "gradle"
+          cache: gradle
 
-      - name: 📦 Cache Android SDK
-        uses: actions/cache@v4
-        id: cache-android-sdk
+      - uses: actions/cache@v4
         with:
-          path: |
-            ~/.android
-          key: ${{ runner.os }}-android-sdk
-          restore-keys: |
-            ${{ runner.os }}-android-sdk-
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
 
-      - name: 📦 Cache node_modules
-        uses: actions/cache@v4
-        id: cache-node-modules
-        with:
-          path: |
-            node_modules
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - run: npm ci
 
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🔐 Check required configuration
+      - name: Check configuration
         run: |
-          if [ -z "$GOOGLE_MAPS_API_KEY" ]; then echo "::warning::GOOGLE_MAPS_API_KEY secret is empty — MapView may crash when opening an ad location."; fi
-          if [ -z "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID" ]; then echo "::warning::EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID secret is empty — Google sign-in button is hidden."; fi
-          if [ -z "$EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then echo "::warning::EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY secret is empty — wallet card top-up disabled."; fi
+          if [ -z "$GOOGLE_MAPS_API_KEY" ]; then echo "::warning::GOOGLE_MAPS_API_KEY empty — set secret or config/build-time-env.js"; fi
+          if [ -z "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID" ]; then echo "::warning::EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID empty"; fi
+          if [ -z "$EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then echo "::warning::EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY empty"; fi
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then echo "::warning::EXPO_PUBLIC_API_URL empty"; fi
 
-      - name: 📦 Cache Expo
-        uses: actions/cache@v4
-        id: cache-expo
-        with:
-          path: |
-            ~/.expo
-            .expo
-          key: ${{ runner.os }}-expo-${{ hashFiles('**/app.json', '**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-expo-
-
-      - name: 📦 Cache Android Gradle
-        uses: actions/cache@v4
-        id: cache-gradle
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', '**/build.gradle*', '**/settings.gradle') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: 📦 Cache Android Build artifacts
-        uses: actions/cache@v4
-        id: cache-android-build
-        with:
-          path: |
-            android/app/build
-            android/build
-          key: ${{ runner.os }}-android-build-${{ hashFiles('**/build.gradle*', '**/settings.gradle', 'android/app/src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-android-build-
-
-      - name: 🔨 Generate native code with Expo Prebuild
+      - name: Expo prebuild
         run: npx expo prebuild --platform android
         env:
           EXPO_NO_DOTENV: 1
 
-      # Prebuild may reset android/gradle.properties; enforce heap for R8 (minifyRelease).
-      - name: Ensure Gradle JVM heap (R8)
+      - name: Gradle JVM heap
         run: |
-          GP="$GITHUB_WORKSPACE/android/gradle.properties"
+          GP="android/gradle.properties"
           if [ ! -f "$GP" ]; then echo "Missing $GP"; exit 1; fi
           HEAP='org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8'
-          if grep -q '^org.gradle.jvmargs=' "$GP"; then
-            sed -i "s|^org.gradle.jvmargs=.*|$HEAP|" "$GP"
-          else
-            echo "$HEAP" >> "$GP"
-          fi
-          grep '^org.gradle.jvmargs=' "$GP"
+          if grep -q '^org.gradle.jvmargs=' "$GP"; then sed -i "s|^org.gradle.jvmargs=.*|$HEAP|" "$GP"; else echo "$HEAP" >> "$GP"; fi
 
-      - name: 📝 Setup release keystore
+      - name: Keystore
         run: |
           mkdir -p android/app
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
-          ls -la android/app/release.keystore
 
-      - name: 🔨 Build Release APK
+      - name: assembleRelease
         run: |
           cd android
           chmod +x ./gradlew
-          # Use absolute path for keystore
-          KEYSTORE_PATH="$GITHUB_WORKSPACE/android/app/release.keystore"
+          KEYSTORE_PATH="${GITHUB_WORKSPACE}/android/app/release.keystore"
           ./gradlew assembleRelease --no-daemon --build-cache \
             -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
@@ -151,18 +91,13 @@ jobs:
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
         env:
           EXPO_NO_DOTENV: 1
-          # Daemon off in CI; parallel + cache on. Heap comes from org.gradle.jvmargs in gradle.properties.
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
-      - name: 📦 Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-      - name: ✅ Build complete
-        run: |
-          echo "🎉 APK built successfully!"
-          echo "📥 Download your APK from the Actions artifacts tab"
-          ls -lh android/app/build/outputs/apk/*/*.apk
+      - name: Done
+        run: ls -lh android/app/build/outputs/apk/*/*.apk

@@ -1,5 +1,19 @@
-// Load .env into process.env (for local dev). CI/GitHub can inject GOOGLE_MAPS_API_KEY.
-require("dotenv").config();
+// Optional embedded defaults (CI without secrets / no .env). `.env` overrides below.
+(function applyEmbeddedBuildEnv() {
+  try {
+    const embedded = require("./config/build-time-env.js");
+    for (const [k, v] of Object.entries(embedded)) {
+      if (typeof v !== "string" || v.trim() === "") continue;
+      const cur = process.env[k];
+      if (cur != null && String(cur).trim() !== "") continue;
+      process.env[k] = v;
+    }
+  } catch (e) {
+    if (e && e.code !== "MODULE_NOT_FOUND") throw e;
+  }
+})();
+
+require("dotenv").config({ override: true });
 
 const base = require("./app.json");
 
