@@ -6,9 +6,21 @@ export type WalletLedgerPerspective = "user" | "restaurant";
 export function walletLedgerTitleKey(
   type: WalletLedgerEntry["type"],
   source: string,
-  perspective: WalletLedgerPerspective
+  perspective: WalletLedgerPerspective,
+  metadata?: unknown
 ): string | null {
   const s = (source ?? "").toString().trim().toUpperCase();
+  const giftType =
+    metadata && typeof metadata === "object" && "giftType" in metadata
+      ? String((metadata as { giftType?: unknown }).giftType ?? "")
+          .trim()
+          .toUpperCase()
+      : "";
+
+  if (perspective === "user" && s === "ADMIN" && giftType === "MONEY_VOUCHER") {
+    if (type === "DEBIT") return "wallet.ledgerDesc.giftVoucherSent";
+    if (type === "CREDIT") return "wallet.ledgerDesc.giftVoucherReceived";
+  }
 
   switch (s) {
     case "ORDER":

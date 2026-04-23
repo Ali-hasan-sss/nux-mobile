@@ -50,7 +50,16 @@ export const fetchNotifications = createAsyncThunk(
         page || 1,
         pageSize || 10
       );
-      return { ...response.data, append: append || false };
+      return {
+        notifications: response.data?.notifications ?? [],
+        pagination: response.data?.pagination ?? {
+          totalItems: 0,
+          totalPages: 0,
+          currentPage: page || 1,
+          pageSize: pageSize || 10,
+        },
+        append: append || false,
+      };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch notifications"
@@ -65,7 +74,7 @@ export const fetchUnreadCount = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await notificationService.getUnreadCount();
-      return response.data.count;
+      return response.data?.count ?? 0;
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch unread count"

@@ -139,7 +139,7 @@ export default function WalletTransactionsScreen() {
 
   const renderItem = ({ item }: { item: WalletLedgerEntry }) => {
     const credit = item.type === "CREDIT";
-    const titleKey = walletLedgerTitleKey(item.type, item.source, "user");
+    const titleKey = walletLedgerTitleKey(item.type, item.source, "user", item.metadata);
     const title = titleKey
       ? t(titleKey)
       : credit

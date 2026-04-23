@@ -97,6 +97,28 @@ async function walletPost<T>(path: string, body: unknown): Promise<T> {
   }
 }
 
+async function walletPostByCandidates<T>(
+  candidates: string[],
+  body: unknown
+): Promise<T> {
+  let last: unknown;
+  for (const p of candidates) {
+    try {
+      if (__DEV__) console.log(`[walletApi] POST try: ${p}`);
+      const res = await authApi.post(p, body);
+      if (__DEV__) console.log(`[walletApi] POST ok: ${p}`);
+      return unwrap<T>(res);
+    } catch (e) {
+      last = e;
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+      if (__DEV__) console.log(`[walletApi] POST fail: ${p} status=${String(status ?? "NA")}`);
+      // Keep trying only when endpoint is missing.
+      if (status !== 404) throw e;
+    }
+  }
+  throw last;
+}
+
 export type WalletTopUpIntentResponse = {
   clientSecret: string | null;
   paymentIntentId: string;
@@ -170,6 +192,17 @@ export type NewPaymentRequestPayload = {
   initiatedFrom: string;
 };
 
+export type NewGiftVoucherRequestPayload = {
+  approvalId: string;
+  approvalToken: string;
+  recipientUserId: string;
+  recipientName?: string;
+  amount: string;
+  currency: string;
+  expiresAt: string;
+  initiatedFrom: string;
+};
+
 export async function approveWalletPayment(body: {
   approvalId: string;
   approvalToken: string;
@@ -197,4 +230,37 @@ export async function requestWalletPayment(payload: {
     initiatedFrom: "mobile",
   });
   return unwrap<NewPaymentRequestPayload>(res);
+}
+
+export async function requestWalletGiftVoucher(payload: {
+  recipientCode: string;
+  amount: 10 | 20 | 25 | 50;
+  idempotencyKey?: string;
+}): Promise<NewGiftVoucherRequestPayload> {
+  return walletPostByCandidates<NewGiftVoucherRequestPayload>(
+    [
+      `${CLIENT_WALLET}/gift-voucher`,
+      `${LEGACY_WALLET}/gift-voucher`,
+      `${CLIENT_WALLET}/gift-voucher/request`,
+      `${LEGACY_WALLET}/gift-voucher/request`,
+    ],
+    {
+    ...payload,
+    initiatedFrom: "mobile",
+    }
+  );
+}
+
+export async function approveWalletGiftVoucher(body: {
+  approvalId: string;
+  approvalToken: string;
+  pin?: string;
+  deviceId: string;
+  deviceName?: string;
+}): Promise<{ senderBalanceAfter: string }> {
+  return walletPost<{ senderBalanceAfter: string }>("gift-voucher/approve", body);
+}
+
+export async function rejectWalletGiftVoucher(approvalId: string): Promise<void> {
+  await walletPost<unknown>("gift-voucher/reject", { approvalId });
 }

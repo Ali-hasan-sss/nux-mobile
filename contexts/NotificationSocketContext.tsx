@@ -6,8 +6,12 @@ import { API_CONFIG } from "@/config/api";
 import { AppDispatch, RootState } from "@/store/store";
 import { incrementUnreadCount } from "@/store/slices/notificationSlice";
 import { fetchUnreadCount } from "@/store/slices/notificationSlice";
-import type { NewPaymentRequestPayload } from "@/api/walletPaymentApi";
+import type {
+  NewGiftVoucherRequestPayload,
+  NewPaymentRequestPayload,
+} from "@/api/walletPaymentApi";
 import { WalletPaymentApprovalModal } from "@/components/WalletPaymentApprovalModal";
+import { GiftVoucherApprovalModal } from "@/components/GiftVoucherApprovalModal";
 
 function getSocketUrl(): string {
   const baseUrl = API_CONFIG.BASE_URL || "https://back.nuxapp.de/api";
@@ -38,14 +42,19 @@ export function NotificationSocketProvider({
   );
   const [isConnected, setIsConnected] = useState(false);
   const [walletApproval, setWalletApproval] = useState<NewPaymentRequestPayload | null>(null);
+  const [giftApproval, setGiftApproval] = useState<NewGiftVoucherRequestPayload | null>(null);
 
   const dismissWalletApproval = useCallback(() => {
     setWalletApproval(null);
+  }, []);
+  const dismissGiftApproval = useCallback(() => {
+    setGiftApproval(null);
   }, []);
 
   useEffect(() => {
     if (!token || !isAuthenticated) {
       setWalletApproval(null);
+      setGiftApproval(null);
       return;
     }
 
@@ -75,6 +84,25 @@ export function NotificationSocketProvider({
       }
     };
 
+    const onNewGift = (p: NewGiftVoucherRequestPayload) => {
+      if (p?.approvalId && p?.approvalToken) {
+        setGiftApproval({
+          ...p,
+          approvalId: String(p.approvalId).trim(),
+          approvalToken: String(p.approvalToken).trim(),
+        });
+      }
+    };
+
+    const onGiftResolved = (payload: { approvalId?: string; status?: string }) => {
+      setGiftApproval((prev) =>
+        prev && payload?.approvalId === prev.approvalId ? null : prev
+      );
+      if (payload?.status === "approved") {
+        DeviceEventEmitter.emit("wallet:balanceChanged");
+      }
+    };
+
     newSocket.on("connect", () => {
       setIsConnected(true);
       dispatch(fetchUnreadCount());
@@ -87,11 +115,15 @@ export function NotificationSocketProvider({
 
     newSocket.on("NEW_PAYMENT_REQUEST", onNewPayment);
     newSocket.on("PAYMENT_REQUEST_RESOLVED", onResolved);
+    newSocket.on("NEW_GIFT_VOUCHER_REQUEST", onNewGift);
+    newSocket.on("GIFT_VOUCHER_REQUEST_RESOLVED", onGiftResolved);
 
     return () => {
       newSocket.off("notification");
       newSocket.off("NEW_PAYMENT_REQUEST", onNewPayment);
       newSocket.off("PAYMENT_REQUEST_RESOLVED", onResolved);
+      newSocket.off("NEW_GIFT_VOUCHER_REQUEST", onNewGift);
+      newSocket.off("GIFT_VOUCHER_REQUEST_RESOLVED", onGiftResolved);
       newSocket.off("connect");
       newSocket.off("disconnect");
       newSocket.disconnect();
@@ -106,6 +138,11 @@ export function NotificationSocketProvider({
         visible={Boolean(walletApproval)}
         payload={walletApproval}
         onDismiss={dismissWalletApproval}
+      />
+      <GiftVoucherApprovalModal
+        visible={Boolean(giftApproval)}
+        payload={giftApproval}
+        onDismiss={dismissGiftApproval}
       />
     </NotificationSocketContext.Provider>
   );

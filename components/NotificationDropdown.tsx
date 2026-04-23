@@ -79,6 +79,14 @@ function getTranslatedNotification(
     const walletReceivedMatch = body.match(
       /^Received\s+([\d.]+)\s+(\S+)\s+from\s+(.+)\.?$/i,
     );
+    const giftSentMatch = body.match(
+      /^You sent\s+([\d.]+)\s+(\S+)\s+to\s+(.+)\.?$/i,
+    );
+    const giftReceivedMatch = body.match(
+      /^You received\s+([\d.]+)\s+(\S+)\s+from\s+(.+)\.?$/i,
+    );
+    const voucherSentTitle = /^voucher sent$/i.test(title.trim());
+    const voucherReceivedTitle = /^voucher received$/i.test(title.trim());
     if (atMatch) {
       const amount = atMatch[1];
       const currency = getCurrencyLabel(atMatch[2], t);
@@ -123,37 +131,36 @@ function getTranslatedNotification(
         }),
       };
     }
-  }
-
-  // GIFT: title "Gift Sent" / "Gift Received", body "You gifted X type to Name" / "You received X type from Name"
-  if (type === "GIFT") {
-    const isSent = /Gift Sent/i.test(title);
-    const sentMatch = body.match(
-      /You gifted ([\d.]+) (\S+) to (.+?)(?:\s+from group .+)?$/s,
-    );
-    const receivedMatch = body.match(
-      /You received ([\d.]+) (\S+) from (.+?)(?:\s+\(group .+\))?$/s,
-    );
-    if (isSent && sentMatch) {
-      const name = sentMatch[3].replace(/\s+from group .+$/, "").trim();
+    if (giftSentMatch) {
       return {
-        title: t("notifications.giftSentTitle"),
-        body: t("notifications.giftSentBody", {
-          amount: sentMatch[1],
-          currency: getCurrencyLabel(sentMatch[2], t),
-          name,
+        title: t("notifications.giftVoucherSentTitle"),
+        body: t("notifications.giftVoucherSentBody", {
+          amount: giftSentMatch[1],
+          currency: giftSentMatch[2],
+          recipient: giftSentMatch[3].trim(),
         }),
       };
     }
-    if (!isSent && receivedMatch) {
-      const name = receivedMatch[3].replace(/\s+\(group .+\)$/, "").trim();
+    if (giftReceivedMatch) {
       return {
-        title: t("notifications.giftReceivedTitle"),
-        body: t("notifications.giftReceivedBody", {
-          amount: receivedMatch[1],
-          currency: getCurrencyLabel(receivedMatch[2], t),
-          name,
+        title: t("notifications.giftVoucherReceivedTitle"),
+        body: t("notifications.giftVoucherReceivedBody", {
+          amount: giftReceivedMatch[1],
+          currency: giftReceivedMatch[2],
+          sender: giftReceivedMatch[3].trim(),
         }),
+      };
+    }
+    if (voucherSentTitle) {
+      return {
+        title: t("notifications.giftVoucherSentTitle"),
+        body,
+      };
+    }
+    if (voucherReceivedTitle) {
+      return {
+        title: t("notifications.giftVoucherReceivedTitle"),
+        body,
       };
     }
   }

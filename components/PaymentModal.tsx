@@ -53,6 +53,31 @@ import {
   type Restaurant as SelectorRestaurant,
 } from "@/components/RestaurantSelector";
 import { setSelectedRestaurantBalance } from "@/store/slices/balanceSlice";
+import type { TFunction } from "i18next";
+
+function getPaymentModalErrorMessage(e: unknown, t: TFunction): string {
+  if (axios.isAxiosError(e)) {
+    const status = e.response?.status;
+    const apiMessage =
+      typeof e.response?.data?.message === "string"
+        ? e.response.data.message.toLowerCase()
+        : "";
+    const apiCode =
+      typeof e.response?.data?.code === "string"
+        ? e.response.data.code
+        : "";
+
+    if (status === 428) return t("walletPayment.needPin");
+    if (status === 401 || apiCode === "PIN_INVALID" || apiMessage.includes("invalid pin")) {
+      return t("walletPayment.invalidPin");
+    }
+    if (apiMessage.includes("insufficient")) return t("payment.insufficientBalance");
+    if (apiMessage.includes("restaurant") && apiMessage.includes("not found")) {
+      return t("payment.selectRestaurantFirst");
+    }
+  }
+  return getApiErrorMessage(e, t("common.error"));
+}
 
 interface PaymentModalProps {
   visible: boolean;
@@ -106,6 +131,7 @@ export function PaymentModal({
     type: "info",
   });
   const [needPinAlertVisible, setNeedPinAlertVisible] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Show toast function
   const showToast = (message: string, type: ToastType) => {
@@ -126,6 +152,7 @@ export function PaymentModal({
     if (visible) {
       refreshBalances();
       translateX.value = 0;
+      setModalError(null);
     }
   }, [visible]);
 
@@ -257,21 +284,25 @@ export function PaymentModal({
     const rid = restaurantId || selectedRestaurant?.id;
 
     if (!rid) {
+      setModalError(t("payment.selectRestaurantFirst"));
       showToast(t("payment.selectRestaurantFirst"), "error");
       return;
     }
 
     if (currentBalance.drinkPoints === 0 && currentBalance.mealPoints === 0) {
+      setModalError(t("payment.noBalanceData"));
       showToast(t("payment.noBalanceData"), "error");
       return;
     }
 
     if (hasInsufficientBalance) {
+      setModalError(t("payment.insufficientBalance"));
       showToast(t("payment.insufficientBalance"), "error");
       return;
     }
 
     setIsProcessing(true);
+    setModalError(null);
 
     try {
       const currencyTypeMap = {
@@ -310,7 +341,9 @@ export function PaymentModal({
       }, 1500);
     } catch (error: any) {
       console.error("Payment failed:", error);
-      showToast(error.message || "Payment failed", "error");
+      const message = getPaymentModalErrorMessage(error, t);
+      setModalError(message);
+      showToast(message, "error");
     } finally {
       setIsProcessing(false);
     }
@@ -319,25 +352,30 @@ export function PaymentModal({
   const handleWalletPayRequest = async () => {
     const rid = restaurantId || selectedRestaurant?.id;
     if (!rid) {
+      setModalError(t("payment.selectRestaurantFirst"));
       showToast(t("payment.selectRestaurantFirst"), "error");
       return;
     }
     if (!globalWallet || !hasGlobalWalletFunds) {
+      setModalError(t("payment.noBalanceData"));
       showToast(t("payment.noBalanceData"), "error");
       return;
     }
     const normalized = walletAmountStr.replace(",", ".").trim();
     const amt = parseFloat(normalized);
     if (!Number.isFinite(amt) || amt <= 0) {
+      setModalError(t("wallet.invalidAmount"));
       showToast(t("wallet.invalidAmount"), "error");
       return;
     }
     if (amt > globalWalletNum + 1e-9) {
+      setModalError(t("payment.walletExceedsBalance"));
       showToast(t("payment.walletExceedsBalance"), "error");
       return;
     }
 
     setIsProcessing(true);
+    setModalError(null);
     try {
       await requestWalletPayment({
         restaurantId: rid,
@@ -351,8 +389,11 @@ export function PaymentModal({
     } catch (e: unknown) {
       if (axios.isAxiosError(e) && e.response?.status === 428) {
         setNeedPinAlertVisible(true);
+        setModalError(t("walletPayment.needPin"));
       } else {
-        showToast(getApiErrorMessage(e, t("common.error")), "error");
+        const message = getPaymentModalErrorMessage(e, t);
+        setModalError(message);
+        showToast(message, "error");
       }
     } finally {
       setIsProcessing(false);
@@ -1043,6 +1084,11 @@ export function PaymentModal({
               !needsRestaurantPick ? (
                 <Text style={[styles.errorText, { color: colors.error }]}>
                   {t("payment.noBalanceData")}
+                </Text>
+              ) : null}
+              {modalError ? (
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  {modalError}
                 </Text>
               ) : null}
                 </>

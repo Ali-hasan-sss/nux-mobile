@@ -13,11 +13,10 @@ import { useTranslation } from "react-i18next";
 import { X, CheckCircle, XCircle, MapPin } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
-import { useDispatch, useSelector, useStore } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
 import {
   scanQrCode,
-  fetchUserBalances,
   setSelectedRestaurantBalance,
 } from "@/store/slices/balanceSlice";
 import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
@@ -143,7 +142,6 @@ export default function ScanScreen() {
   const { refreshBalances } = useBalance();
   const { showToast } = useAlert();
   const hasScanned = useRef(false);
-  const store = useStore<RootState>();
   const params = useLocalSearchParams<{
     walletPay?: string;
     openPaymentModal?: string;
@@ -367,48 +365,26 @@ export default function ScanScreen() {
           return;
         }
 
-        await dispatch(fetchUserBalances()).unwrap();
-        const balances = store.getState().balance.userBalances;
-        const item = balances.find(
-          (b) => b.restaurantId === rid || b.restaurant?.id === rid || b.id === rid,
-        );
-
-        if (!item) {
-          showToast({
-            message: t("payment.scanRestaurantNotFound"),
-            type: "error",
-          });
-          setIsProcessing(false);
-          setShowCamera(true);
-          hasScanned.current = false;
-          setIsScanning(true);
-          setScannedData(null);
-          startScanAnimation();
-          return;
-        }
-
-        const resolvedRestaurantId =
-          item.restaurantId ?? item.restaurant?.id ?? item.id ?? rid;
-        const rest = item.restaurant;
+        const resolvedRestaurantId = rid;
+        const restaurantName = parsedPaymentQr.restaurantNameEn ?? t("home.restaurant");
         dispatch(
           setSelectedRestaurant({
             id: resolvedRestaurantId,
-            name: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? t("home.restaurant"),
-            address: rest?.address ?? "",
-            logo: rest?.logo,
+            name: restaurantName,
+            address: "",
+            logo: undefined,
             userBalance: {
-              walletBalance: item.balance ?? 0,
-              mealPoints: item.stars_meal ?? 0,
-              drinkPoints: item.stars_drink ?? 0,
+              walletBalance: 0,
+              mealPoints: 0,
+              drinkPoints: 0,
             },
           }),
         );
         dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
-        refreshBalances();
 
         showToast({
           message: t("camera.walletPayScanSuccess", {
-            name: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+            name: restaurantName,
           }),
           type: "success",
         });
@@ -419,7 +395,7 @@ export default function ScanScreen() {
               params: {
                 paymentType: params.paymentType === "drink" ? "drink" : "meal",
                 restaurantId: resolvedRestaurantId,
-                restaurantName: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+                restaurantName,
               },
             } as never);
           } else {
@@ -478,55 +454,27 @@ export default function ScanScreen() {
             return;
           }
 
-          await dispatch(fetchUserBalances()).unwrap();
-          const balances = store.getState().balance.userBalances;
-          const item = balances.find(
-            (b) =>
-              b.restaurantId === rid ||
-              b.restaurant?.id === rid ||
-              b.id === rid,
-          );
-
-          if (!item) {
-            showToast({
-              message: t("payment.scanRestaurantNotFound"),
-              type: "error",
-            });
-            setIsProcessing(false);
-            setShowCamera(true);
-            hasScanned.current = false;
-            setIsScanning(true);
-            setScannedData(null);
-            startScanAnimation();
-            return;
-          }
-
-          const resolvedRestaurantId =
-            item.restaurantId ?? item.restaurant?.id ?? item.id ?? rid;
-
-          const rest = item.restaurant;
+          const resolvedRestaurantId = rid;
+          const restaurantName =
+            parsedPaymentQr.restaurantNameEn ?? t("home.restaurant");
           dispatch(
             setSelectedRestaurant({
               id: resolvedRestaurantId,
-              name:
-                rest?.name ??
-                parsedPaymentQr.restaurantNameEn ??
-                t("home.restaurant"),
-              address: rest?.address ?? "",
-              logo: rest?.logo,
+              name: restaurantName,
+              address: "",
+              logo: undefined,
               userBalance: {
-                walletBalance: item.balance ?? 0,
-                mealPoints: item.stars_meal ?? 0,
-                drinkPoints: item.stars_drink ?? 0,
+                walletBalance: 0,
+                mealPoints: 0,
+                drinkPoints: 0,
               },
             }),
           );
           dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
-          refreshBalances();
 
           showToast({
             message: t("camera.walletPayScanSuccess", {
-              name: rest?.name ?? "",
+              name: restaurantName,
             }),
             type: "success",
           });
@@ -538,7 +486,7 @@ export default function ScanScreen() {
                   paymentType:
                     params.paymentType === "drink" ? "drink" : "meal",
                   restaurantId: resolvedRestaurantId,
-                  restaurantName: rest?.name ?? parsedPaymentQr.restaurantNameEn ?? "",
+                  restaurantName,
                 },
               } as never);
             } else {

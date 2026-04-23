@@ -10,10 +10,23 @@ import {
   clearNotifications,
 } from "@/store/slices/notificationSlice";
 
+const EMPTY_NOTIFICATION_STATE = {
+  notifications: [],
+  unreadCount: 0,
+  isLoading: false,
+  error: null as string | null,
+  pagination: {
+    totalItems: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+  },
+};
+
 export const useNotifications = () => {
   const dispatch = useDispatch<AppDispatch>();
   const notificationState = useSelector(
-    (state: RootState) => state.notifications
+    (state: RootState) => state.notifications ?? EMPTY_NOTIFICATION_STATE
   );
 
   // Fetch all notifications

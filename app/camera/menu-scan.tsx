@@ -4,7 +4,7 @@ import { Text } from "@/components/AppText";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
 
 const UUID_REGEX =
@@ -47,6 +47,7 @@ function parseMenuScanData(
 }
 
 export default function MenuScanScreen() {
+  const params = useLocalSearchParams<{ cartSnapshot?: string | string[] }>();
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(true);
@@ -57,6 +58,9 @@ export default function MenuScanScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const hasScanned = useRef(false);
+  const cartSnapshotParam = Array.isArray(params.cartSnapshot)
+    ? params.cartSnapshot[0]
+    : params.cartSnapshot;
 
   // Animation values
   const scanFrameScale = useRef(new Animated.Value(1)).current;
@@ -192,6 +196,7 @@ export default function MenuScanScreen() {
 
         const navParams: Record<string, string> = { qrCode: extractedQr || data };
         if (table != null) navParams.table = String(table);
+        if (cartSnapshotParam) navParams.cartSnapshot = cartSnapshotParam;
 
         router.push({
           pathname: "/(tabs)/menu-webview",

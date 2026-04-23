@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, useWindowDimensions, RefreshControl, Modal, TextInput, FlatList, BackHandler } from "react-native";
+import { View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, useWindowDimensions, RefreshControl, Modal, TextInput, FlatList, BackHandler, Platform } from "react-native";
 import { Text } from "@/components/AppText";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import type {
 import { orderService, type OrderTypeValue } from "@/store/services/orderService";
 import { CustomAlert } from "@/components/CustomAlert";
 import { API_CONFIG, getImageUrl } from "@/config/api";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface CartItemExtra {
   name: string;
@@ -34,6 +35,11 @@ export interface CartItem {
   allergies?: string[];
   kitchenSection?: { id: number; name: string; description?: string };
   notes?: string;
+}
+
+interface CartSnapshotPayload {
+  cart: CartItem[];
+  orderType: OrderTypeValue;
 }
 
 function extractQRCode(
@@ -63,17 +69,42 @@ function getTableFromParams(
   return !isNaN(n) && n > 0 ? n : null;
 }
 
+function parseCartSnapshot(
+  input: string | string[] | undefined
+): CartSnapshotPayload | null {
+  if (!input) return null;
+  const raw = Array.isArray(input) ? input[0] : input;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CartSnapshotPayload>;
+    if (!Array.isArray(parsed.cart)) return null;
+    const orderType: OrderTypeValue =
+      parsed.orderType === "TAKE_AWAY" ? "TAKE_AWAY" : "ON_TABLE";
+    return {
+      cart: parsed.cart as CartItem[],
+      orderType,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function MenuNativeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     qrCode: string | string[];
     table?: string | string[];
     fromExplore?: string;
+    cartSnapshot?: string | string[];
   }>();
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isRTL = i18n.language === "ar";
+  const tabBarHeight = Platform.OS === "ios" ? 80 : 70;
+  const tabBarClearance = tabBarHeight + Math.max(insets.bottom, 10);
+  const modalBottomSafePadding = Math.max(insets.bottom, 12);
 
   const qrCode = extractQRCode(params.qrCode);
   /** رقم الطاولة من الرابط فقط (مسح كود الطاولة). لا إدخال يدوي. */
@@ -105,6 +136,17 @@ export default function MenuNativeScreen() {
   const [extrasSelected, setExtrasSelected] = useState<CartItemExtra[]>([]);
   const [extrasQuantity, setExtrasQuantity] = useState(1);
   const [extrasNotes, setExtrasNotes] = useState("");
+  const cartSnapshotParam = Array.isArray(params.cartSnapshot)
+    ? params.cartSnapshot[0]
+    : params.cartSnapshot;
+
+  useEffect(() => {
+    if (!cartSnapshotParam) return;
+    const snapshot = parseCartSnapshot(cartSnapshotParam);
+    if (!snapshot) return;
+    if (snapshot.cart.length > 0) setCart(snapshot.cart);
+    setOrderType(snapshot.orderType);
+  }, [cartSnapshotParam]);
 
   const loadCategories = useCallback(async () => {
     if (!qrCode) return;
@@ -173,7 +215,7 @@ export default function MenuNativeScreen() {
     if (fromExplore) {
       router.replace("/(tabs)/explore-restaurants");
     } else {
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)");
     }
   }, [fromExplore, router]);
 
@@ -329,8 +371,25 @@ export default function MenuNativeScreen() {
     }
   };
 
+  const handlePlaceOrderPress = () => {
+    if (placingOrder) return;
+    if (tableNumberFromUrl == null) {
+      const payload: CartSnapshotPayload = { cart, orderType };
+      router.push({
+        pathname: "/camera/menu-scan",
+        params: {
+          cartSnapshot: JSON.stringify(payload),
+        },
+      } as any);
+      return;
+    }
+    placeOrder();
+  };
+
   const cardWidth = (width - 20 * 2 - 12) / 2;
   const inputBg = (colors as any).inputBackground ?? colors.surface;
+  const getAddedQuantityForMenuItem = (menuItemId: number): number =>
+    cart.reduce((sum, c) => (c.id === menuItemId ? sum + c.quantity : sum), 0);
 
   const CategorySkeletonCard = () => (
     <View
@@ -428,7 +487,10 @@ export default function MenuNativeScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: tabBarClearance + 54 },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -464,6 +526,7 @@ export default function MenuNativeScreen() {
               </View>
             ) : (
               items.map((item) => {
+                const addedQty = getAddedQuantityForMenuItem(item.id);
                 const finalPrice =
                   item.discountType && item.discountValue != null
                     ? item.discountType === "PERCENTAGE"
@@ -560,11 +623,21 @@ export default function MenuNativeScreen() {
                           )}
                         </View>
                         <TouchableOpacity
-                          style={[styles.addButton, { backgroundColor: colors.primary }]}
+                          style={[
+                            styles.addButton,
+                            {
+                              backgroundColor:
+                                addedQty > 0 ? colors.secondary : colors.primary,
+                            },
+                          ]}
                           onPress={() => handleAddItem(item)}
                         >
                           <Plus size={18} color="#fff" />
-                          <Text style={styles.addButtonText}>{t("menu.addToCart")}</Text>
+                          <Text style={styles.addButtonText}>
+                            {addedQty > 0
+                              ? `${t("menu.addToCart")} (${addedQty})`
+                              : t("menu.addToCart")}
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -663,7 +736,10 @@ export default function MenuNativeScreen() {
       {/* Floating cart button */}
       {cart.length > 0 && (
         <TouchableOpacity
-          style={[styles.cartFab, { backgroundColor: colors.primary }]}
+          style={[
+            styles.cartFab,
+            { backgroundColor: colors.primary, bottom: tabBarClearance + 16 },
+          ]}
           onPress={() => setCartModalVisible(true)}
           activeOpacity={0.9}
         >
@@ -735,7 +811,12 @@ export default function MenuNativeScreen() {
                 );
               }}
             />
-            <View style={[styles.cartModalFooter, { borderTopColor: colors.border }]}>
+            <View
+              style={[
+                styles.cartModalFooter,
+                { borderTopColor: colors.border, paddingBottom: modalBottomSafePadding },
+              ]}
+            >
               {tableNumberFromUrl != null ? (
                 <Text style={[styles.cartTableLabel, { color: colors.textSecondary }]}>
                   {t("menu.tableNumber")}: <Text style={{ color: colors.text, fontWeight: "600" }}>{tableNumberFromUrl}</Text>
@@ -775,8 +856,8 @@ export default function MenuNativeScreen() {
                     opacity: tableNumberFromUrl != null ? 1 : 0.7,
                   },
                 ]}
-                onPress={placeOrder}
-                disabled={placingOrder || tableNumberFromUrl == null}
+                onPress={handlePlaceOrderPress}
+                disabled={placingOrder}
               >
                 {placingOrder ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -848,7 +929,12 @@ export default function MenuNativeScreen() {
                 multiline
               />
             </ScrollView>
-            <View style={[styles.extrasModalFooter, { borderTopColor: colors.border }]}>
+            <View
+              style={[
+                styles.extrasModalFooter,
+                { borderTopColor: colors.border, paddingBottom: modalBottomSafePadding },
+              ]}
+            >
               <TouchableOpacity
                 style={[styles.placeOrderBtn, { backgroundColor: colors.primary }]}
                 onPress={handleConfirmExtras}

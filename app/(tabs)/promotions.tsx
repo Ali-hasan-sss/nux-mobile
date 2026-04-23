@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, StyleSheet, FlatList, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Animated } from "react-native";
+import { View, StyleSheet, FlatList, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Animated, Modal, Linking, Alert } from "react-native";
 import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -7,8 +7,6 @@ import { Search, Filter, MapPin, Plus } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState, AppDispatch } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
-import { RestaurantMapModal } from "@/components/RestaurantMapModal";
-import { RestaurantAdsView } from "@/components/RestaurantAdsView";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -126,11 +124,12 @@ export default function PromotionsScreen() {
     filters.category ? [filters.category] : []
   );
   const [showFilters, setShowFilters] = useState(false);
-  const [mapModalVisible, setMapModalVisible] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Ad | null>(null);
+  const [adDetailsVisible, setAdDetailsVisible] = useState(false);
+  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   // Filter options match ad categories from restaurant dashboard (website): Desserts, Fast Food, Drinks, Other
   const filterOptions = [
     { key: "all", label: t("promotions.all") },
+    { key: "nearby", label: t("promotions.nearby") },
     { key: "Desserts", label: t("promotions.desserts") },
     { key: "Fast Food", label: t("promotions.fastFood") },
     { key: "Drinks", label: t("promotions.drinks") },
@@ -139,52 +138,106 @@ export default function PromotionsScreen() {
 
   // Load ads from Redux
   const loadAds = useCallback(
-    (page: number = 1, append: boolean = false) => {
+    async (page: number = 1, append: boolean = false) => {
+      const isNearbyFilter = selectedFilters.includes("nearby");
       const categoryFilter =
         selectedFilters.length > 0 &&
-        selectedFilters[0] !== "all"
+        selectedFilters[0] !== "all" &&
+        selectedFilters[0] !== "nearby"
           ? selectedFilters[0]
           : undefined;
+
+      let nearbyParams: { lat: number; lng: number; radius: number } | undefined;
+      if (isNearbyFilter) {
+        try {
+          const Location = await import("expo-location");
+          const permission = await Location.requestForegroundPermissionsAsync();
+          if (permission.status !== "granted") {
+            Alert.alert(t("common.error"), t("exploreRestaurants.locationRequired"));
+            return;
+          }
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          nearbyParams = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            radius: 10,
+          };
+        } catch {
+          Alert.alert(t("common.error"), t("exploreRestaurants.locationRequired"));
+          return;
+        }
+      }
 
       const adsFilters = {
         page,
         pageSize: 10,
         search: searchQuery.trim() || undefined,
         category: categoryFilter,
+        ...(nearbyParams ?? {}),
       };
 
       dispatch(fetchAds({ filters: adsFilters, append }));
     },
-    [searchQuery, selectedFilters, dispatch]
+    [searchQuery, selectedFilters, dispatch, t]
   );
 
   // Initial fetch and when filters/search change
   useEffect(() => {
-    loadAds(1, false);
+    void loadAds(1, false);
   }, [searchQuery, selectedFilters]);
 
   // Refresh on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadAds(1, false);
+      void loadAds(1, false);
     }, [])
   );
 
   // Handle refresh
   const handleRefresh = () => {
+    const isNearbyFilter = selectedFilters.includes("nearby");
     const categoryFilter =
-      selectedFilters.length > 0 && selectedFilters[0] !== "all"
+      selectedFilters.length > 0 &&
+      selectedFilters[0] !== "all" &&
+      selectedFilters[0] !== "nearby"
         ? selectedFilters[0]
         : undefined;
+    void (async () => {
+      let nearbyParams: { lat: number; lng: number; radius: number } | undefined;
+      if (isNearbyFilter) {
+        try {
+          const Location = await import("expo-location");
+          const permission = await Location.requestForegroundPermissionsAsync();
+          if (permission.status !== "granted") {
+            Alert.alert(t("common.error"), t("exploreRestaurants.locationRequired"));
+            return;
+          }
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          nearbyParams = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            radius: 10,
+          };
+        } catch {
+          Alert.alert(t("common.error"), t("exploreRestaurants.locationRequired"));
+          return;
+        }
+      }
 
-    const adsFilters = {
-      page: 1,
-      pageSize: 10,
-      search: searchQuery.trim() || undefined,
-      category: categoryFilter,
-    };
+      const adsFilters = {
+        page: 1,
+        pageSize: 10,
+        search: searchQuery.trim() || undefined,
+        category: categoryFilter,
+        ...(nearbyParams ?? {}),
+      };
 
-    dispatch(refreshAds(adsFilters));
+      dispatch(refreshAds(adsFilters));
+    })();
   };
 
   // Handle load more (pagination: load next page when user scrolls near end)
@@ -209,9 +262,25 @@ export default function PromotionsScreen() {
     );
   };
 
-  const handleRestaurantLocation = (ad: Ad) => {
-    setSelectedRestaurant(ad);
-    setMapModalVisible(true);
+  const handleOpenAdDetails = (ad: Ad) => {
+    setSelectedAd(ad);
+    setAdDetailsVisible(true);
+  };
+
+  const handleOpenGoogleMaps = async () => {
+    if (!selectedAd) return;
+    const { latitude, longitude } = selectedAd.restaurant;
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    try {
+      const canOpen = await Linking.canOpenURL(googleMapsUrl);
+      if (!canOpen) {
+        Alert.alert(t("common.error"), t("promotions.failedToOpenMaps"));
+        return;
+      }
+      await Linking.openURL(googleMapsUrl);
+    } catch {
+      Alert.alert(t("common.error"), t("promotions.failedToOpenMaps"));
+    }
   };
 
   const renderAd = ({ item }: { item: Ad }) => {
@@ -228,7 +297,7 @@ export default function PromotionsScreen() {
             backgroundColor: isDark ? colors.surface : colors.background,
           },
         ]}
-        onPress={() => handleRestaurantLocation(item)}
+        onPress={() => handleOpenAdDetails(item)}
       >
         <Image source={{ uri: imageUri }} style={styles.promotionImage} />
         <View style={styles.promotionContent}>
@@ -236,7 +305,7 @@ export default function PromotionsScreen() {
             <Text style={[styles.restaurantName, { color: colors.primary }, font]}>
               {item.restaurant.name}
             </Text>
-            <TouchableOpacity onPress={() => handleRestaurantLocation(item)}>
+            <TouchableOpacity onPress={() => handleOpenAdDetails(item)}>
               <MapPin size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -434,18 +503,68 @@ export default function PromotionsScreen() {
         )}
       </View>
 
-      {selectedRestaurant && (
-        <RestaurantMapModal
-          visible={mapModalVisible}
-          onClose={() => setMapModalVisible(false)}
-          restaurant={{
-            name: selectedRestaurant.restaurant.name,
-            latitude: selectedRestaurant.restaurant.latitude,
-            longitude: selectedRestaurant.restaurant.longitude,
-            address: selectedRestaurant.restaurant.address,
-          }}
-        />
-      )}
+      <Modal
+        visible={adDetailsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAdDetailsVisible(false)}
+      >
+        <View style={styles.detailsOverlay}>
+          <View
+            style={[
+              styles.detailsCard,
+              {
+                backgroundColor: isDark ? colors.surface : colors.background,
+                paddingBottom: insets.bottom + 12,
+                paddingTop: insets.top > 0 ? 10 : 16,
+              },
+            ]}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedAd ? (
+                <>
+                  <Image
+                    source={{
+                      uri:
+                        getImageUrl(selectedAd.image) ||
+                        getImageUrl(selectedAd.restaurant.logo) ||
+                        "https://via.placeholder.com/400x160?text=No+Image",
+                    }}
+                    style={styles.detailsImage}
+                  />
+                  <Text style={[styles.detailsRestaurantName, { color: colors.primary }, font]}>
+                    {selectedAd.restaurant.name}
+                  </Text>
+                  <Text style={[styles.detailsTitle, { color: colors.text }, font]}>
+                    {selectedAd.title}
+                  </Text>
+                  <Text style={[styles.detailsDescription, { color: colors.textSecondary }, font]}>
+                    {selectedAd.description}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.openMapsBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => void handleOpenGoogleMaps()}
+                    activeOpacity={0.85}
+                  >
+                    <MapPin size={18} color="#fff" />
+                    <Text style={[styles.openMapsBtnText, font]}>
+                      {t("promotions.openInMaps")}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.detailsCloseBtn, { borderColor: colors.border }]}
+              onPress={() => setAdDetailsVisible(false)}
+            >
+              <Text style={[styles.detailsCloseText, { color: colors.text }, font]}>
+                {t("common.close")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -644,5 +763,58 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  detailsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
+  },
+  detailsCard: {
+    maxHeight: "85%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+  },
+  detailsImage: {
+    width: "100%",
+    height: 190,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  detailsRestaurantName: {
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  detailsTitle: {
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  detailsDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 14,
+  },
+  openMapsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  openMapsBtnText: {
+    color: "#fff",
+    fontSize: 15,
+  },
+  detailsCloseBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  detailsCloseText: {
+    fontSize: 14,
   },
 });

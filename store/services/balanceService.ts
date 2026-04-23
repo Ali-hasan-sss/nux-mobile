@@ -102,47 +102,6 @@ class BalanceService {
       throw error;
     }
   }
-
-  // Gift points to another user
-  async giftPoints(
-    giftData: PaymentData & { qrCode: string }
-  ): Promise<PaymentApiResponse> {
-    try {
-      console.log(
-        "🎁 Sending gift request to:",
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLIENT.GIFT}`
-      );
-      console.log("🎁 Gift data:", giftData);
-
-      const response = await authApi.post(
-        API_CONFIG.ENDPOINTS.CLIENT.GIFT,
-        giftData
-      );
-
-      if (__DEV__) {
-        console.log("🎁 Gift Response:", response.data);
-      }
-
-      return response.data;
-    } catch (error: any) {
-      console.error("❌ Failed to gift points:", error);
-
-      // Log more details about the error
-      if (error.response) {
-        console.error("❌ Gift error response:", {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers,
-        });
-      } else if (error.request) {
-        console.error("❌ No response received for gift:", error.request);
-      } else {
-        console.error("❌ Error setting up gift request:", error.message);
-      }
-
-      throw error;
-    }
-  }
 }
 
 export const balanceService = new BalanceService();

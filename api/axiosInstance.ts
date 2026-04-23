@@ -11,16 +11,28 @@ const api = axios.create({
 });
 
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+let refreshSubscribers: Array<{
+  onSuccess: (token: string) => void;
+  onError: (error: unknown) => void;
+}> = [];
 
 // Function to add requests to queue while refreshing
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb);
+const subscribeTokenRefresh = (
+  onSuccess: (token: string) => void,
+  onError: (error: unknown) => void
+) => {
+  refreshSubscribers.push({ onSuccess, onError });
 };
 
 // Function to notify all queued requests
 const onTokenRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers.forEach((subscriber) => subscriber.onSuccess(token));
+  refreshSubscribers = [];
+};
+
+// Function to reject all queued requests when refresh fails
+const onTokenRefreshFailed = (error: unknown) => {
+  refreshSubscribers.forEach((subscriber) => subscriber.onError(error));
   refreshSubscribers = [];
 };
 
@@ -59,11 +71,16 @@ api.interceptors.response.use(
     ) {
       if (isRefreshing) {
         // If already refreshing, queue this request
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
-          });
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh(
+            (token: string) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(api(originalRequest));
+            },
+            (refreshError: unknown) => {
+              reject(refreshError);
+            }
+          );
         });
       }
 
@@ -101,6 +118,8 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
 
+        // Reject all pending requests and force logout state for navigation guards
+        onTokenRefreshFailed(refreshError);
         // Clear all data and force logout
         await CrossPlatformStorage.clearAll();
         store.dispatch(logout());

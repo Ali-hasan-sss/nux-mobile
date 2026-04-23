@@ -80,7 +80,6 @@ export const API_CONFIG = {
       BALANCE: "/client/balance/with-restaurants",
       SCAN_QR: "/client/balance/scan-qr",
       PAY: "/client/balance/pay",
-      GIFT: "/client/balance/gift",
     },
     NOTIFICATIONS: {
       GET_ALL: "/notifications",

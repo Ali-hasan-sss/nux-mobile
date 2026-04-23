@@ -14,7 +14,6 @@ import { useTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
 import { useBalance } from "@/hooks/useBalance";
 import {
-  Gift,
   Coffee,
   UtensilsCrossed,
   Check,
@@ -23,6 +22,7 @@ import {
   ListOrdered,
   ArrowDownLeft,
   ArrowUpRight,
+  Gift,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
@@ -36,7 +36,6 @@ import {
   type Restaurant as ReduxRestaurant,
 } from "@/store/slices/restaurantSlice";
 import { setSelectedRestaurantBalance } from "@/store/slices/balanceSlice";
-import GiftModal from "@/components/GiftModal";
 import WalletTopUpModal from "@/components/WalletTopUpModal";
 import { CustomAlert } from "@/components/CustomAlert";
 import { useAlert } from "@/contexts/AlertContext";
@@ -51,6 +50,7 @@ import { getOrCreateWalletDeviceId } from "@/lib/deviceId";
 import { walletLedgerTitleKey } from "@/lib/walletLedgerTitle";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import GiftVoucherModal from "@/components/GiftVoucherModal";
 
 const WALLET_TX_PREVIEW = 8;
 /** Matches tab bar height used in other tab screens (see promotions.tsx). */
@@ -88,11 +88,10 @@ export default function PurchaseScreen() {
   );
   const { restaurantsWithBalances, currentBalance, loadBalances, error } =
     useBalance();
-  const [giftModalVisible, setGiftModalVisible] = useState(false);
   const [topUpModalVisible, setTopUpModalVisible] = useState(false);
+  const [giftModalVisible, setGiftModalVisible] = useState(false);
   const [needPinAlertVisible, setNeedPinAlertVisible] = useState(false);
   const [rechargePinLoading, setRechargePinLoading] = useState(false);
-  const [modalManuallyClosed, setModalManuallyClosed] = useState(false);
   const [globalWallet, setGlobalWallet] = useState<WalletBalanceData | null>(
     null,
   );
@@ -170,6 +169,14 @@ export default function PurchaseScreen() {
     loadWalletTxPreview();
   }, [purchaseTab, auth.isAuthenticated, loadWalletTxPreview]);
 
+  React.useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const sub = DeviceEventEmitter.addListener("wallet:balanceChanged", () => {
+      refreshGlobalWallet();
+    });
+    return () => sub.remove();
+  }, [auth.isAuthenticated, refreshGlobalWallet]);
+
   const onWalletTxRefresh = useCallback(async () => {
     setWalletTxRefreshing(true);
     try {
@@ -204,19 +211,6 @@ export default function PurchaseScreen() {
       setTopUpModalVisible(true);
     })();
   }, [STRIPE_PUBLISHABLE_KEY, showToast, t]);
-
-  const handleGiftFriend = () => {
-    if (!selectedRestaurant) {
-      showToast({
-        message: t("home.selectRestaurantFirst"),
-        type: "error",
-      });
-      return;
-    }
-    // Reset manual close flag and open modal
-    setModalManuallyClosed(false);
-    setGiftModalVisible(true);
-  };
 
   const handleRestaurantChange = (restaurant: Restaurant) => {
     const restaurantForSlice: ReduxRestaurant = {
@@ -536,35 +530,6 @@ export default function PurchaseScreen() {
                   </View>
                 </View>
               )}
-              <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: cardBg }]}
-                onPress={handleGiftFriend}
-              >
-                <View
-                  style={[
-                    styles.iconContainer,
-                    { backgroundColor: iconBg(colors.secondary) },
-                  ]}
-                >
-                  <Gift size={32} color={colors.secondary} />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text
-                    style={[styles.cardTitle, { color: colors.text }, font]}
-                  >
-                    {t("purchase.gift")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.cardDescription,
-                      { color: colors.textSecondary },
-                      font,
-                    ]}
-                  >
-                    {t("purchase.giftDesc")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
             </ScrollView>
           </>
         ) : (
@@ -674,26 +639,43 @@ export default function PurchaseScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.walletRechargeBtn,
-                      {
-                        backgroundColor: colors.primary,
-                        opacity: rechargePinLoading ? 0.65 : 1,
-                      },
-                    ]}
-                    onPress={handleRecharge}
-                    disabled={rechargePinLoading}
-                    activeOpacity={0.85}
-                  >
-                    {rechargePinLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
+                  <View style={styles.walletActionsRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.walletActionBtn,
+                        styles.walletRechargeBtn,
+                        {
+                          backgroundColor: colors.primary,
+                          opacity: rechargePinLoading ? 0.65 : 1,
+                        },
+                      ]}
+                      onPress={handleRecharge}
+                      disabled={rechargePinLoading}
+                      activeOpacity={0.85}
+                    >
+                      {rechargePinLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={[{ color: "#fff", fontSize: 15 }, font]}>
+                          {t("purchase.recharge")}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.walletActionBtn,
+                        styles.walletGiftBtn,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                      onPress={() => setGiftModalVisible(true)}
+                      activeOpacity={0.85}
+                    >
+                      <Gift size={16} color="#fff" />
                       <Text style={[{ color: "#fff", fontSize: 15 }, font]}>
-                        {t("purchase.recharge")}
+                        {t("purchase.giftVoucherAction", "Gift")}
                       </Text>
-                    )}
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <Text
@@ -753,6 +735,7 @@ export default function PurchaseScreen() {
                         item.type,
                         item.source,
                         "user",
+                        item.metadata,
                       );
                       const title = titleKey
                         ? t(titleKey)
@@ -855,16 +838,6 @@ export default function PurchaseScreen() {
         )}
       </View>
 
-      {selectedRestaurant && (
-        <GiftModal
-          visible={giftModalVisible}
-          onClose={() => {
-            setGiftModalVisible(false);
-            setModalManuallyClosed(true);
-          }}
-          targetId={selectedRestaurant.id}
-        />
-      )}
       {STRIPE_PUBLISHABLE_KEY ? (
         <WalletTopUpModal
           visible={topUpModalVisible}
@@ -873,6 +846,10 @@ export default function PurchaseScreen() {
           publishableKey={STRIPE_PUBLISHABLE_KEY}
         />
       ) : null}
+      <GiftVoucherModal
+        visible={giftModalVisible}
+        onClose={() => setGiftModalVisible(false)}
+      />
 
       <CustomAlert
         visible={needPinAlertVisible}
@@ -917,11 +894,26 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   walletRechargeBtn: {
-    marginTop: 10,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  walletActionsRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    gap: 10,
+  },
+  walletActionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  walletGiftBtn: {
+    flexDirection: "row",
+    gap: 8,
   },
   globalWalletCard: {
     borderRadius: 12,
@@ -1125,37 +1117,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     paddingTop: 0,
-  },
-  actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 20,
-    marginBottom: 16,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 14,
   },
   scansList: {
     flex: 1,

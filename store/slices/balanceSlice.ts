@@ -76,22 +76,6 @@ export const processPayment = createAsyncThunk(
   }
 );
 
-export const giftPoints = createAsyncThunk(
-  "balance/giftPoints",
-  async (giftData: PaymentData & { qrCode: string }, { rejectWithValue }) => {
-    try {
-      const response = await balanceService.giftPoints(giftData);
-      if (response.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.message);
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to gift points");
-    }
-  }
-);
-
 // Slice
 const balanceSlice = createSlice({
   name: "balance",
@@ -313,21 +297,6 @@ const balanceSlice = createSlice({
         state.error.payment = action.payload as string;
       });
 
-    // Gift points
-    builder
-      .addCase(giftPoints.pending, (state) => {
-        state.loading.payment = true;
-        state.error.payment = null;
-      })
-      .addCase(giftPoints.fulfilled, (state, action) => {
-        state.loading.payment = false;
-        // Refresh balances after successful gift
-        // This will be handled by the component
-      })
-      .addCase(giftPoints.rejected, (state, action) => {
-        state.loading.payment = false;
-        state.error.payment = action.payload as string;
-      });
   },
 });
 
