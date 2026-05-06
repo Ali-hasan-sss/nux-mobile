@@ -114,6 +114,10 @@
     "topUpSyncPending": "تم الدفع لكن تعذر مزامنة الرصيد. حدّث الصفحة لاحقاً أو تحقق من الاتصال؛ قد يُضاف الرصيد تلقائياً عبر Stripe.",
     "topUpFailed": "فشل الدفع",
     "minAmount": "الحد الأدنى للمبلغ 1 يورو",
+    "amountTwoDecimalsHint": "استخدم رقمين كحد أقصى بعد الفاصلة العشرية. الحد الأقصى للشحن في كل عملية: {{max}} يورو.",
+    "amountTwoDecimalsOnly": "أدخل المبلغ بحد أقصى منزلتين عشريتين (مثال: 10.50).",
+    "rtlMoneyEntryHint": "أدخل المبلغ من اليمين إلى اليسار مثل أجهزة الدفع.\nالسنتات أولاً.",
+    "amountTooLarge": "الحد الأقصى للشحن في كل عملية هو {{max}} يورو",
     "stripeNotConfigured": "Stripe غير مُعد. اضبط EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (وسرّ CI لبناء الإصدار).",
     "noClientSecret": "تعذر بدء الدفع بالبطاقة",
     "selectRestaurant": "اختر مطعماً",
@@ -148,7 +152,8 @@
       "adminCredit": "تعديل رصيد (إيداع)",
       "adminDebit": "تعديل رصيد (خصم)",
       "giftVoucherSent": "إرسال هدية",
-      "giftVoucherReceived": "استلام هدية"
+      "giftVoucherReceived": "استلام هدية",
+      "promoTopUpGift": "هدية بونص الشحن"
     }
   },
   "exploreRestaurants": {
@@ -273,7 +278,9 @@
     "paymentPinMismatch": "الرمزان غير متطابقين",
     "paymentBiometric": "استخدام Face ID / البصمة قبل PIN عند التوفر",
     "paymentBiometricUpdated": "تم حفظ إعداد البصمة",
-    "paymentBiometricSaveFailed": "تعذر تحديث إعداد البصمة"
+    "paymentBiometricSaveFailed": "تعذر تحديث إعداد البصمة",
+    "copyUserCode": "نسخ",
+    "userCodeCopied": "تم نسخ معرّف المستخدم"
   },
   "drawer": {
     "title": "القائمة",

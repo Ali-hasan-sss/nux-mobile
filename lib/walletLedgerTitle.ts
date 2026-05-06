@@ -2,6 +2,15 @@ import type { WalletLedgerEntry } from "@/api/walletPaymentApi";
 
 export type WalletLedgerPerspective = "user" | "restaurant";
 
+/** Promo credit from limited-time top-up campaigns (ledger source BONUS). */
+export function isWalletLedgerPromoBonus(
+  type: WalletLedgerEntry["type"],
+  source: string,
+): boolean {
+  const s = (source ?? "").toString().trim().toUpperCase();
+  return type === "CREDIT" && s === "BONUS";
+}
+
 /** i18n key under wallet.ledgerDesc.* — null → use generic credit/debit + source */
 export function walletLedgerTitleKey(
   type: WalletLedgerEntry["type"],
@@ -43,6 +52,9 @@ export function walletLedgerTitleKey(
     case "ADMIN":
       if (type === "CREDIT") return "wallet.ledgerDesc.adminCredit";
       if (type === "DEBIT") return "wallet.ledgerDesc.adminDebit";
+      return null;
+    case "BONUS":
+      if (type === "CREDIT") return "wallet.ledgerDesc.promoTopUpGift";
       return null;
     default:
       return null;

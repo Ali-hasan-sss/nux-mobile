@@ -3,7 +3,6 @@ import {
   Modal,
   View,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -24,7 +23,13 @@ import {
   createWalletTopUpPaymentIntent,
   syncWalletTopUpAfterPayment,
 } from "@/api/walletPaymentApi";
+import { rtlBufferToCents } from "@/lib/moneyInput";
+import { RtlMoneyAmountField } from "@/components/RtlMoneyAmountField";
 import { X } from "lucide-react-native";
+
+/** Per top-up cap to reduce accidental large card charges (adjust if product needs higher). */
+const MAX_TOP_UP_EUR = 10_000;
+const MAX_TOP_UP_CENTS = MAX_TOP_UP_EUR * 100;
 
 type Props = {
   visible: boolean;
@@ -43,27 +48,28 @@ function WalletTopUpModalBody({
   const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const { showToast } = useAlert();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const [amount, setAmount] = useState("");
+  const [rtlBuffer, setRtlBuffer] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!visible) {
-      setAmount("");
+      setRtlBuffer("");
       setBusy(false);
     }
   }, [visible]);
 
-  const parseAmountEur = (): number | null => {
-    const normalized = amount.trim().replace(",", ".");
-    const n = parseFloat(normalized);
-    if (!Number.isFinite(n) || n < 1) return null;
-    return n;
-  };
-
   const handlePay = async () => {
-    const n = parseAmountEur();
-    if (n === null) {
+    const cents = rtlBufferToCents(rtlBuffer);
+    const n = cents / 100;
+    if (!Number.isFinite(n) || n < 1) {
       showToast({ message: t("wallet.minAmount"), type: "error" });
+      return;
+    }
+    if (n > MAX_TOP_UP_EUR) {
+      showToast({
+        message: t("wallet.amountTooLarge", { max: MAX_TOP_UP_EUR }),
+        type: "error",
+      });
       return;
     }
     setBusy(true);
@@ -175,22 +181,21 @@ function WalletTopUpModalBody({
               >
                 {t("wallet.amountEur")}
               </Text>
-              <TextInput
+              <Text
                 style={[
-                  styles.input,
-                  {
-                    color: colors.text,
-                    borderColor: colors.border,
-                    backgroundColor: isDark ? colors.background : colors.surface,
-                  },
+                  { color: colors.textSecondary, fontSize: 12, marginBottom: 8 },
                   font,
                 ]}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-                placeholder="10"
-                placeholderTextColor={colors.textSecondary}
-                editable={!busy}
+              >
+                {t("wallet.rtlMoneyEntryHint")}
+              </Text>
+              <RtlMoneyAmountField
+                buffer={rtlBuffer}
+                onBufferChange={setRtlBuffer}
+                maxCents={MAX_TOP_UP_CENTS}
+                disabled={busy}
+                currencyCode="EUR"
+                containerStyle={{ marginBottom: 16 }}
               />
               <TouchableOpacity
                 style={[
@@ -263,14 +268,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
     marginBottom: 16,
   },
   primaryBtn: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, FlatList, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Animated, Modal, Linking, Alert } from "react-native";
-import { Text } from "@/components/AppText";
+                                                                                  import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Search, Filter, MapPin, Plus } from "lucide-react-native";

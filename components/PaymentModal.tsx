@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  TextInput,
   DeviceEventEmitter,
   InteractionManager,
 } from "react-native";
@@ -48,6 +47,8 @@ import {
   type WalletBalanceData,
 } from "@/api/walletPaymentApi";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { rtlBufferToCents } from "@/lib/moneyInput";
+import { RtlMoneyAmountField } from "@/components/RtlMoneyAmountField";
 import {
   RestaurantSelector,
   type Restaurant as SelectorRestaurant,
@@ -72,8 +73,10 @@ function getPaymentModalErrorMessage(e: unknown, t: TFunction): string {
       return t("walletPayment.invalidPin");
     }
     if (apiMessage.includes("insufficient")) return t("payment.insufficientBalance");
+    // Keep backend "restaurant not found" visible for diagnostics instead of masking
+    // it as "select restaurant first", which is reserved for missing local selection.
     if (apiMessage.includes("restaurant") && apiMessage.includes("not found")) {
-      return t("payment.selectRestaurantFirst");
+      return getApiErrorMessage(e, t("common.error"));
     }
   }
   return getApiErrorMessage(e, t("common.error"));
@@ -93,6 +96,12 @@ interface PaymentModalProps {
   walletLedgerLoading?: boolean;
 }
 
+function normalizeId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export function PaymentModal({
   visible,
   onClose,
@@ -109,6 +118,9 @@ export function PaymentModal({
   const selectedRestaurant = useSelector(
     (state: RootState) => state.restaurant.selectedRestaurant
   );
+  const selectedRestaurantBalance = useSelector(
+    (state: RootState) => state.balance.selectedRestaurantBalance
+  );
   const { refreshBalances, currentBalance, restaurantsWithBalances, loading } =
     useBalance();
 
@@ -120,7 +132,7 @@ export function PaymentModal({
     "meal",
   );
   const [isProcessing, setIsProcessing] = useState(false);
-  const [walletAmountStr, setWalletAmountStr] = useState("");
+  const [walletRtlBuffer, setWalletRtlBuffer] = useState("");
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
@@ -169,15 +181,24 @@ export function PaymentModal({
   }, [visible, initialPaymentType, hasSetInitialType]);
 
   React.useEffect(() => {
-    if (!visible) setWalletAmountStr("");
+    if (!visible) setWalletRtlBuffer("");
   }, [visible]);
 
-  const targetRestaurantId = restaurantId || selectedRestaurant?.id;
-  const needsRestaurantPick = !targetRestaurantId;
+  const targetRestaurantId =
+    normalizeId(restaurantId) ||
+    normalizeId(selectedRestaurant?.id) ||
+    normalizeId(selectedRestaurantBalance?.restaurantId) ||
+    normalizeId(selectedRestaurantBalance?.restaurant?.id);
+  const singleRestaurantFallbackId =
+    restaurantsWithBalances.length === 1
+      ? normalizeId(restaurantsWithBalances[0]?.id)
+      : undefined;
+  const effectiveRestaurantId = targetRestaurantId || singleRestaurantFallbackId;
+  const needsRestaurantPick = !effectiveRestaurantId;
 
   const showBalancesLoader =
     visible &&
-    Boolean(targetRestaurantId) &&
+    Boolean(effectiveRestaurantId) &&
     (loading.balances || walletLedgerLoading);
 
   const globalWalletNum =
@@ -185,25 +206,27 @@ export function PaymentModal({
   const hasGlobalWalletFunds = globalWalletNum > 0;
 
   const hasLoyalty =
-    Boolean(targetRestaurantId) &&
+    Boolean(effectiveRestaurantId) &&
     (currentBalance.mealPoints > 0 || currentBalance.drinkPoints > 0);
   const showLoyaltyFlow = hasLoyalty;
   const showWalletFlow =
-    Boolean(targetRestaurantId) && hasGlobalWalletFunds && paySource === "wallet";
+    Boolean(effectiveRestaurantId) &&
+    hasGlobalWalletFunds &&
+    paySource === "wallet";
 
   useEffect(() => {
     if (!visible) return;
-    const tid = restaurantId || selectedRestaurant?.id;
+    const tid = effectiveRestaurantId;
     if (!tid && hasGlobalWalletFunds) {
       setPaySource("wallet");
     } else if (!tid) {
       setPaySource("meal");
     }
-  }, [visible, restaurantId, selectedRestaurant?.id, hasGlobalWalletFunds]);
+  }, [visible, effectiveRestaurantId, hasGlobalWalletFunds]);
 
   useEffect(() => {
     if (!visible) return;
-    const tid = restaurantId || selectedRestaurant?.id;
+    const tid = effectiveRestaurantId;
     if (!tid) return;
     if (hasLoyalty) {
       if (!(paySource === "wallet" && hasGlobalWalletFunds)) {
@@ -214,8 +237,7 @@ export function PaymentModal({
     }
   }, [
     visible,
-    restaurantId,
-    selectedRestaurant?.id,
+    effectiveRestaurantId,
     hasLoyalty,
     hasGlobalWalletFunds,
     selectedPaymentType,
@@ -261,16 +283,19 @@ export function PaymentModal({
     (option) => option.type === selectedPaymentType
   );
 
-  const normalizedWalletInput = walletAmountStr.replace(",", ".").trim();
-  const walletPayAmountNum = parseFloat(normalizedWalletInput);
+  const maxWalletCents = Math.max(
+    0,
+    Math.floor(globalWalletNum * 100 + 1e-8)
+  );
+  const walletPayCents = rtlBufferToCents(walletRtlBuffer);
+  const walletPayAmountNum = walletPayCents / 100;
   const walletAmountValid =
     hasGlobalWalletFunds &&
     globalWallet != null &&
-    Number.isFinite(walletPayAmountNum) &&
-    walletPayAmountNum > 0 &&
+    walletPayCents > 0 &&
     walletPayAmountNum <= globalWalletNum + 1e-9;
   const walletSlideOk =
-    paySource === "wallet" && walletAmountValid && Boolean(targetRestaurantId);
+    paySource === "wallet" && walletAmountValid && Boolean(effectiveRestaurantId);
 
   const showWalletPaymentForm =
     hasGlobalWalletFunds &&
@@ -281,9 +306,19 @@ export function PaymentModal({
     showLoyaltyFlow && paySource !== "wallet" && !hasInsufficientBalance;
 
   const handleSlideConfirm = async () => {
-    const rid = restaurantId || selectedRestaurant?.id;
+    const rid = effectiveRestaurantId?.trim();
 
     if (!rid) {
+      console.log("[PaymentModal] loyalty rid missing", {
+        restaurantIdProp: restaurantId,
+        selectedRestaurantId: selectedRestaurant?.id,
+        selectedRestaurantBalanceRestaurantId:
+          selectedRestaurantBalance?.restaurantId,
+        selectedRestaurantBalanceNestedRestaurantId:
+          selectedRestaurantBalance?.restaurant?.id,
+        effectiveRestaurantId,
+        paySource,
+      });
       setModalError(t("payment.selectRestaurantFirst"));
       showToast(t("payment.selectRestaurantFirst"), "error");
       return;
@@ -350,8 +385,18 @@ export function PaymentModal({
   };
 
   const handleWalletPayRequest = async () => {
-    const rid = restaurantId || selectedRestaurant?.id;
+    const rid = effectiveRestaurantId?.trim();
     if (!rid) {
+      console.log("[PaymentModal] wallet rid missing", {
+        restaurantIdProp: restaurantId,
+        selectedRestaurantId: selectedRestaurant?.id,
+        selectedRestaurantBalanceRestaurantId:
+          selectedRestaurantBalance?.restaurantId,
+        selectedRestaurantBalanceNestedRestaurantId:
+          selectedRestaurantBalance?.restaurant?.id,
+        effectiveRestaurantId,
+        paySource,
+      });
       setModalError(t("payment.selectRestaurantFirst"));
       showToast(t("payment.selectRestaurantFirst"), "error");
       return;
@@ -361,9 +406,9 @@ export function PaymentModal({
       showToast(t("payment.noBalanceData"), "error");
       return;
     }
-    const normalized = walletAmountStr.replace(",", ".").trim();
-    const amt = parseFloat(normalized);
-    if (!Number.isFinite(amt) || amt <= 0) {
+    const cents = rtlBufferToCents(walletRtlBuffer);
+    const amt = cents / 100;
+    if (cents <= 0 || !Number.isFinite(amt) || amt <= 0) {
       setModalError(t("wallet.invalidAmount"));
       showToast(t("wallet.invalidAmount"), "error");
       return;
@@ -400,13 +445,17 @@ export function PaymentModal({
     }
   };
 
-  const walletSlideOkSV = useSharedValue(false);
-  const loyaltySlideOkSV = useSharedValue(false);
+  const swipeModeSV = useSharedValue(0);
 
-  useEffect(() => {
-    walletSlideOkSV.value = walletSlideOk;
-    loyaltySlideOkSV.value = loyaltySlideOk;
-  }, [walletSlideOk, loyaltySlideOk, walletSlideOkSV, loyaltySlideOkSV]);
+  useLayoutEffect(() => {
+    if (paySource === "wallet" && walletSlideOk) {
+      swipeModeSV.value = 1; // wallet route
+    } else if (paySource !== "wallet" && loyaltySlideOk) {
+      swipeModeSV.value = 2; // loyalty route
+    } else {
+      swipeModeSV.value = 0;
+    }
+  }, [paySource, walletSlideOk, loyaltySlideOk, swipeModeSV]);
 
   const translateX = useSharedValue(0);
 
@@ -421,10 +470,13 @@ export function PaymentModal({
     .onEnd(() => {
       const threshold = 200;
       if (translateX.value > threshold) {
-        if (walletSlideOkSV.value) {
+        const mode = swipeModeSV.value;
+        if (mode === 1) {
           runOnJS(handleWalletPayRequest)();
-        } else if (loyaltySlideOkSV.value) {
+        } else if (mode === 2) {
           runOnJS(handleSlideConfirm)();
+        } else {
+          translateX.value = withSpring(0);
         }
       } else {
         translateX.value = withSpring(0);
@@ -974,44 +1026,33 @@ export function PaymentModal({
                     )}{" "}
                     {globalWallet.currency}
                   </Text>
-                  <TextInput
-                    value={walletAmountStr}
-                    onChangeText={setWalletAmountStr}
-                    keyboardType="decimal-pad"
-                    placeholder={t("payment.walletAmountPlaceholder")}
-                    placeholderTextColor={colors.textSecondary}
-                    editable={!isProcessing}
-                    style={[
-                      styles.walletAmountInput,
-                      styles.walletAmountInputCompact,
-                      {
-                        color: colors.text,
-                        borderColor: colors.border,
-                        backgroundColor: colors.surface,
-                        fontFamily: defaultFontFamily,
-                      },
-                    ]}
-                  />
                   <Text
                     style={[
                       styles.voucherDetail,
                       styles.voucherDetailTight,
-                      { color: colors.textSecondary, marginTop: 4 },
+                      { color: colors.textSecondary, marginBottom: 6 },
                     ]}
                   >
-                    {t("payment.walletPayHint")}
+                    {t("wallet.rtlMoneyEntryHint")}
                   </Text>
-
-                  {normalizedWalletInput !== "" && !walletAmountValid ? (
+                  <RtlMoneyAmountField
+                    buffer={walletRtlBuffer}
+                    onBufferChange={setWalletRtlBuffer}
+                    maxCents={maxWalletCents}
+                    disabled={isProcessing}
+                    currencyCode={globalWallet.currency || "EUR"}
+                    compact
+                    containerStyle={{ marginBottom: 8 }}
+                  />
+                  {walletRtlBuffer !== "" && !walletAmountValid ? (
                     <Text style={[styles.errorText, { color: colors.error }]}>
-                      {Number.isFinite(walletPayAmountNum) &&
-                      walletPayAmountNum > globalWalletNum
+                      {walletPayAmountNum > globalWalletNum
                         ? t("payment.walletExceedsBalance")
                         : t("wallet.invalidAmount")}
                     </Text>
                   ) : null}
 
-                  {!targetRestaurantId ? (
+                  {!effectiveRestaurantId ? (
                     <Text
                       style={[
                         styles.walletSlidePrereqHint,

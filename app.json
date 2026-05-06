@@ -14,6 +14,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:nuxapp.de",
+        "applinks:www.nuxapp.de"
+      ],
       "icon": "./assets/icon.png",
       "splash": {
         "image": "./assets/splash.png",
@@ -61,6 +65,28 @@
     },
     "android": {
       "package": "com.lolity.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "nuxapp.de",
+              "pathPrefix": "/menu/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nuxapp.de",
+              "pathPrefix": "/menu/"
+            }
+          ]
+        }
+      ],
       "usesCleartextTraffic": true,
       "config": {
         "googleMaps": {}

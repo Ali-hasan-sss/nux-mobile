@@ -47,7 +47,7 @@ import {
   type WalletLedgerEntry,
 } from "@/api/walletPaymentApi";
 import { getOrCreateWalletDeviceId } from "@/lib/deviceId";
-import { walletLedgerTitleKey } from "@/lib/walletLedgerTitle";
+import { isWalletLedgerPromoBonus, walletLedgerTitleKey } from "@/lib/walletLedgerTitle";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GiftVoucherModal from "@/components/GiftVoucherModal";
@@ -731,6 +731,7 @@ export default function PurchaseScreen() {
                   ) : (
                     walletTxPreview.map((item) => {
                       const credit = item.type === "CREDIT";
+                      const promoBonus = isWalletLedgerPromoBonus(item.type, item.source);
                       const titleKey = walletLedgerTitleKey(
                         item.type,
                         item.source,
@@ -758,13 +759,15 @@ export default function PurchaseScreen() {
                             style={[
                               styles.walletTxRowIcon,
                               {
-                                backgroundColor:
-                                  (credit ? colors.success : colors.error) +
-                                  "22",
+                                backgroundColor: promoBonus
+                                  ? colors.primary + "28"
+                                  : (credit ? colors.success : colors.error) + "22",
                               },
                             ]}
                           >
-                            {credit ? (
+                            {promoBonus ? (
+                              <Gift size={20} color={colors.primary} />
+                            ) : credit ? (
                               <ArrowDownLeft size={20} color={colors.success} />
                             ) : (
                               <ArrowUpRight size={20} color={colors.error} />

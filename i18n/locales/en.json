@@ -103,7 +103,7 @@
     "loadMore": "Load more",
     "noTransactions": "No transactions yet",
     "transactionsError": "Could not load activity",
-    "credit": "Credit",
+    "credit": "Deposit",
     "debit": "Debit",
     "source": "Source",
     "amount": "Amount",
@@ -114,6 +114,10 @@
     "topUpSyncPending": "Payment succeeded but balance sync failed. Refresh in a moment or check your connection; the webhook may still apply the credit.",
     "topUpFailed": "Payment failed",
     "minAmount": "Minimum amount is 1 EUR",
+    "amountTwoDecimalsHint": "Use up to 2 digits after the decimal point. Maximum top-up per payment: {{max}} EUR.",
+    "amountTwoDecimalsOnly": "Enter the amount with up to 2 decimal places (e.g. 10.50).",
+    "rtlMoneyEntryHint": "Enter the amount from right to left, like payment terminals.\nCents first.",
+    "amountTooLarge": "Maximum top-up per payment is {{max}} EUR",
     "stripeNotConfigured": "Stripe is not configured. Set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (and CI secrets for release builds).",
     "noClientSecret": "Could not start card payment",
     "selectRestaurant": "Select a restaurant",
@@ -148,7 +152,8 @@
       "adminCredit": "Balance adjustment (credit)",
       "adminDebit": "Balance adjustment (debit)",
       "giftVoucherSent": "Gift sent",
-      "giftVoucherReceived": "Gift received"
+      "giftVoucherReceived": "Gift received",
+      "promoTopUpGift": "Top-up bonus (gift)"
     }
   },
   "exploreRestaurants": {
@@ -273,7 +278,9 @@
     "paymentPinMismatch": "PINs do not match",
     "paymentBiometric": "Use Face ID / fingerprint before PIN when available",
     "paymentBiometricUpdated": "Biometric setting saved",
-    "paymentBiometricSaveFailed": "Could not update biometric setting"
+    "paymentBiometricSaveFailed": "Could not update biometric setting",
+    "copyUserCode": "Copy",
+    "userCodeCopied": "User code copied"
   },
   "drawer": {
     "title": "Menu",

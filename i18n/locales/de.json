@@ -114,6 +114,10 @@
     "topUpSyncPending": "Zahlung OK, aber Synchronisierung fehlgeschlagen. Seite später aktualisieren oder Verbindung prüfen; der Webhook kann das Guthaben noch gutschreiben.",
     "topUpFailed": "Zahlung fehlgeschlagen",
     "minAmount": "Mindestbetrag ist 1 EUR",
+    "amountTwoDecimalsHint": "Höchstens 2 Nachkommastellen. Max. Aufladung pro Vorgang: {{max}} EUR.",
+    "amountTwoDecimalsOnly": "Betrag mit höchstens 2 Nachkommastellen eingeben (z. B. 10,50).",
+    "rtlMoneyEntryHint": "Betrag von rechts nach links eingeben, wie am Kartenterminal.\nZuerst die Cent-Stellen.",
+    "amountTooLarge": "Maximale Aufladung pro Vorgang: {{max}} EUR",
     "stripeNotConfigured": "Stripe ist nicht konfiguriert. Setzen Sie EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY (und CI-Secrets für Release-Builds).",
     "noClientSecret": "Kartenzahlung konnte nicht gestartet werden",
     "selectRestaurant": "Restaurant auswählen",
@@ -148,7 +152,8 @@
       "adminCredit": "Guthabenanpassung (Gutschrift)",
       "adminDebit": "Guthabenanpassung (Belastung)",
       "giftVoucherSent": "Geschenk gesendet",
-      "giftVoucherReceived": "Geschenk erhalten"
+      "giftVoucherReceived": "Geschenk erhalten",
+      "promoTopUpGift": "Auflade-Bonus (Geschenk)"
     }
   },
   "exploreRestaurants": {
@@ -273,7 +278,9 @@
     "paymentPinMismatch": "PINs stimmen nicht überein",
     "paymentBiometric": "Face ID / Fingerabdruck vor PIN nutzen, falls verfügbar",
     "paymentBiometricUpdated": "Biometrie-Einstellung gespeichert",
-    "paymentBiometricSaveFailed": "Biometrie-Einstellung konnte nicht gespeichert werden"
+    "paymentBiometricSaveFailed": "Biometrie-Einstellung konnte nicht gespeichert werden",
+    "copyUserCode": "Kopieren",
+    "userCodeCopied": "Benutzercode kopiert"
   },
   "drawer": {
     "title": "Menü",

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { walletLedgerTitleKey } from "@/lib/walletLedgerTitle";
+import { isWalletLedgerPromoBonus, walletLedgerTitleKey } from "@/lib/walletLedgerTitle";
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, ArrowDownLeft, ArrowUpRight } from "lucide-react-native";
+import { ArrowLeft, ArrowDownLeft, ArrowUpRight, Gift } from "lucide-react-native";
 import {
   fetchWalletBalance,
   fetchWalletTransactions,
@@ -139,6 +139,7 @@ export default function WalletTransactionsScreen() {
 
   const renderItem = ({ item }: { item: WalletLedgerEntry }) => {
     const credit = item.type === "CREDIT";
+    const promoBonus = isWalletLedgerPromoBonus(item.type, item.source);
     const titleKey = walletLedgerTitleKey(item.type, item.source, "user", item.metadata);
     const title = titleKey
       ? t(titleKey)
@@ -158,10 +159,16 @@ export default function WalletTransactionsScreen() {
         <View
           style={[
             styles.rowIcon,
-            { backgroundColor: (credit ? colors.success : colors.error) + "22" },
+            {
+              backgroundColor: promoBonus
+                ? colors.primary + "28"
+                : (credit ? colors.success : colors.error) + "22",
+            },
           ]}
         >
-          {credit ? (
+          {promoBonus ? (
+            <Gift size={22} color={colors.primary} />
+          ) : credit ? (
             <ArrowDownLeft size={22} color={colors.success} />
           ) : (
             <ArrowUpRight size={22} color={colors.error} />

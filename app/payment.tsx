@@ -6,19 +6,38 @@ import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import { setSelectedRestaurantBalance } from "@/store/slices/balanceSlice";
 import { fetchWalletBalance, type WalletBalanceData } from "@/api/walletPaymentApi";
 
+/** Expo Router may pass a single string or string[] for the same query key. */
+function coerceQueryParam(
+  v: string | string[] | undefined
+): string | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string") {
+    const t = v.trim();
+    return t.length > 0 ? t : undefined;
+  }
+  if (Array.isArray(v)) {
+    for (const x of v) {
+      if (typeof x === "string") {
+        const t = x.trim();
+        if (t.length > 0) return t;
+      }
+    }
+  }
+  return undefined;
+}
+
 export default function PaymentScreen() {
   const dispatch = useDispatch();
   const params = useLocalSearchParams<{
-    restaurantId?: string;
-    restaurantName?: string;
-    paymentType?: "meal" | "drink";
+    restaurantId?: string | string[];
+    restaurantName?: string | string[];
+    paymentType?: string | string[];
   }>();
 
-  const restaurantId =
-    typeof params.restaurantId === "string" ? params.restaurantId : undefined;
-  const restaurantName =
-    typeof params.restaurantName === "string" ? params.restaurantName : undefined;
-  const paymentType = params.paymentType === "drink" ? "drink" : "meal";
+  const restaurantId = coerceQueryParam(params.restaurantId);
+  const restaurantName = coerceQueryParam(params.restaurantName);
+  const paymentType =
+    coerceQueryParam(params.paymentType) === "drink" ? "drink" : "meal";
 
   const [globalWallet, setGlobalWallet] = useState<WalletBalanceData | null>(null);
   const [walletLedgerLoading, setWalletLedgerLoading] = useState(true);

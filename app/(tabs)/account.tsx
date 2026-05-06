@@ -17,6 +17,7 @@ import {
 import { Text } from "@/components/AppText";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import QRCode from "react-native-qrcode-svg";
@@ -30,6 +31,7 @@ import {
   Trash2,
   Edit,
   Share2,
+  Copy,
   Eye,
   EyeOff,
 } from "lucide-react-native";
@@ -508,6 +510,16 @@ export default function AccountScreen() {
     }
   };
 
+  const handleCopyUserCode = async () => {
+    const userCode = String(auth.user?.id ?? profile?.id ?? "").trim();
+    if (!userCode) return;
+    await Clipboard.setStringAsync(userCode);
+    showToast({
+      message: t("account.userCodeCopied"),
+      type: "success",
+    });
+  };
+
   const AccountRoot =
     Platform.OS === "ios" ? KeyboardAvoidingView : View;
 
@@ -911,9 +923,25 @@ export default function AccountScreen() {
                               {profile.fullName}
                             </Text>
                           )}
-                          <Text style={[styles.qrShareEmail, font]}>
-                            {auth.user?.email || profile.email}
-                          </Text>
+                          <View style={styles.qrCodeRow}>
+                            <Text
+                              style={[styles.qrShareEmail, font]}
+                              numberOfLines={1}
+                              ellipsizeMode="middle"
+                            >
+                              {String(auth.user?.id ?? profile?.id ?? "")}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => void handleCopyUserCode()}
+                              style={styles.copyCodeButton}
+                              hitSlop={10}
+                            >
+                              <Copy size={14} color="#000000" />
+                              <Text style={[styles.copyCodeText, font]}>
+                                {t("account.copyUserCode")}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
                     </ViewShot>
@@ -1156,8 +1184,30 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
   qrShareEmail: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#000000",
+    maxWidth: 220,
+    textAlign: "center",
+  },
+  qrCodeRow: {
+    marginTop: 2,
+    alignItems: "center",
+    gap: 8,
+  },
+  copyCodeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#00000022",
+  },
+  copyCodeText: {
+    fontSize: 12,
+    color: "#000000",
+    fontWeight: "600",
   },
   shareButtonBelow: {
     flexDirection: "row",
