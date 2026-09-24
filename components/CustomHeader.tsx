@@ -33,7 +33,7 @@ export function CustomHeader() {
           {
             backgroundColor: isDark
               ? "rgba(26, 31, 58, 0.95)" // colors.surfaceSolid with 95% opacity
-              : "rgba(255, 255, 255, 0.95)", // colors.surfaceSolid with 95% opacity
+              : "rgba(242, 234, 216, 0.97)", // beige (matches light background) with 97% opacity
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
           },
@@ -82,7 +82,8 @@ export function CustomHeader() {
       <Modal
         visible={drawerOpen}
         animationType="fade"
-        transparent={false}
+        transparent
+        statusBarTranslucent
         onRequestClose={() => setDrawerOpen(false)}
       >
         <DrawerMenu onClose={() => setDrawerOpen(false)} />

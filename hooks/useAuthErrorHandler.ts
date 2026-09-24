@@ -1,32 +1,33 @@
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/store/store";
-import { logout } from "@/store/slices/authSlice";
-import { clearBalances } from "@/store/slices/balanceSlice";
+import {
+  handleSessionExpired,
+  isSessionExpiredError,
+} from "@/lib/sessionAuth";
 
-export const useAuthErrorHandler = (error: any) => {
-  const dispatch = useDispatch<AppDispatch>();
-
+export const useAuthErrorHandler = (error: unknown) => {
   useEffect(() => {
-    if (error) {
-      const errorMessage = error?.message || error?.toString() || "";
+    if (!error) return;
 
-      // Check if it's an authentication error (not location errors)
-      if (
-        (errorMessage.includes("401") ||
-          errorMessage.includes("Unauthorized") ||
-          errorMessage.includes("Token expired") ||
-          errorMessage.includes("Invalid token") ||
-          error?.response?.status === 401) &&
-        !errorMessage.includes("You must be at the restaurant location") &&
-        !errorMessage.includes("403")
-      ) {
-        console.log("🚪 Auto-logout due to auth error:", errorMessage);
-
-        // Clear all data and logout
-        dispatch(logout());
-        dispatch(clearBalances());
-      }
+    if (isSessionExpiredError(error)) {
+      void handleSessionExpired();
+      return;
     }
-  }, [error, dispatch]);
+
+    const errorMessage =
+      (error as Error)?.message || String(error);
+
+    if (
+      (errorMessage.includes("401") ||
+        errorMessage.includes("Unauthorized") ||
+        errorMessage.includes("Token expired") ||
+        errorMessage.includes("Invalid token") ||
+        errorMessage.includes("No refresh token") ||
+        (error as { response?: { status?: number } })?.response?.status ===
+          401) &&
+      !errorMessage.includes("You must be at the restaurant location") &&
+      !errorMessage.includes("403")
+    ) {
+      void handleSessionExpired();
+    }
+  }, [error]);
 };

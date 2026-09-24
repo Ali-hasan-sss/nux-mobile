@@ -14,8 +14,11 @@ import "@/i18n/i18n";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-gesture-handler";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { AppSafeFrame } from "@/components/AppSafeFrame";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
+import { SystemChrome } from "@/providers/SystemChrome";
+import { bootstrapPushNotifications } from "@/lib/pushNotifications";
 // Arabic: Cairo. Other languages: Poppins
 import { Cairo_400Regular } from "@expo-google-fonts/cairo/400Regular";
 import { Cairo_700Bold } from "@expo-google-fonts/cairo/700Bold";
@@ -49,6 +52,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    void bootstrapPushNotifications();
+  }, []);
+
+  useEffect(() => {
     if (isFrameworkReady && (fontsLoaded || fontError)) {
       SplashScreen.hideAsync();
     }
@@ -65,16 +72,7 @@ export default function RootLayout() {
           <AlertProvider>
             <AuthProvider>
               <NotificationSocketProvider>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: "transparent",
-                  width: "100%",
-                  height: "100%",
-                }}
-              >
-                {/* AnimatedBackground أول عنصر - يغطي الشاشة بالكامل */}
-                <AnimatedBackground />
+              <AnimatedBackground>
                 <GestureHandlerRootView
                   style={{
                     flex: 1,
@@ -83,26 +81,28 @@ export default function RootLayout() {
                     height: "100%",
                   }}
                 >
-                  <View
-                    style={{
-                      flex: 1,
-                      backgroundColor: "transparent",
-                      width: "100%",
-                      height: "100%",
-                    }}
-                  >
-                    <Stack
+                  <SystemChrome />
+                  <AppSafeFrame>
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: "transparent",
+                        width: "100%",
+                        height: "100%",
+                      }}
+                    >
+                      <Stack
                       screenOptions={{
                         headerShown: false,
                         animation: "fade",
-                        contentStyle: { backgroundColor: "#000000" },
+                        contentStyle: { backgroundColor: "transparent" },
                         presentation: "card",
                       }}
                     >
                       <Stack.Screen
                         name="index"
                         options={{
-                          contentStyle: { backgroundColor: "#000000" },
+                          contentStyle: { backgroundColor: "transparent" },
                           presentation: "card",
                         }}
                       />
@@ -157,15 +157,16 @@ export default function RootLayout() {
                       <Stack.Screen
                         name="+not-found"
                         options={{
-                          contentStyle: { backgroundColor: "#000000" },
+                          contentStyle: { backgroundColor: "transparent" },
                           presentation: "card",
                         }}
                       />
                     </Stack>
                     <ThemedStatusBar />
-                  </View>
+                    </View>
+                  </AppSafeFrame>
                 </GestureHandlerRootView>
-              </View>
+              </AnimatedBackground>
               </NotificationSocketProvider>
             </AuthProvider>
           </AlertProvider>

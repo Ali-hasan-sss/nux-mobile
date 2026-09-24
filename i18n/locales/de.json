@@ -60,15 +60,17 @@
     "resetPasswordSuccess": "Passwort wurde zurückgesetzt. Sie können sich jetzt anmelden.",
     "restaurantOwnerNotAllowed": "Diese App ist nur für Gäste. Für die Restaurant-Verwaltung melden Sie sich bitte auf der Website nuxapp.de an. Ihre Sitzung wurde nicht gespeichert.",
     "continueWithGoogle": "Weiter mit Google",
+    "continueWithApple": "Weiter mit Apple",
     "orDivider": "oder",
-    "googleSignInFailed": "Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen."
+    "googleSignInFailed": "Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+    "appleSignInFailed": "Apple-Anmeldung fehlgeschlagen. Bitte erneut versuchen."
   },
   "home": {
     "title": "Treueprogramm",
     "welcomeBack": "Willkommen zurück!",
     "welcomeToNux": "Willkommen bei NUX",
     "scanCode": "Restaurant-Codes scannen",
-    "scanCodeDesc": "Menü-Link oder Speise-/Getränkecode für Punkte scannen",
+    "scanCodeDesc": "Menü-Link, Treuecode für Punkte oder Zahlungscode zum Bezahlen",
     "scanMenuCode": "Menü-Code scannen",
     "scanMenuCodeDesc": "QR-Code scannen, um das Menü anzuzeigen",
     "payDrink": "Mit Getränkepunkten bezahlen",
@@ -300,6 +302,7 @@
     "appNameLabel": "App-Name",
     "appVersion": "Erste Version",
     "versionLabel": "Version",
+    "buildLabel": "Build-Nummer",
     "contactLabel": "Kontakt",
     "contactEmail": "info@nuxapp.de"
   },
@@ -328,6 +331,9 @@
     "companyValue": "Genix Tech"
   },
   "legal": {
+    "close": "Schließen",
+    "loadError": "Dokument konnte nicht geladen werden. Prüfen Sie, ob der Server läuft.",
+    "empty": "Inhalt ist noch nicht verfügbar.",
     "privacy": {
       "title": "Datenschutzrichtlinie",
       "intro": "Diese Datenschutzrichtlinie beschreibt, wie NUX Ihre personenbezogenen Daten beim Nutzen unserer Treueprogramm-App erhebt, verwendet und schützt.",
@@ -376,6 +382,10 @@
     "processing": "Wird verarbeitet",
     "scanSuccess": "Code erfolgreich gescannt! Punkte wurden gutgeschrieben.",
     "scanSuccessDev": "Code erfolgreich gescannt! (Entwicklung)",
+    "scanPendingTitle": "Warten auf Kassierer-Bestätigung",
+    "scanPendingMessage": "Punkte werden gutgeschrieben, sobald das Restaurant-Dashboard diesen Scan bestätigt.",
+    "scanRejected": "Der Kassierer hat diesen Scan abgelehnt. Es wurden keine Punkte gutgeschrieben.",
+    "scanExpired": "Die Anfrage ist abgelaufen. Scannen Sie erneut und bitten Sie den Kassierer um Bestätigung.",
     "scanErrorGeneric": "Beim Scannen des Codes ist ein Fehler aufgetreten",
     "scanErrorNetwork": "Netzwerkfehler. Überprüfen Sie Ihre Internetverbindung",
     "scanErrorUnauthorized": "Sitzung abgelaufen. Bitte melden Sie sich erneut an",
@@ -392,7 +402,8 @@
     "walletPayScannerTitle": "Zahlung mit Wallet",
     "walletPayBannerSubtitle": "Nur den Zahlungs-QR des Restaurants — nicht den Menü-Link.",
     "walletPayPlaceCode": "Zahlungs-QR des Restaurants scannen (an der Kasse oder Theke)",
-    "walletPayScanSuccess": "{{name}} — Betrag im Zahlungsfenster eingeben und zum Bestätigen wischen."
+    "walletPayScanSuccess": "{{name}} — Betrag im Zahlungsfenster eingeben und zum Bestätigen wischen.",
+    "loyaltyCodeNotForPayment": "Das ist ein Treue-Code. Bitte den Zahlungs-QR scannen."
   },
   "menu": {
     "title": "Menü",

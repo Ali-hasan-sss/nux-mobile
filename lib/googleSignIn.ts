@@ -1,5 +1,10 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import {
+  getFirebaseIosClientId,
+  getFirebaseWebClientId,
+  isFirebaseGoogleSignInConfigured,
+} from "@/config/firebase";
 
 let configured = false;
 let nativeModulePromise: Promise<
@@ -18,21 +23,26 @@ function loadNativeGoogleSignIn() {
   return nativeModulePromise;
 }
 
-/** Web OAuth client ID — must match backend `GOOGLE_CLIENT_ID` (token audience). */
+/** Firebase Web client ID — must match backend `GOOGLE_CLIENT_ID` (Firebase Auth → Google → Web SDK). */
 export function getGoogleWebClientId(): string {
-  return (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim();
+  return getFirebaseWebClientId();
 }
 
 export function getGoogleIosClientId(): string {
-  return (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "").trim();
+  return getFirebaseIosClientId();
 }
 
+/** @deprecated Firebase derives Android client from google-services.json + SHA-1. */
 export function getGoogleAndroidClientId(): string {
-  return (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "").trim();
+  return (
+    process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID?.trim() ||
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() ||
+    ""
+  );
 }
 
 export function isGoogleSignInConfiguredInEnv(): boolean {
-  return getGoogleWebClientId().length > 0;
+  return isFirebaseGoogleSignInConfigured();
 }
 
 export async function ensureGoogleSignInNativeConfigured(): Promise<void> {
@@ -94,6 +104,12 @@ export async function signInWithGoogleNative(): Promise<GoogleNativeSignInResult
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
+      // Clear cached account so the user can pick an email (not auto first account).
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // ignore — no cached session
+      }
     }
 
     const response = await GoogleSignin.signIn();
@@ -143,7 +159,7 @@ export async function signInWithGoogleNative(): Promise<GoogleNativeSignInResult
         ok: false,
         code: "unavailable",
         message:
-          "Google Sign-In needs a native build: run `npx expo run:ios` or `npx expo run:android` after installing the package.",
+          "Google Sign-In needs a native build: run `npm run build:android` or `npx expo run:android`.",
       };
     }
     return {

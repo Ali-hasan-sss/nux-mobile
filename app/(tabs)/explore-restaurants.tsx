@@ -247,7 +247,7 @@ export default function ExploreRestaurantsScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       {/* Header: back button + title (no bottom border) */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>

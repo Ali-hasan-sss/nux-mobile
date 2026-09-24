@@ -18,8 +18,6 @@ export const store = configureStore({
     user: userSlice.reducer,
     restaurant: restaurantSlice.reducer,
     profile: profileSlice.reducer,
-    // Keep backward compatibility for old selector/state key used by stale bundles.
-    notification: notificationReducer,
     notifications: notificationReducer,
     ads: adsReducer,
   },

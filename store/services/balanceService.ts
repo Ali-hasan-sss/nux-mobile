@@ -1,5 +1,6 @@
 import { API_CONFIG } from "../../config/api";
 import { authApi } from "../../api/authApi";
+import { extractLoyaltyQrCode } from "../../lib/loyaltyQr";
 import {
   BalancesApiResponse,
   QrScanApiResponse,
@@ -47,11 +48,15 @@ class BalanceService {
   // Scan QR code and process payment
   async scanQrCode(qrData: QrScanData): Promise<QrScanApiResponse> {
     try {
-      console.log("📱 Scanning QR code with data:", qrData);
+      const payload = {
+        ...qrData,
+        qrCode: extractLoyaltyQrCode(qrData.qrCode),
+      };
+      console.log("📱 Scanning QR code with data:", payload);
 
       const response = await authApi.post(
         API_CONFIG.ENDPOINTS.CLIENT.SCAN_QR,
-        qrData
+        payload
       );
 
       if (__DEV__) {
@@ -82,6 +87,13 @@ class BalanceService {
 
       throw error;
     }
+  }
+
+  async getScanApproval(id: string): Promise<QrScanApiResponse> {
+    const response = await authApi.get(
+      `${API_CONFIG.ENDPOINTS.CLIENT.SCAN_APPROVAL}/${id}`
+    );
+    return response.data;
   }
 
   // Process payment

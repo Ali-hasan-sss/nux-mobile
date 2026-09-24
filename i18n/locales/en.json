@@ -60,15 +60,17 @@
     "resetPasswordSuccess": "Password reset successfully. You can now sign in.",
     "restaurantOwnerNotAllowed": "This app is for customers only. To access the restaurant dashboard, please sign in on the website nuxapp.de. Your session was not saved.",
     "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
     "orDivider": "or",
-    "googleSignInFailed": "Google sign-in failed. Try again."
+    "googleSignInFailed": "Google sign-in failed. Try again.",
+    "appleSignInFailed": "Apple sign-in failed. Try again."
   },
   "home": {
     "title": "Loyalty Rewards",
     "welcomeBack": "Welcome back!",
     "welcomeToNux": "Welcome to NUX",
     "scanCode": "Scan restaurant codes",
-    "scanCodeDesc": "Scan menu link or food/drink code for points",
+    "scanCodeDesc": "Menu link, loyalty code for points, or payment code to pay",
     "scanMenuCode": "Scan Menu Code",
     "scanMenuCodeDesc": "Scan QR code to view menu",
     "payDrink": "Pay with Drink Points",
@@ -301,6 +303,7 @@
     "appNameLabel": "App name",
     "appVersion": "First version",
     "versionLabel": "Version",
+    "buildLabel": "Build",
     "contactLabel": "Contact",
     "contactEmail": "info@nuxapp.de"
   },
@@ -329,6 +332,9 @@
     "companyValue": "Genix Tech"
   },
   "legal": {
+    "close": "Close",
+    "loadError": "Failed to load document. Check that the backend is running.",
+    "empty": "Content is not available yet.",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "This Privacy Policy describes how NUX collects, uses, and protects your personal information when you use our loyalty rewards application.",
@@ -377,6 +383,10 @@
     "processing": "Processing",
     "scanSuccess": "Code scanned successfully! Points have been added.",
     "scanSuccessDev": "Code scanned successfully! (dev)",
+    "scanPendingTitle": "Waiting for cashier approval",
+    "scanPendingMessage": "Points will be added after the restaurant dashboard approves this scan.",
+    "scanRejected": "The cashier declined this scan. Points were not added.",
+    "scanExpired": "The request expired. Scan again and ask the cashier to approve.",
     "scanErrorGeneric": "An error occurred while scanning the code",
     "scanErrorNetwork": "Network error. Check your internet connection",
     "scanErrorUnauthorized": "Session expired. Please sign in again",
@@ -393,7 +403,8 @@
     "walletPayScannerTitle": "Wallet payment",
     "walletPayBannerSubtitle": "Use only the restaurant’s payment QR — not the menu link.",
     "walletPayPlaceCode": "Scan the restaurant’s payment QR code (at checkout or counter)",
-    "walletPayScanSuccess": "{{name}} — enter the amount in the payment window and slide to confirm."
+    "walletPayScanSuccess": "{{name}} — enter the amount in the payment window and slide to confirm.",
+    "loyaltyCodeNotForPayment": "This is a loyalty code. Scan the payment QR."
   },
   "menu": {
     "title": "Menu",

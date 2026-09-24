@@ -7,13 +7,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
-  KeyboardAvoidingView,
   Keyboard,
   Dimensions,
   Switch,
   DeviceEventEmitter,
   InteractionManager,
 } from "react-native";
+import { KeyboardAvoidingRoot } from "@/components/KeyboardAvoidingRoot";
 import { Text } from "@/components/AppText";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
@@ -520,25 +520,20 @@ export default function AccountScreen() {
     });
   };
 
-  const AccountRoot =
-    Platform.OS === "ios" ? KeyboardAvoidingView : View;
-
   return (
-    <AccountRoot
-      style={[styles.container, { backgroundColor: colors.background }]}
-      {...(Platform.OS === "ios"
-        ? {
-            behavior: "padding" as const,
-            keyboardVerticalOffset: Math.max(insets.top, 0) + 74,
-          }
-        : {})}
+    <KeyboardAvoidingRoot
+      style={[styles.container, { backgroundColor: "transparent" }]}
+      extraOffset={74}
     >
       <ScrollView
         ref={scrollViewRef}
-        style={[styles.scrollView, { backgroundColor: colors.background }]}
+        style={[styles.scrollView, { backgroundColor: "transparent" }]}
         contentContainerStyle={[
           styles.scrollContent,
-          { backgroundColor: colors.background },
+          {
+            backgroundColor: "transparent",
+            paddingBottom: insets.bottom + 100,
+          },
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -1052,7 +1047,7 @@ export default function AccountScreen() {
         </View>
 
       </ScrollView>
-    </AccountRoot>
+    </KeyboardAvoidingRoot>
   );
 }
 

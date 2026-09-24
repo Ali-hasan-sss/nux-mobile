@@ -1,0 +1,61 @@
+# EAS uses this instead of .gitignore when present.
+# Keep in sync with .gitignore, plus native build artifacts EAS should not upload.
+
+# Dependencies
+node_modules/
+
+# Expo / web
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Git / IDE
+.git/
+.idea/
+.vscode/
+*.iml
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.keystore
+*.pem
+nux-keystore-base64.txt
+android/keystore.properties
+
+# Native build outputs (nested android/.gitignore is not applied by EAS)
+android/build/
+android/app/build/
+android/.gradle/
+android/app/.cxx/
+android/.idea/
+android/.kotlin/
+android/local.properties
+android/*.hprof
+android/hs_err_*.log
+android/replay_*.log
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+.kotlin/
+
+# Metro / debug
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.tsbuildinfo
+.DS_Store
+*.orig.*
+
+# Docs not needed on EAS
+STORE_PUBLISHING_GUIDE.html
+EAS_BUILD.md
+.github/

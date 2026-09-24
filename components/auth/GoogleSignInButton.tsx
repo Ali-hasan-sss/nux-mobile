@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 52,
+    marginBottom: 12,
   },
   row: {
     flexDirection: "row",

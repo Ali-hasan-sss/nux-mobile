@@ -1,5 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, useWindowDimensions, RefreshControl, Modal, TextInput, FlatList, BackHandler, Platform } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  useWindowDimensions,
+  RefreshControl,
+  Modal,
+  TextInput,
+  FlatList,
+  BackHandler,
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -14,8 +29,10 @@ import type {
 } from "@/store/services/menuClientService";
 import { orderService, type OrderTypeValue } from "@/store/services/orderService";
 import { CustomAlert } from "@/components/CustomAlert";
+import { MenuBanner } from "@/components/menu/MenuBanner";
 import { API_CONFIG, getImageUrl } from "@/config/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getFloatingActionBottom } from "@/constants/tabBarLayout";
 
 export interface CartItemExtra {
   name: string;
@@ -102,8 +119,7 @@ export default function MenuNativeScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isRTL = i18n.language === "ar";
-  const tabBarHeight = Platform.OS === "ios" ? 80 : 70;
-  const tabBarClearance = tabBarHeight + Math.max(insets.bottom, 10);
+  const tabBarClearance = getFloatingActionBottom(insets.bottom, 0);
   const modalBottomSafePadding = Math.max(insets.bottom, 12);
 
   const qrCode = extractQRCode(params.qrCode);
@@ -113,6 +129,7 @@ export default function MenuNativeScreen() {
   const fromExplore = params.fromExplore === "1";
 
   const [restaurant, setRestaurant] = useState<MenuRestaurantInfo | null>(null);
+  const [menuBanner, setMenuBanner] = useState<string | null>(null);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(
@@ -156,6 +173,9 @@ export default function MenuNativeScreen() {
       const res = await menuClientService.getCategoriesByQRCode(qrCode);
       setCategories(res.data || []);
       setRestaurant(res.restaurant || null);
+      const banner =
+        typeof res.menuBanner === "string" ? res.menuBanner.trim() : "";
+      setMenuBanner(banner || null);
     } catch (e: any) {
       setError(
         e?.response?.data?.message ||
@@ -237,7 +257,7 @@ export default function MenuNativeScreen() {
 
   if (!qrCode) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View style={styles.centered}>
           <Text style={[styles.errorText, { color: colors.error }]}>
             {t("menu.invalidQRCode")}
@@ -248,7 +268,7 @@ export default function MenuNativeScreen() {
   }
 
   const getCartItemKey = (item: CartItem) =>
-    `${item.id}_${JSON.stringify((item.selectedExtras || []).sort((a, b) => a.name.localeCompare(b.name)))}`;
+    `${item.id}_${JSON.stringify((item.selectedExtras || []).sort((a, b) => a.name.localeCompare(b.name)))}_${(item.notes || "").trim()}`;
 
   const cartTotalPrice = cart.reduce((sum, c) => {
     const extrasSum = (c.selectedExtras || []).reduce((s, e) => s + e.price, 0);
@@ -303,16 +323,11 @@ export default function MenuNativeScreen() {
   };
 
   const handleAddItem = (item: MenuItem) => {
-    const hasExtras = item.extras && Array.isArray(item.extras) && item.extras.length > 0;
-    if (hasExtras) {
-      setExtrasModalItem(item);
-      setExtrasSelected([]);
-      setExtrasQuantity(1);
-      setExtrasNotes("");
-      setExtrasModalVisible(true);
-    } else {
-      addToCart(item, 1, [], "");
-    }
+    setExtrasModalItem(item);
+    setExtrasSelected([]);
+    setExtrasQuantity(1);
+    setExtrasNotes("");
+    setExtrasModalVisible(true);
   };
 
   const handleConfirmExtras = () => {
@@ -439,7 +454,7 @@ export default function MenuNativeScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       {/* Header: restaurant + back when in category */}
       <View
         style={[
@@ -484,6 +499,8 @@ export default function MenuNativeScreen() {
         </View>
         <View style={styles.backButton} />
       </View>
+
+      {menuBanner ? <MenuBanner message={menuBanner} /> : null}
 
       <ScrollView
         style={styles.scroll}
@@ -738,7 +755,7 @@ export default function MenuNativeScreen() {
         <TouchableOpacity
           style={[
             styles.cartFab,
-            { backgroundColor: colors.primary, bottom: tabBarClearance + 16 },
+            { backgroundColor: colors.primary, bottom: tabBarClearance + 12 },
           ]}
           onPress={() => setCartModalVisible(true)}
           activeOpacity={0.9}
@@ -770,7 +787,11 @@ export default function MenuNativeScreen() {
 
       {/* Cart modal */}
       <Modal visible={cartModalVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+        >
           <View style={[styles.cartModal, { backgroundColor: colors.background }]}>
             <View style={[styles.cartModalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.cartModalTitle, { color: colors.text }]}>{t("menu.cart")}</Text>
@@ -787,6 +808,11 @@ export default function MenuNativeScreen() {
                   <View style={[styles.cartRow, { borderBottomColor: colors.border }]}>
                     <View style={styles.cartRowLeft}>
                       <Text style={[styles.cartRowTitle, { color: colors.text }]} numberOfLines={1}>{c.title}</Text>
+                      {c.notes?.trim() ? (
+                        <Text style={[styles.cartRowNotes, { color: colors.textSecondary }]} numberOfLines={2}>
+                          {t("menu.notes")}: {c.notes.trim()}
+                        </Text>
+                      ) : null}
                       <Text style={[styles.cartRowPrice, { color: colors.primary }]}>{lineTotal.toFixed(2)} €</Text>
                     </View>
                     <View style={styles.cartRowActions}>
@@ -869,40 +895,61 @@ export default function MenuNativeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Extras modal */}
       <Modal visible={extrasModalVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+        >
           <View style={[styles.extrasModal, { backgroundColor: colors.background }]}>
             <View style={[styles.cartModalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.cartModalTitle, { color: colors.text }]}>
-                {extrasModalItem ? extrasModalItem.title : ""}
-              </Text>
+              <View style={styles.extrasModalTitleWrap}>
+                <Text style={[styles.cartModalTitle, { color: colors.text }]}>
+                  {extrasModalItem ? extrasModalItem.title : ""}
+                </Text>
+                <Text style={[styles.extrasModalSubtitle, { color: colors.textSecondary }]}>
+                  {t("menu.customizeItem")}
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => { setExtrasModalVisible(false); setExtrasModalItem(null); }}>
                 <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.extrasModalScroll}>
-              {extrasModalItem?.extras?.map((extra: any, idx: number) => {
-                const isSelected = extrasSelected.some((e) => e.name === extra.name);
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[
-                      styles.extrasItem,
-                      { backgroundColor: isSelected ? colors.primary + "20" : colors.surface, borderColor: colors.border },
-                    ]}
-                    onPress={() => toggleExtra(extra.name, extra.price || 0, extra.calories || 0)}
-                  >
-                    <Text style={[styles.extrasItemName, { color: colors.text }]}>{extra.name}</Text>
-                    <Text style={[styles.extrasItemPrice, { color: colors.primary }]}>
-                      +{(extra.price || 0).toFixed(2)} €
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <ScrollView
+              style={styles.extrasModalScroll}
+              contentContainerStyle={styles.extrasModalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              {extrasModalItem?.extras && extrasModalItem.extras.length > 0 ? (
+                <>
+                  <Text style={[styles.extrasSectionLabel, { color: colors.textSecondary }]}>
+                    {t("menu.availableExtras")}
+                  </Text>
+                  {extrasModalItem.extras.map((extra: any, idx: number) => {
+                    const isSelected = extrasSelected.some((e) => e.name === extra.name);
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.extrasItem,
+                          { backgroundColor: isSelected ? colors.primary + "20" : colors.surface, borderColor: colors.border },
+                        ]}
+                        onPress={() => toggleExtra(extra.name, extra.price || 0, extra.calories || 0)}
+                      >
+                        <Text style={[styles.extrasItemName, { color: colors.text }]}>{extra.name}</Text>
+                        <Text style={[styles.extrasItemPrice, { color: colors.primary }]}>
+                          +{(extra.price || 0).toFixed(2)} €
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              ) : null}
               <Text style={[styles.extrasSectionLabel, { color: colors.textSecondary }]}>{t("menu.quantity")}</Text>
               <View style={styles.extrasQtyRow}>
                 <TouchableOpacity
@@ -943,7 +990,7 @@ export default function MenuNativeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1252,6 +1299,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  cartRowNotes: {
+    fontSize: 12,
+    marginTop: 4,
+  },
   cartRowPrice: {
     fontSize: 14,
     marginTop: 2,
@@ -1341,13 +1392,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   extrasModal: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
+    flex: 1,
+  },
+  extrasModalTitleWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  extrasModalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
   extrasModalScroll: {
+    flex: 1,
+  },
+  extrasModalScrollContent: {
     padding: 16,
-    maxHeight: 360,
+    paddingBottom: 24,
   },
   extrasItem: {
     flexDirection: "row",

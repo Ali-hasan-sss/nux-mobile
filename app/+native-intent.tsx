@@ -1,8 +1,10 @@
 /**
  * Rewrites incoming external links to Expo Router app routes.
- * Example handled:
+ * Examples:
  * https://www.nuxapp.de/menu/<restaurantUuid>?table=5
  * -> /(tabs)/menu-webview?qrCode=<restaurantUuid>&table=5
+ * https://www.nuxapp.de/scan/<mealOrDrinkUuid>
+ * -> /camera/scan?loyaltyQr=<mealOrDrinkUuid>
  */
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   try {
@@ -15,13 +17,28 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
     const url = new URL(normalized);
 
     const host = url.hostname.toLowerCase();
-    const isNuxHost = host === "nuxapp.de" || host === "www.nuxapp.de";
-    if (!isNuxHost) return path;
+    const isNuxHost =
+      host === "nuxapp.de" ||
+      host === "www.nuxapp.de" ||
+      host === "dummy.local";
 
-    const match = url.pathname.match(
+    const pathname =
+      host === "scan"
+        ? `/scan${url.pathname.startsWith("/") ? url.pathname : `/${url.pathname}`}`
+        : url.pathname;
+
+    const scanMatch = pathname.match(
+      /^\/scan\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
+    );
+    if (scanMatch?.[1]) {
+      return `/camera/scan?loyaltyQr=${encodeURIComponent(scanMatch[1])}`;
+    }
+
+    const match = pathname.match(
       /^\/menu\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
     );
     if (!match?.[1]) return path;
+    if (!isNuxHost && host !== "menu") return path;
 
     const qrCode = match[1];
     const params = new URLSearchParams({ qrCode });
@@ -35,4 +52,3 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
     return path;
   }
 }
-

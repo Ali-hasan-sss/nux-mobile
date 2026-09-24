@@ -25,9 +25,11 @@ const EMPTY_NOTIFICATION_STATE = {
 
 export const useNotifications = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const notificationState = useSelector(
-    (state: RootState) => state.notifications ?? EMPTY_NOTIFICATION_STATE
-  );
+  const notificationState = useSelector((state: RootState) => {
+    const slice = state.notifications;
+    if (slice && Array.isArray(slice.notifications)) return slice;
+    return EMPTY_NOTIFICATION_STATE;
+  });
 
   // Fetch all notifications
   const loadNotifications = useCallback(

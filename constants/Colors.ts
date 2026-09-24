@@ -6,11 +6,11 @@ export const Colors = {
     primary: "#00D9FF", // Bright cyan/blue
     secondary: "#FF6B9D", // Pink
     accent: "#A855F7", // Purple
-    background: "#F5F5F7", // Light gray/white background
-    // Light gradient background: subtle light colors
-    backgroundGradient: ["#FFFFFF", "#F8F9FA", "#F0F0F2", "#E8E8EA"] as const,
-    surface: "rgba(255, 255, 255, 0.9)", // Semi-transparent white surface
-    surfaceSolid: "#FFFFFF", // Solid white surface
+    background: "#F2EAD8", // Warm beige background (brand identity in light mode)
+    // Light gradient background: warm beige tones
+    backgroundGradient: ["#FBF6EA", "#F4ECDA", "#EFE5CF", "#E8DBC2"] as const,
+    surface: "rgba(251, 246, 234, 0.9)", // Semi-transparent cream surface
+    surfaceSolid: "#FBF7EE", // Solid cream surface (slightly lighter than background so cards pop)
     text: "#1A1A1A", // Dark text for light background
     textSecondary: "rgba(26, 26, 26, 0.7)", // Semi-transparent dark for secondary text
     border: "rgba(0, 0, 0, 0.1)", // Subtle border for visibility
@@ -24,7 +24,7 @@ export const Colors = {
     gradientButton: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradient: ["#00D9FF", "#A855F7"] as const, // Cyan to purple for buttons
     buttonGradientSecondary: ["#FF6B9D", "#A855F7"] as const, // Pink to purple
-    inputBackground: "#F5F5F7", // Same as background: no white box inside inputs in light mode
+    inputBackground: "#F2EAD8", // Same as background: no white box inside inputs in light mode
   },
   dark: {
     primary: "#00D9FF", // Bright cyan/blue

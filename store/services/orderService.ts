@@ -1,11 +1,15 @@
 import { API_CONFIG } from "@/config/api";
+import { getMobileApiHeaders } from "@/config/apiHeaders";
 import axios from "axios";
+import { attachDeviceIdInterceptor } from "@/lib/attachDeviceIdInterceptor";
 
 const publicApi = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
-  headers: { "Content-Type": "application/json" },
+  headers: getMobileApiHeaders(),
 });
+
+attachDeviceIdInterceptor(publicApi);
 
 export interface OrderItemPayload {
   id: number;

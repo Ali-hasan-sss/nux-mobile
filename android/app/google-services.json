@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "361590603430",
+    "project_id": "nuxapp-dc419",
+    "storage_bucket": "nuxapp-dc419.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361590603430:android:ee10d51d0722bec29bbe67",
+        "android_client_info": {
+          "package_name": "com.nux.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "361590603430-uq39i173duthe3mtq3t8s1u5vhv6ous4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nux.app",
+            "certificate_hash": "e498f65b49a86b74375d27f4fc0b6e90ef7f3d32"
+          }
+        },
+        {
+          "client_id": "361590603430-ibqv1453cem29tvsnrdm1aeftusk6ul3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyHjwCqydU5BOu_LSPhRGVLBV7OhqVi58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "361590603430-ibqv1453cem29tvsnrdm1aeftusk6ul3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "361590603430-4u1hov0ejkj1qmuavohig4n7o20ebj1g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "de.nuxapp.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361590603430:android:2a418f72a51611c29bbe67",
+        "android_client_info": {
+          "package_name": "com.nuxapp.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "361590603430-r62fdakjspchrpkibbop3nbecuec2si3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nuxapp.app",
+            "certificate_hash": "e498f65b49a86b74375d27f4fc0b6e90ef7f3d32"
+          }
+        },
+        {
+          "client_id": "361590603430-ibqv1453cem29tvsnrdm1aeftusk6ul3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyHjwCqydU5BOu_LSPhRGVLBV7OhqVi58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "361590603430-ibqv1453cem29tvsnrdm1aeftusk6ul3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "361590603430-4u1hov0ejkj1qmuavohig4n7o20ebj1g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "de.nuxapp.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

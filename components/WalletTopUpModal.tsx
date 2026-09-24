@@ -141,10 +141,7 @@ function WalletTopUpModalBody({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
+      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
         <View style={styles.flex}>
           <Pressable
             style={[StyleSheet.absoluteFill, styles.backdrop]}

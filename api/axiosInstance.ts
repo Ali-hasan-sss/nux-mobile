@@ -1,14 +1,23 @@
 import axios from "axios";
 import { CrossPlatformStorage } from "../store/services/crossPlatformStorage";
-import { store } from "../store/store";
-import { logout } from "../store/slices/authSlice";
 import { API_CONFIG } from "../config/api";
+import { getMobileApiHeaders } from "../config/apiHeaders";
+import { SessionExpiredError } from "../lib/sessionExpired";
+import { handleSessionExpired } from "../lib/sessionAuth";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "../lib/networkError";
+import {
+  attachDeviceIdInterceptor,
+  getClientDeviceIdHeader,
+} from "../lib/attachDeviceIdInterceptor";
 
 /** Must match authApi — same BASE_URL as local dev / production (see config/api.ts). */
 const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
+  timeout: API_CONFIG.TIMEOUT,
+  headers: getMobileApiHeaders(),
 });
+
+attachDeviceIdInterceptor(api);
 
 let isRefreshing = false;
 let refreshSubscribers: Array<{
@@ -90,45 +99,46 @@ api.interceptors.response.use(
       try {
         const tokens = await CrossPlatformStorage.getTokens();
         if (!tokens?.refreshToken) {
-          throw new Error("No refresh token available");
+          onTokenRefreshFailed(new SessionExpiredError());
+          await handleSessionExpired();
+          return Promise.reject(new SessionExpiredError());
         }
 
-        // Try to refresh the token
         const response = await axios.post(
           `${API_CONFIG.BASE_URL}/auth/refresh`,
-          { refreshToken: tokens.refreshToken }
+          { refreshToken: tokens.refreshToken },
+          {
+            headers: {
+              ...getMobileApiHeaders(),
+              ...(await getClientDeviceIdHeader()),
+            },
+          }
         );
 
         const { accessToken, refreshToken: newRefreshToken } =
           response.data.data;
 
-        // Save new tokens
         await CrossPlatformStorage.saveTokens({
           accessToken,
           refreshToken: newRefreshToken,
         });
 
-        // Update the original request
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        // Notify all queued requests
         onTokenRefreshed(accessToken);
 
         return api(originalRequest);
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
-
-        // Reject all pending requests and force logout state for navigation guards
-        onTokenRefreshFailed(refreshError);
-        // Clear all data and force logout
-        await CrossPlatformStorage.clearAll();
-        store.dispatch(logout());
-
-        // Reject the error to trigger navigation
-        return Promise.reject(refreshError);
+        onTokenRefreshFailed(new SessionExpiredError());
+        await handleSessionExpired();
+        return Promise.reject(new SessionExpiredError());
       } finally {
         isRefreshing = false;
       }
+    }
+
+    if (isNetworkError(error)) {
+      return Promise.reject(new Error(NETWORK_ERROR_MESSAGE));
     }
 
     return Promise.reject(error);

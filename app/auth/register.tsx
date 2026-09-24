@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   Image,
@@ -13,6 +12,7 @@ import {
   BackHandler,
   Keyboard,
 } from "react-native";
+import { KeyboardAvoidingRoot } from "@/components/KeyboardAvoidingRoot";
 import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -34,6 +34,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/CustomAlert";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { AppleSignInButton } from "@/components/auth/AppleSignInButton";
 import { Checkbox } from "@/components/Checkbox";
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
@@ -298,8 +299,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const RegisterFormRoot =
-    Platform.OS === "ios" ? KeyboardAvoidingView : View;
+  const RegisterFormRoot = KeyboardAvoidingRoot;
 
   return (
     <>
@@ -311,19 +311,15 @@ export default function RegisterScreen() {
         confirmText={t("common.ok")}
         onConfirm={() => setErrorAlert({ visible: false, message: "" })}
       />
-      {/** iOS: KAV padding. Android release: plain View + adjustResize + scroll-into-view on focus. */}
       <RegisterFormRoot
         style={[styles.keyboardView, { backgroundColor: "transparent" }]}
-        {...(Platform.OS === "ios"
-          ? {
-              behavior: "padding" as const,
-              keyboardVerticalOffset: Math.max(insets.top, 0),
-            }
-          : {})}
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 140 },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -426,6 +422,7 @@ export default function RegisterScreen() {
                   },
                 ]}
               >
+                <AppleSignInButton />
                 <GoogleSignInButton />
                 <View style={styles.authDividerRow}>
                   <View

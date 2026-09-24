@@ -1,17 +1,22 @@
 import axios from "axios";
 import { CrossPlatformStorage } from "../store/services/crossPlatformStorage";
-import { AuthTokens } from "../store/types/authTypes";
 import { API_CONFIG } from "../config/api";
+import { getMobileApiHeaders } from "../config/apiHeaders";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "../lib/networkError";
+import { SessionExpiredError } from "../lib/sessionExpired";
+import { handleSessionExpired } from "../lib/sessionAuth";
+import {
+  attachDeviceIdInterceptor,
+  getClientDeviceIdHeader,
+} from "../lib/attachDeviceIdInterceptor";
 
-// Create axios instance
 const authApi = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
-  headers: {
-    "Content-Type": "application/json",
-    "X-Client-Channel": "mobile",
-  },
+  headers: getMobileApiHeaders(),
 });
+
+attachDeviceIdInterceptor(authApi);
 
 let isRefreshing = false;
 let refreshSubscribers: Array<{
@@ -72,6 +77,7 @@ authApi.interceptors.response.use(
       originalRequest.url?.includes("/auth/login") ||
       originalRequest.url?.includes("/auth/register") ||
       originalRequest.url?.includes("/auth/google") ||
+      originalRequest.url?.includes("/auth/apple") ||
       originalRequest.url?.includes("/auth/refresh");
 
     if (
@@ -100,54 +106,53 @@ authApi.interceptors.response.use(
       try {
         const tokens = await CrossPlatformStorage.getTokens();
         if (!tokens?.refreshToken) {
-          throw new Error("No refresh token available");
+          onTokenRefreshFailed(new SessionExpiredError());
+          await handleSessionExpired();
+          return Promise.reject(new SessionExpiredError());
         }
 
         const response = await axios.post(
           `${API_CONFIG.BASE_URL}/auth/refresh`,
-          { refreshToken: tokens.refreshToken }
+          { refreshToken: tokens.refreshToken },
+          {
+            headers: {
+              ...getMobileApiHeaders(),
+              ...(await getClientDeviceIdHeader()),
+            },
+          }
         );
 
         const { accessToken, refreshToken: newRefreshToken } =
           response.data.data;
 
-        // Save new tokens
         await CrossPlatformStorage.saveTokens({
           accessToken,
           refreshToken: newRefreshToken,
         });
 
-        // Update the original request
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        // Notify all queued requests
         onTokenRefreshed(accessToken);
 
         return authApi(originalRequest);
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
-
-        // Reject all pending requests and force logout state for navigation guards
-        onTokenRefreshFailed(refreshError);
-        await CrossPlatformStorage.clearAll();
-        // Avoid static store import here to prevent circular dependency during app boot.
-        try {
-          const { store } = await import("../store/store");
-          store.dispatch({ type: "auth/logout" });
-        } catch {
-          // ignore: app shell will re-evaluate auth state from cleared tokens
-        }
-
-        return Promise.reject(refreshError);
+        onTokenRefreshFailed(new SessionExpiredError());
+        await handleSessionExpired();
+        return Promise.reject(new SessionExpiredError());
       } finally {
         isRefreshing = false;
       }
     }
 
-        // Handle network errors specifically
-        if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
-          const networkError = new Error('Network Error - Please check your internet connection');
-          (networkError as any).code = 'NETWORK_ERROR';
+        if (isNetworkError(error)) {
+          const hint = __DEV__
+            ? ` Cannot reach ${API_CONFIG.BASE_URL}. Is the backend running on 0.0.0.0:${5000}? Same Wi‑Fi / correct LAN IP in .env?`
+            : "";
+          const networkError = new Error(`${NETWORK_ERROR_MESSAGE}${hint}`);
+          (networkError as Error & { code?: string }).code = "NETWORK_ERROR";
+          if (__DEV__) {
+            console.error("[authApi] Network error →", API_CONFIG.BASE_URL, error);
+          }
           return Promise.reject(networkError);
         }
 

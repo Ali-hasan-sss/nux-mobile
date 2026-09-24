@@ -44,60 +44,82 @@ async function generateIcons() {
     const metadata = await logo.metadata();
     console.log(`📐 Logo dimensions: ${metadata.width}x${metadata.height}`);
 
-    // Generate icon.png (1024x1024)
-    console.log('📱 Generating icon.png (1024x1024)...');
-    await logo
-      .resize(1024, 1024, {
-        fit: 'contain',
-        background: { r: 26, g: 31, b: 58, alpha: 1 } // #1A1F3A
-      })
-      .png()
-      .toFile(path.join(assetsDir, 'icon.png'));
-    console.log('✅ icon.png created');
+    // Generate icon.png (1024x1024) — logo ~75% for clarity on home screen
+    const ICON_LOGO_RATIO = 0.75;
+    const ADAPTIVE_LOGO_RATIO = 0.62; // Android adaptive safe zone
+    const SPLASH_LOGO_RATIO = 0.54;
+    const BG = { r: 26, g: 31, b: 58, alpha: 1 }; // #1A1F3A
 
-    // Generate adaptive-icon.png (1024x1024) - same as icon but with background
-    console.log('📱 Generating adaptive-icon.png (1024x1024)...');
-    await logo
-      .resize(1024, 1024, {
-        fit: 'contain',
-        background: { r: 26, g: 31, b: 58, alpha: 1 } // #1A1F3A
+    async function compositeLogo(canvasSize, logoRatio, outFile, label) {
+      const logoPx = Math.round(canvasSize * logoRatio);
+      const logoBuf = await logo
+        .resize(logoPx, logoPx, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .toBuffer();
+
+      await sharp({
+        create: {
+          width: canvasSize,
+          height: canvasSize,
+          channels: 4,
+          background: BG,
+        },
       })
-      .png()
-      .toFile(path.join(assetsDir, 'adaptive-icon.png'));
-    console.log('✅ adaptive-icon.png created');
+        .composite([{ input: logoBuf, gravity: "center" }])
+        .png()
+        .toFile(outFile);
+      console.log(`✅ ${label} created`);
+    }
+
+    console.log("📱 Generating icon.png (1024x1024)...");
+    await compositeLogo(
+      1024,
+      ICON_LOGO_RATIO,
+      path.join(assetsDir, "icon.png"),
+      "icon.png"
+    );
+
+    console.log("📱 Generating adaptive-icon.png (1024x1024)...");
+    await compositeLogo(
+      1024,
+      ADAPTIVE_LOGO_RATIO,
+      path.join(assetsDir, "adaptive-icon.png"),
+      "adaptive-icon.png"
+    );
 
     // Generate splash.png (1284x2778 for iPhone)
-    console.log('🖼️  Generating splash.png (1284x2778)...');
+    console.log("🖼️  Generating splash.png (1284x2778)...");
     
-    // Create splash screen with logo centered
     const splashWidth = 1284;
     const splashHeight = 2778;
-    const logoSize = Math.min(splashWidth, splashHeight) * 0.4; // 40% of smaller dimension
+    const logoSize = Math.min(splashWidth, splashHeight) * SPLASH_LOGO_RATIO;
     
     await sharp({
       create: {
         width: splashWidth,
         height: splashHeight,
         channels: 4,
-        background: { r: 26, g: 31, b: 58, alpha: 1 } // #1A1F3A
-      }
+        background: BG,
+      },
     })
       .composite([
         {
           input: await logo
             .resize(Math.round(logoSize), Math.round(logoSize), {
-              fit: 'contain',
-              background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent
+              fit: "contain",
+              background: { r: 0, g: 0, b: 0, alpha: 0 },
             })
             .toBuffer(),
-          gravity: 'center'
-        }
+          gravity: "center",
+        },
       ])
       .png()
-      .toFile(path.join(assetsDir, 'splash.png'));
-    console.log('✅ splash.png created');
+      .toFile(path.join(assetsDir, "splash.png"));
+    console.log("✅ splash.png created");
 
-    console.log('\n🎉 All icons generated successfully!');
+    console.log("\n🎉 All icons generated successfully!");
     console.log('\n📁 Generated files:');
     console.log('   - assets/icon.png');
     console.log('   - assets/adaptive-icon.png');

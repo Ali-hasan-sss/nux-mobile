@@ -1,5 +1,7 @@
 import axios from "axios";
 import { API_CONFIG } from "../config/api";
+import { getMobileApiHeaders } from "../config/apiHeaders";
+import { attachDeviceIdInterceptor } from "../lib/attachDeviceIdInterceptor";
 
 export interface ContactFormData {
   name: string;
@@ -12,8 +14,10 @@ export interface ContactFormData {
 const contactClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
-  headers: { "Content-Type": "application/json" },
+  headers: getMobileApiHeaders(),
 });
+
+attachDeviceIdInterceptor(contactClient);
 
 export async function sendContactMessage(
   data: ContactFormData

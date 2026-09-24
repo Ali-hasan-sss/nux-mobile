@@ -1,14 +1,17 @@
 import { Tabs } from "expo-router";
-import { Home, Tag, Wallet, User } from "lucide-react-native";
+import { Home, Tag, Wallet, User, Scan } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
-import { Redirect } from "expo-router";
-import { Platform, View } from "react-native";
+import { Redirect, router } from "expo-router";
+import { Platform, View, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootState } from "@/store/store";
 import { useTheme } from "@/hooks/useTheme";
 import { CustomHeader } from "@/components/CustomHeader";
+import { getTabBarHeight } from "@/constants/tabBarLayout";
+
+const SCAN_FAB_SIZE = 64;
 
 /** تخطيط التبويبات - تطبيق العميل فقط (لا تبويبات أو واجهة لصاحب المطعم) */
 export default function TabLayout() {
@@ -37,12 +40,12 @@ export default function TabLayout() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
           sceneStyle: {
-            backgroundColor: colors.background,
+            backgroundColor: "transparent",
           },
           tabBarStyle: {
             backgroundColor: isDark
               ? "rgba(26, 31, 58, 0.95)" // colors.surfaceSolid with 95% opacity
-              : "rgba(255, 255, 255, 0.95)", // colors.surfaceSolid with 95% opacity
+              : "rgba(242, 234, 216, 0.97)", // beige (matches light background) with 97% opacity
             borderTopWidth: 1,
             borderTopColor: colors.border,
             paddingBottom:
@@ -114,8 +117,44 @@ export default function TabLayout() {
           options={{
             href: null, // Only accessible via home "Explore restaurants" button
           }}
-        />
-      </Tabs>
+          />
+        </Tabs>
+
+      {/* Floating scan button — centered, half over the tab bar, half above the screen */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        onPress={() => router.push("/camera/scan")}
+        style={[
+          styles.scanFab,
+          {
+            bottom: getTabBarHeight(insets.bottom) - SCAN_FAB_SIZE / 2,
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+            borderColor: isDark ? colors.surfaceSolid : colors.background,
+          },
+        ]}
+      >
+        <Scan size={28} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  scanFab: {
+    position: "absolute",
+    alignSelf: "center",
+    width: SCAN_FAB_SIZE,
+    height: SCAN_FAB_SIZE,
+    borderRadius: SCAN_FAB_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 1000,
+  },
+});

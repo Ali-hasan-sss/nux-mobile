@@ -1,4 +1,4 @@
-package com.lolity.app
+package com.nuxapp.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Modal,
@@ -6,13 +6,10 @@ import {
   StyleSheet,
   Pressable,
 } from "react-native";
-import Constants from "expo-constants";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "@/hooks/useAppTranslation";
 import { useTheme } from "@/hooks/useTheme";
 import { Text as AppText } from "@/components/AppText";
-
-const appVersion =
-  Constants.expoConfig?.version ?? Constants.manifest?.version ?? "1.0.0";
+import { getAppVersionInfo } from "@/lib/appVersion";
 
 interface AboutAppModalProps {
   visible: boolean;
@@ -20,13 +17,14 @@ interface AboutAppModalProps {
 }
 
 export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const { colors } = useTheme();
+  const versionInfo = useMemo(() => getAppVersionInfo(), [visible]);
 
   return (
     <Modal
       visible={visible}
-      transparent={false}
+      transparent
       animationType="fade"
       onRequestClose={onClose}
     >
@@ -36,30 +34,40 @@ export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
           onPress={(e) => e.stopPropagation()}
         >
           <AppText style={[styles.title, { color: colors.text }]}>
-            {t("drawer.aboutApp")}
+            {t("drawer.aboutApp", "About App")}
           </AppText>
           <View style={styles.row}>
             <AppText style={[styles.label, { color: colors.textSecondary }]}>
-              {t("about.appNameLabel")}
+              {t("about.appNameLabel", "App name")}
             </AppText>
             <AppText style={[styles.value, { color: colors.text }]}>
-              {t("about.appName")}
+              {t("about.appName", "NUX")}
             </AppText>
           </View>
           <View style={styles.row}>
             <AppText style={[styles.label, { color: colors.textSecondary }]}>
-              {t("about.versionLabel")}
+              {t("about.versionLabel", "Version")}
             </AppText>
             <AppText style={[styles.value, { color: colors.text }]}>
-              {appVersion}
+              {versionInfo.version}
             </AppText>
           </View>
+          {versionInfo.build ? (
+            <View style={styles.row}>
+              <AppText style={[styles.label, { color: colors.textSecondary }]}>
+                {t("about.buildLabel", "Build")}
+              </AppText>
+              <AppText style={[styles.value, { color: colors.text }]}>
+                {versionInfo.build}
+              </AppText>
+            </View>
+          ) : null}
           <View style={[styles.row, styles.lastRow]}>
             <AppText style={[styles.label, { color: colors.textSecondary }]}>
-              {t("about.contactLabel")}
+              {t("about.contactLabel", "Contact")}
             </AppText>
             <AppText style={[styles.value, { color: colors.primary }]}>
-              info@nuxapp.de
+              {t("about.contactEmail", "info@nuxapp.de")}
             </AppText>
           </View>
           <TouchableOpacity
@@ -68,7 +76,7 @@ export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
             activeOpacity={0.8}
           >
             <AppText style={styles.closeButtonText}>
-              {t("common.close")}
+              {t("common.close", "Close")}
             </AppText>
           </TouchableOpacity>
         </Pressable>
@@ -80,7 +88,7 @@ export function AboutAppModal({ visible, onClose }: AboutAppModalProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
@@ -88,13 +96,13 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 320,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
   title: {
     fontSize: 20,
@@ -118,7 +126,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
   },
   closeButtonText: {

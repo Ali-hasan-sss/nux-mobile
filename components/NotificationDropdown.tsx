@@ -71,6 +71,24 @@ function getTranslatedNotification(
     }
   }
 
+  if (type === "LOYALTY_SCAN") {
+    const declinedMatch = body.match(
+      /The cashier did not approve your (meal|drink) scan at (.+)\. Points were not added/i,
+    );
+    if (declinedMatch) {
+      return {
+        title: t("camera.scanRejected"),
+        body: t("camera.scanRejected"),
+      };
+    }
+    if (/approval needed/i.test(title) || /requested (meal|drink) points/i.test(body)) {
+      return {
+        title: t("camera.scanPendingTitle"),
+        body: t("camera.scanPendingMessage"),
+      };
+    }
+  }
+
   // PAYMENT: "You spent 20 balance at X" or "You spent 5 stars_meal across group X"
   if (type === "PAYMENT") {
     const atMatch = body.match(/You spent ([\d.]+) (\S+) at (.+)/);

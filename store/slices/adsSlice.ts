@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { adsService } from "../services/adsService";
 import { AdsState, AdsFilters, Ad } from "../types/adsTypes";
+import { NETWORK_ERROR_MESSAGE, isNetworkError } from "@/lib/networkError";
 
 // Initial state
 const initialState: AdsState = {
@@ -30,15 +31,15 @@ export const fetchAds = createAsyncThunk(
         return rejectWithValue(response.message || "فشل في جلب الإعلانات");
       }
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        return rejectWithValue(NETWORK_ERROR_MESSAGE);
+      }
       if (error.response) {
         return rejectWithValue(
-          error.response.data?.message || "حدث خطأ في جلب الإعلانات"
+          error.response.data?.message || "Failed to load ads"
         );
-      } else if (error.request) {
-        return rejectWithValue("حدث خطأ في الشبكة. يرجى المحاولة مرة أخرى");
-      } else {
-        return rejectWithValue("حدث خطأ غير متوقع");
       }
+      return rejectWithValue("Something went wrong. Please try again.");
     }
   }
 );
@@ -54,13 +55,15 @@ export const refreshAds = createAsyncThunk(
         return rejectWithValue(response.message || "فشل في تحديث الإعلانات");
       }
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        return rejectWithValue(NETWORK_ERROR_MESSAGE);
+      }
       if (error.response) {
         return rejectWithValue(
-          error.response.data?.message || "حدث خطأ في تحديث الإعلانات"
+          error.response.data?.message || "Failed to refresh ads"
         );
-      } else {
-        return rejectWithValue("حدث خطأ في الشبكة");
       }
+      return rejectWithValue("Something went wrong. Please try again.");
     }
   }
 );
@@ -77,13 +80,15 @@ export const fetchRestaurantAds = createAsyncThunk(
         return rejectWithValue(response.message || "فشل في جلب الإعلانات");
       }
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        return rejectWithValue(NETWORK_ERROR_MESSAGE);
+      }
       if (error.response) {
         return rejectWithValue(
-          error.response.data?.message || "حدث خطأ في جلب الإعلانات"
+          error.response.data?.message || "Failed to load ads"
         );
-      } else {
-        return rejectWithValue("حدث خطأ في الشبكة");
       }
+      return rejectWithValue("Something went wrong. Please try again.");
     }
   }
 );
@@ -100,13 +105,15 @@ export const deleteRestaurantAd = createAsyncThunk(
         return rejectWithValue(response.message || "فشل في حذف الإعلان");
       }
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        return rejectWithValue(NETWORK_ERROR_MESSAGE);
+      }
       if (error.response) {
         return rejectWithValue(
-          error.response.data?.message || "حدث خطأ في حذف الإعلان"
+          error.response.data?.message || "Failed to delete ad"
         );
-      } else {
-        return rejectWithValue("حدث خطأ في الشبكة");
       }
+      return rejectWithValue("Something went wrong. Please try again.");
     }
   }
 );

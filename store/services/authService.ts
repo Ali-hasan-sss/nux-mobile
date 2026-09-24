@@ -5,6 +5,7 @@ import {
   AuthResponse,
   AuthTokens,
 } from "../types/authTypes";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/networkError";
 
 export const authService = {
   // User login
@@ -22,13 +23,8 @@ export const authService = {
       console.error("❌ Login failed:", error);
 
       // Handle network errors
-      if (
-        error.code === "NETWORK_ERROR" ||
-        error.message?.includes("Network Error")
-      ) {
-        throw new Error(
-          "Network Error - Please check your internet connection"
-        );
+      if (isNetworkError(error)) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
       }
 
       // Handle other errors
@@ -96,6 +92,34 @@ export const authService = {
     console.log("🔐 Google sign-in: exchanging id token with API");
     const response = await authApi.post("/auth/google", { idToken });
     console.log("✅ Google sign-in API OK");
+    return {
+      user: response.data.data.user,
+      restaurant: response.data.data.restaurant ?? null,
+      tokens: response.data.data.tokens,
+    };
+  },
+
+  /** Native Sign in with Apple — backend verifies identityToken (audience = Bundle ID). */
+  async loginWithApple(payload: {
+    identityToken: string;
+    email?: string | null;
+    fullName?: {
+      givenName?: string | null;
+      familyName?: string | null;
+    } | null;
+  }): Promise<AuthResponse> {
+    console.log("🔐 Apple sign-in: exchanging identity token with API");
+    const response = await authApi.post("/auth/apple", {
+      identityToken: payload.identityToken,
+      email: payload.email ?? undefined,
+      fullName: payload.fullName
+        ? {
+            givenName: payload.fullName.givenName ?? undefined,
+            familyName: payload.fullName.familyName ?? undefined,
+          }
+        : undefined,
+    });
+    console.log("✅ Apple sign-in API OK");
     return {
       user: response.data.data.user,
       restaurant: response.data.data.restaurant ?? null,

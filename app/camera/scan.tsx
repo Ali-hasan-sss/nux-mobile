@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
+  DeviceEventEmitter,
 } from "react-native";
 import { Text } from "@/components/AppText";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
@@ -22,6 +23,14 @@ import {
 import { setSelectedRestaurant } from "@/store/slices/restaurantSlice";
 import { useBalance } from "@/hooks/useBalance";
 import { useAlert } from "@/contexts/AlertContext";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/networkError";
+import {
+  extractLoyaltyQrCode,
+  isLoyaltyScanUrl,
+  looksLikeLoyaltyQr,
+} from "@/lib/loyaltyQr";
+import { emitLoyaltyPointsEarned } from "@/lib/loyaltyPointsEvents";
+import { balanceService } from "@/store/services/balanceService";
 // Fallback location if expo-location is not available
 const getCurrentLocation = async () => {
   try {
@@ -71,6 +80,54 @@ const getCurrentLocation = async () => {
 const UUID_REGEX_GLOBAL =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
+function waitForLoyaltyApproval(
+  approvalId: string,
+): Promise<"APPROVED" | "REJECTED" | "EXPIRED"> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (status: string) => {
+      const normalized = String(status || "").toUpperCase();
+      if (settled) return;
+      if (
+        normalized !== "APPROVED" &&
+        normalized !== "REJECTED" &&
+        normalized !== "EXPIRED"
+      ) {
+        return;
+      }
+      settled = true;
+      subscription.remove();
+      clearInterval(timer);
+      clearTimeout(timeout);
+      resolve(normalized);
+    };
+
+    const subscription = DeviceEventEmitter.addListener(
+      "loyalty:scan-resolved",
+      (payload: { id?: string; status?: string }) => {
+        if (payload?.id === approvalId && payload?.status) {
+          finish(payload.status);
+        }
+      },
+    );
+
+    const poll = async () => {
+      try {
+        const response = await balanceService.getScanApproval(approvalId);
+        finish(String(response.data?.status ?? ""));
+      } catch {
+        // Keep waiting for socket or the next poll.
+      }
+    };
+
+    void poll();
+    const timer = setInterval(() => {
+      void poll();
+    }, 3000);
+    const timeout = setTimeout(() => finish("EXPIRED"), 130000);
+  });
+}
+
 function parsePaymentQrPayload(rawQr: string): {
   restaurantId: string | null;
   restaurantNameEn?: string;
@@ -90,6 +147,18 @@ function parsePaymentQrPayload(rawQr: string): {
   return {
     restaurantId: trimmed.match(UUID_REGEX_GLOBAL)?.[0] ?? null,
   };
+}
+
+/** Restaurant wallet payment QR: `PAYMENT::<restaurantUuid>::<name>` (not menu / meal / drink codes). */
+function isExplicitPaymentQr(rawQr: string): boolean {
+  const trimmed = rawQr.trim();
+  const parts = trimmed.split("::");
+  const restaurantId = parts[1]?.trim() ?? "";
+  return (
+    parts.length >= 3 &&
+    parts[0].toUpperCase() === "PAYMENT" &&
+    UUID_REGEX_GLOBAL.test(restaurantId)
+  );
 }
 
 /** Resolve restaurant UUID from scan API response and/or raw QR string. */
@@ -122,6 +191,46 @@ function extractRestaurantIdFromScanPayload(
   return fromQr;
 }
 
+function extractLoyaltyPointType(payload: unknown): "meal" | "drink" {
+  if (!payload || typeof payload !== "object") return "meal";
+  const p = payload as Record<string, unknown>;
+  const nested =
+    p.data && typeof p.data === "object"
+      ? (p.data as Record<string, unknown>)
+      : null;
+  const candidates = [
+    p.type,
+    p.qrType,
+    p.starType,
+    p.loyaltyType,
+    p.currencyType,
+    nested?.type,
+    nested?.qrType,
+    nested?.starType,
+    nested?.loyaltyType,
+    nested?.currencyType,
+  ];
+  for (const candidate of candidates) {
+    const value = String(candidate ?? "").toLowerCase();
+    if (
+      value === "drink" ||
+      value === "stars_drink" ||
+      value.includes("drink")
+    ) {
+      return "drink";
+    }
+    if (
+      value === "meal" ||
+      value === "food" ||
+      value === "stars_meal" ||
+      value.includes("meal")
+    ) {
+      return "meal";
+    }
+  }
+  return "meal";
+}
+
 export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
@@ -133,13 +242,14 @@ export default function ScanScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCamera, setShowCamera] = useState(true);
   const [showLocationErrorModal, setShowLocationErrorModal] = useState(false);
+  const [waitingApproval, setWaitingApproval] = useState(false);
   const { t } = useTranslation();
   const { colors, defaultFontFamily } = useTheme();
   const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.balance);
   const auth = useSelector((state: RootState) => state.auth);
-  const { refreshBalances } = useBalance();
+  const { refreshBalances, currentBalance, userBalances } = useBalance();
   const { showToast } = useAlert();
   const hasScanned = useRef(false);
   const params = useLocalSearchParams<{
@@ -147,7 +257,9 @@ export default function ScanScreen() {
     openPaymentModal?: string;
     openPaymentScreen?: string;
     paymentType?: "meal" | "drink";
+    loyaltyQr?: string;
   }>();
+  const autoLoyaltyHandled = useRef(false);
   const walletPayMode =
     params.walletPay === "1" || params.walletPay === "true";
   const openPaymentModalAfterScan =
@@ -253,7 +365,8 @@ export default function ScanScreen() {
   const UUID_REGEX =
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   /** إذا كان الكود رابط قائمة → الدخول لعرض القائمة. وإلا → طلب الحصول على النقاط. */
-  const isMenuLink = (raw: string) => /\/menu\//i.test(raw.trim());
+  const isMenuLink = (raw: string) =>
+    /\/menu\//i.test(raw.trim()) && !isLoyaltyScanUrl(raw);
 
   const parseMenuParams = (raw: string): { qrCode: string; table?: number } => {
     const trimmed = raw.trim();
@@ -346,27 +459,19 @@ export default function ScanScreen() {
         return;
       }
 
-      // Wallet pay QR is parsed locally (restaurant id + english name),
-      // no scanQrCode API call is needed here.
-      if (walletPayMode) {
-        const parsedPaymentQr = parsePaymentQrPayload(data);
-        const rid = parsedPaymentQr.restaurantId;
-        if (!rid) {
-          showToast({
-            message: t("payment.scanRestaurantInvalid"),
-            type: "error",
-          });
-          setIsProcessing(false);
-          setShowCamera(true);
-          hasScanned.current = false;
-          setIsScanning(true);
-          setScannedData(null);
-          startScanAnimation();
-          return;
-        }
+      const recoverScanForRetry = () => {
+        setIsProcessing(false);
+        setShowCamera(true);
+        hasScanned.current = false;
+        setIsScanning(true);
+        setScannedData(null);
+        startScanAnimation();
+      };
 
-        const resolvedRestaurantId = rid;
-        const restaurantName = parsedPaymentQr.restaurantNameEn ?? t("home.restaurant");
+      const navigateToPaymentScreen = (
+        resolvedRestaurantId: string,
+        restaurantName: string,
+      ) => {
         dispatch(
           setSelectedRestaurant({
             id: resolvedRestaurantId,
@@ -381,7 +486,6 @@ export default function ScanScreen() {
           }),
         );
         dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
-
         showToast({
           message: t("camera.walletPayScanSuccess", {
             name: restaurantName,
@@ -389,19 +493,86 @@ export default function ScanScreen() {
           type: "success",
         });
         setTimeout(() => {
-          if (openPaymentModalAfterScan) {
-            router.replace({
-              pathname: "/payment",
-              params: {
-                paymentType: params.paymentType === "drink" ? "drink" : "meal",
-                restaurantId: resolvedRestaurantId,
-                restaurantName,
-              },
-            } as never);
-          } else {
-            router.back();
-          }
+          router.replace({
+            pathname: "/payment",
+            params: {
+              paymentType: params.paymentType === "drink" ? "drink" : "meal",
+              restaurantId: resolvedRestaurantId,
+              restaurantName,
+            },
+          } as never);
         }, 900);
+      };
+
+      if (walletPayMode && looksLikeLoyaltyQr(data) && !isExplicitPaymentQr(data)) {
+        showToast({
+          message: t("camera.loyaltyCodeNotForPayment"),
+          type: "error",
+        });
+        recoverScanForRetry();
+        return;
+      }
+
+      // Payment QR from general "scan restaurant codes" → open payment (same as Pay button).
+      if (isExplicitPaymentQr(data)) {
+        const parsedPaymentQr = parsePaymentQrPayload(data);
+        const rid = parsedPaymentQr.restaurantId;
+        if (!rid) {
+          showToast({
+            message: t("payment.scanRestaurantInvalid"),
+            type: "error",
+          });
+          recoverScanForRetry();
+          return;
+        }
+        const restaurantName =
+          parsedPaymentQr.restaurantNameEn ?? t("home.restaurant");
+        navigateToPaymentScreen(rid, restaurantName);
+        return;
+      }
+
+      // Wallet pay QR is parsed locally (restaurant id + english name),
+      // no scanQrCode API call is needed here.
+      if (walletPayMode) {
+        const parsedPaymentQr = parsePaymentQrPayload(data);
+        const rid = parsedPaymentQr.restaurantId;
+        if (!rid) {
+          showToast({
+            message: t("payment.scanRestaurantInvalid"),
+            type: "error",
+          });
+          recoverScanForRetry();
+          return;
+        }
+
+        const resolvedRestaurantId = rid;
+        const restaurantName =
+          parsedPaymentQr.restaurantNameEn ?? t("home.restaurant");
+        if (openPaymentModalAfterScan) {
+          navigateToPaymentScreen(resolvedRestaurantId, restaurantName);
+        } else {
+          dispatch(
+            setSelectedRestaurant({
+              id: resolvedRestaurantId,
+              name: restaurantName,
+              address: "",
+              logo: undefined,
+              userBalance: {
+                walletBalance: 0,
+                mealPoints: 0,
+                drinkPoints: 0,
+              },
+            }),
+          );
+          dispatch(setSelectedRestaurantBalance(resolvedRestaurantId));
+          showToast({
+            message: t("camera.walletPayScanSuccess", {
+              name: restaurantName,
+            }),
+            type: "success",
+          });
+          setTimeout(() => router.back(), 900);
+        }
         return;
       }
 
@@ -420,8 +591,10 @@ export default function ScanScreen() {
         }
       }
 
+      const loyaltyCode = extractLoyaltyQrCode(data);
       console.log("🔍 Scanning QR with data:", {
-        qrCode: data,
+        qrCode: loyaltyCode,
+        rawQr: data,
         latitude: location.latitude,
         longitude: location.longitude,
         isAuthenticated: auth.isAuthenticated,
@@ -431,7 +604,7 @@ export default function ScanScreen() {
       try {
         const scanPayload = await dispatch(
           scanQrCode({
-            qrCode: data,
+            qrCode: loyaltyCode,
             latitude: location.latitude,
             longitude: location.longitude,
           }),
@@ -496,21 +669,76 @@ export default function ScanScreen() {
           return;
         }
 
-        // نجح المسح - إظهار Toast النجاح وتحديث الرصيد
+        // نجح المسح - انتظار موافقة الكاشير قبل كسب النقاط
+        const approvalId =
+          scanPayload && typeof scanPayload === "object"
+            ? String(
+                (scanPayload as { id?: string }).id ??
+                  (scanPayload as { approvalId?: string }).approvalId ??
+                  "",
+              )
+            : "";
+        const scanStatus =
+          scanPayload && typeof scanPayload === "object"
+            ? String((scanPayload as { status?: string }).status ?? "PENDING")
+            : "PENDING";
+
+        if (approvalId && scanStatus.toUpperCase() === "PENDING") {
+          setWaitingApproval(true);
+          const resolved = await waitForLoyaltyApproval(approvalId);
+          setWaitingApproval(false);
+          if (resolved !== "APPROVED") {
+            showToast({
+              message:
+                resolved === "REJECTED"
+                  ? t("camera.scanRejected")
+                  : t("camera.scanExpired"),
+              type: "error",
+            });
+            recoverScanForRetry();
+            return;
+          }
+        }
+
         showToast({
           message: t("camera.scanSuccess"),
           type: "success",
         });
 
-        // تحديث الرصيد بعد نجاح المسح
+        const pointType = extractLoyaltyPointType(scanPayload);
+        const restaurantId = extractRestaurantIdFromScanPayload(
+          scanPayload,
+          data,
+        );
+        const matchingBalance = restaurantId
+          ? userBalances.find(
+              (item) =>
+                item.restaurantId === restaurantId ||
+                item.targetId === restaurantId,
+            )
+          : null;
+        const fromPoints = matchingBalance
+          ? pointType === "drink"
+            ? Number(matchingBalance.stars_drink) || 0
+            : Number(matchingBalance.stars_meal) || 0
+          : pointType === "drink"
+            ? currentBalance.drinkPoints
+            : currentBalance.mealPoints;
+        emitLoyaltyPointsEarned({
+          type: pointType,
+          delta: 1,
+          fromPoints,
+          restaurantId,
+        });
+
         refreshBalances();
 
-        // إغلاق المودال بعد 2 ثانية
         setTimeout(() => {
           router.back();
-        }, 2000);
+        }, 900);
       } catch (scanError: any) {
         console.log("🔍 Scan error caught:", scanError);
+        setWaitingApproval(false);
 
         const isLocationError =
           scanError?.response?.status === 403 ||
@@ -540,11 +768,15 @@ export default function ScanScreen() {
             message: t("camera.scanSuccessDev"),
             type: "success",
           });
-          // تحديث الرصيد بعد نجاح المسح
+          emitLoyaltyPointsEarned({
+            type: "meal",
+            delta: 1,
+            fromPoints: currentBalance.mealPoints,
+          });
           refreshBalances();
           setTimeout(() => {
             router.back();
-          }, 2000);
+          }, 900);
           return; // Exit early to prevent the outer catch from running
         } else {
           // إعادة رمي الخطأ للمعالجة في catch الخارجي
@@ -553,6 +785,7 @@ export default function ScanScreen() {
       }
     } catch (error: any) {
       console.error("خطأ في مسح الكود:", error);
+      setWaitingApproval(false);
 
       const isLocationError =
         (typeof error === "string" && error.includes("restaurant location")) ||
@@ -570,8 +803,8 @@ export default function ScanScreen() {
       }
 
       let errorMessage = t("camera.scanErrorGeneric");
-      if (error.message?.includes("Network Error")) {
-        errorMessage = t("camera.scanErrorNetwork");
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error.message?.includes("401")) {
         errorMessage = t("camera.scanErrorUnauthorized");
       } else if (error.message?.includes("403")) {
@@ -589,6 +822,19 @@ export default function ScanScreen() {
       startScanAnimation();
     }
   };
+
+  useEffect(() => {
+    const raw = Array.isArray(params.loyaltyQr)
+      ? params.loyaltyQr[0]
+      : params.loyaltyQr;
+    if (!raw || autoLoyaltyHandled.current) return;
+    if (locationPermission !== true || !permission?.granted) return;
+    autoLoyaltyHandled.current = true;
+    void handleBarCodeScanned({
+      type: "qr",
+      data: extractLoyaltyQrCode(raw),
+    });
+  }, [params.loyaltyQr, locationPermission, permission?.granted]);
 
   if (!permission) {
     return <View style={styles.container} />;
@@ -669,6 +915,38 @@ export default function ScanScreen() {
         >
           <View style={styles.loaderContent}>
             <ActivityIndicator size="large" color={colors.primary} />
+            {waitingApproval ? (
+              <>
+                <Text
+                  style={[
+                    font,
+                    {
+                      marginTop: 16,
+                      textAlign: "center",
+                      color: colors.text,
+                      fontSize: 16,
+                    },
+                  ]}
+                >
+                  {t("camera.scanPendingTitle")}
+                </Text>
+                <Text
+                  style={[
+                    font,
+                    {
+                      marginTop: 8,
+                      textAlign: "center",
+                      color: colors.text,
+                      fontSize: 13,
+                      opacity: 0.75,
+                      paddingHorizontal: 24,
+                    },
+                  ]}
+                >
+                  {t("camera.scanPendingMessage")}
+                </Text>
+              </>
+            ) : null}
           </View>
         </View>
       )}

@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Image,
   BackHandler,
@@ -12,6 +11,7 @@ import {
   Keyboard,
   Dimensions,
 } from "react-native";
+import { KeyboardAvoidingRoot } from "@/components/KeyboardAvoidingRoot";
 import { Text } from "@/components/AppText";
 import { Link, router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -28,6 +28,7 @@ import { loginUser, RESTAURANT_OWNER_NOT_ALLOWED } from "@/store/slices/authSlic
 import { getProfile } from "@/store/slices/profileSlice";
 import type { AppDispatch, RootState } from "@/store/store";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { AppleSignInButton } from "@/components/auth/AppleSignInButton";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -184,8 +185,7 @@ export default function LoginScreen() {
     }
   };
 
-  const LoginFormRoot =
-    Platform.OS === "ios" ? KeyboardAvoidingView : View;
+  const LoginFormRoot = KeyboardAvoidingRoot;
 
   return (
     <>
@@ -199,16 +199,13 @@ export default function LoginScreen() {
       />
       <LoginFormRoot
         style={[styles.keyboardView, { backgroundColor: "transparent" }]}
-        {...(Platform.OS === "ios"
-          ? {
-              behavior: "padding" as const,
-              keyboardVerticalOffset: Math.max(insets.top, 0),
-            }
-          : {})}
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 140 },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -255,6 +252,7 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
 
+          <AppleSignInButton />
           <GoogleSignInButton />
           <View style={styles.authDividerRow}>
             <View

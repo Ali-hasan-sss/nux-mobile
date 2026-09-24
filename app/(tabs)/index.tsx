@@ -1,6 +1,12 @@
-import React, { useState } from "react";
-import { View, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { DeviceEventEmitter } from "react-native";
+import React, { useRef, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Animated,
+  DeviceEventEmitter,
+} from "react-native";
 import { Text } from "@/components/AppText";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -18,6 +24,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useBalance } from "@/hooks/useBalance";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getTabBarHeight } from "@/constants/tabBarLayout";
 import {
   RestaurantSelector,
   Restaurant,
@@ -31,8 +38,11 @@ import {
   fetchWalletBalance,
   type WalletBalanceData,
 } from "@/api/walletPaymentApi";
-
-const TAB_BAR_HEIGHT = 88;
+import { LoyaltyPointsBurst } from "@/components/LoyaltyPointsBurst";
+import {
+  consumePendingLoyaltyPointsEarned,
+  type LoyaltyPointsKind,
+} from "@/lib/loyaltyPointsEvents";
 
 /** الشاشة الرئيسية - للتطبيق المخصص للعميل فقط (لا عرض لصاحب المطعم) */
 export default function HomeScreen() {
@@ -41,7 +51,6 @@ export default function HomeScreen() {
   const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  const fabBottom = insets.bottom + TAB_BAR_HEIGHT + 12;
   const isRTL = i18n.language === "ar";
   const auth = useSelector((state: RootState) => state.auth);
   const selectedRestaurant = useSelector(
@@ -61,6 +70,101 @@ export default function HomeScreen() {
   const [globalWallet, setGlobalWallet] = useState<WalletBalanceData | null>(
     null,
   );
+  const [displayMeal, setDisplayMeal] = useState<number | null>(null);
+  const [displayDrink, setDisplayDrink] = useState<number | null>(null);
+  const [pointsBurst, setPointsBurst] = useState<{
+    kind: LoyaltyPointsKind;
+    targetX: number;
+    targetY: number;
+  } | null>(null);
+  const rootRef = useRef<View>(null);
+  const mealCellRef = useRef<View>(null);
+  const drinkCellRef = useRef<View>(null);
+  const mealScale = useRef(new Animated.Value(1)).current;
+  const drinkScale = useRef(new Animated.Value(1)).current;
+  const countFrameRef = useRef<number | null>(null);
+  const countGenerationRef = useRef(0);
+
+  const shownMeal = displayMeal ?? currentBalance.mealPoints;
+  const shownDrink = displayDrink ?? currentBalance.drinkPoints;
+
+  const pulseCell = (kind: LoyaltyPointsKind) => {
+    const scale = kind === "drink" ? drinkScale : mealScale;
+    scale.setValue(1);
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 1.18,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const animateCount = (
+    kind: LoyaltyPointsKind,
+    from: number,
+    to: number,
+  ) => {
+    if (countFrameRef.current != null) {
+      cancelAnimationFrame(countFrameRef.current);
+      countFrameRef.current = null;
+    }
+    const generation = ++countGenerationRef.current;
+    const setter = kind === "drink" ? setDisplayDrink : setDisplayMeal;
+    setter(from);
+    const start = Date.now();
+    const duration = 520;
+    const step = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setter(Math.round(from + (to - from) * eased));
+      if (t < 1) {
+        countFrameRef.current = requestAnimationFrame(step);
+      } else {
+        countFrameRef.current = null;
+        setter(to);
+        setTimeout(() => {
+          if (countGenerationRef.current === generation) {
+            setter(null);
+          }
+        }, 450);
+      }
+    };
+    countFrameRef.current = requestAnimationFrame(step);
+  };
+
+  const startPointsBurst = React.useCallback(
+    (kind: LoyaltyPointsKind, fromPoints: number, delta: number) => {
+      const cellRef = kind === "drink" ? drinkCellRef : mealCellRef;
+      const runMeasure = () => {
+        rootRef.current?.measureInWindow((ox, oy) => {
+          cellRef.current?.measureInWindow((x, y, w, h) => {
+            if (!w && !h) return;
+            setPointsBurst({
+              kind,
+              targetX: x + w / 2 - ox,
+              targetY: y + h / 2 - oy,
+            });
+            setTimeout(() => {
+              pulseCell(kind);
+              animateCount(kind, fromPoints, fromPoints + delta);
+            }, 420);
+          });
+        });
+      };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setTimeout(runMeasure, 60);
+        });
+      });
+    },
+    [drinkScale, mealScale],
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -72,8 +176,31 @@ export default function HomeScreen() {
       fetchWalletBalance()
         .then(setGlobalWallet)
         .catch(() => setGlobalWallet(null));
+
+      const pending = consumePendingLoyaltyPointsEarned();
+      if (pending) {
+        if (pending.restaurantId) {
+          dispatch(setSelectedRestaurantBalance(pending.restaurantId));
+        }
+        const kind = pending.type === "drink" ? "drink" : "meal";
+        const delta = pending.delta ?? 1;
+        const fromPoints =
+          pending.fromPoints ??
+          Math.max(
+            0,
+            (kind === "drink"
+              ? currentBalance.drinkPoints
+              : currentBalance.mealPoints) - delta,
+          );
+        if (kind === "drink") {
+          setDisplayDrink(fromPoints);
+        } else {
+          setDisplayMeal(fromPoints);
+        }
+        startPointsBurst(kind, fromPoints, delta);
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [auth.isAuthenticated]),
+    }, [auth.isAuthenticated, startPointsBurst]),
   );
 
   React.useEffect(() => {
@@ -171,12 +298,19 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View
+      ref={rootRef}
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: "transparent" }}
+    >
       <ScrollView
-        style={[styles.scrollView, { backgroundColor: colors.background }]}
+        style={[styles.scrollView, { backgroundColor: "transparent" }]}
         contentContainerStyle={[
           styles.scrollContent,
-          { backgroundColor: colors.background },
+          {
+            backgroundColor: "transparent",
+            paddingBottom: getTabBarHeight(insets.bottom) + 80,
+          },
         ]}
       >
         <View style={styles.content}>
@@ -328,33 +462,55 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    <View style={styles.payBalanceCell}>
-                      <UtensilsCrossed size={18} color={colors.primary} />
-                      <Text
+                    <View
+                      ref={mealCellRef}
+                      collapsable={false}
+                      style={styles.payBalanceCell}
+                    >
+                      <Animated.View
                         style={[
-                          styles.payBalanceValue,
-                          { color: colors.success },
-                          font,
+                          styles.payBalanceCellInner,
+                          { transform: [{ scale: mealScale }] },
                         ]}
-                        numberOfLines={1}
                       >
-                        {currentBalance.mealPoints}
-                      </Text>
-                      <Star size={14} color={colors.success} />
+                        <UtensilsCrossed size={18} color={colors.primary} />
+                        <Text
+                          style={[
+                            styles.payBalanceValue,
+                            { color: colors.success },
+                            font,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {shownMeal}
+                        </Text>
+                        <Star size={14} color={colors.success} />
+                      </Animated.View>
                     </View>
-                    <View style={styles.payBalanceCell}>
-                      <Coffee size={18} color={colors.secondary} />
-                      <Text
+                    <View
+                      ref={drinkCellRef}
+                      collapsable={false}
+                      style={styles.payBalanceCell}
+                    >
+                      <Animated.View
                         style={[
-                          styles.payBalanceValue,
-                          { color: colors.success },
-                          font,
+                          styles.payBalanceCellInner,
+                          { transform: [{ scale: drinkScale }] },
                         ]}
-                        numberOfLines={1}
                       >
-                        {currentBalance.drinkPoints}
-                      </Text>
-                      <Star size={14} color={colors.success} />
+                        <Coffee size={18} color={colors.secondary} />
+                        <Text
+                          style={[
+                            styles.payBalanceValue,
+                            { color: colors.success },
+                            font,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {shownDrink}
+                        </Text>
+                        <Star size={14} color={colors.success} />
+                      </Animated.View>
                     </View>
                     {auth.isAuthenticated &&
                     hasGlobalWalletFunds &&
@@ -433,23 +589,16 @@ export default function HomeScreen() {
           </>
         </View>
       </ScrollView>
-
-      {/* Floating scan button */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[
-          styles.fabScan,
-          {
-            bottom: fabBottom,
-            ...(isRTL ? { right: 20 } : { left: 20 }),
-            backgroundColor: colors.primary,
-            shadowColor: colors.primary,
-          },
-        ]}
-        onPress={handleScanCode}
-      >
-        <Scan size={28} color="white" />
-      </TouchableOpacity>
+      {pointsBurst ? (
+        <View pointerEvents="none" style={styles.pointsBurstLayer}>
+          <LoyaltyPointsBurst
+            targetX={pointsBurst.targetX}
+            targetY={pointsBurst.targetY}
+            color="#F5C542"
+            onDone={() => setPointsBurst(null)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -459,30 +608,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  fabScan: {
-    position: "absolute",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
   scrollView: {
     flex: 1,
     backgroundColor: "transparent",
   },
   scrollContent: {
-    paddingBottom: 100, // Extra space for tabs
+    paddingBottom: 24,
     backgroundColor: "transparent",
   },
   content: {
     padding: 20,
     marginTop: 8,
     backgroundColor: "transparent",
+  },
+  pointsBurstLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 80,
+    elevation: 80,
   },
   primaryButton: {
     borderRadius: 20,
@@ -607,6 +749,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
     paddingHorizontal: 2,
+  },
+  payBalanceCellInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
   },
   payBalanceValue: {
     fontSize: 14,

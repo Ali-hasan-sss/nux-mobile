@@ -39,3 +39,4 @@ yarn-error.*
 # Keystore - DO NOT COMMIT
 *.keystore
 *.jks
+android/keystore.properties

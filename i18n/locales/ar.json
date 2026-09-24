@@ -60,15 +60,17 @@
     "resetPasswordSuccess": "تم إعادة تعيين كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.",
     "restaurantOwnerNotAllowed": "هذا التطبيق مخصص للزبائن فقط. للدخول إلى لوحة تحكم المطعم قم بتسجيل الدخول من موقع الويب nuxapp.de. لم يتم تخزين الجلسة.",
     "continueWithGoogle": "المتابعة باستخدام Google",
+    "continueWithApple": "المتابعة باستخدام Apple",
     "orDivider": "أو",
-    "googleSignInFailed": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى."
+    "googleSignInFailed": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+    "appleSignInFailed": "فشل تسجيل الدخول عبر Apple. حاول مرة أخرى."
   },
   "home": {
     "title": "مكافآت الولاء",
     "welcomeBack": "مرحباً بعودتك!",
     "welcomeToNux": "مرحباً بك في NUX",
     "scanCode": "مسح أكواد المطعم",
-    "scanCodeDesc": "مسح رابط القائمة أو كود طعام/شراب للحصول على النقاط",
+    "scanCodeDesc": "رابط القائمة، كود الولاء للنقاط، أو كود الدفع للدفع",
     "scanMenuCode": "مسح كود القائمة",
     "scanMenuCodeDesc": "امسح رمز QR لعرض القائمة",
     "payDrink": "ادفع بنقاط المشروبات",
@@ -300,6 +302,7 @@
     "appNameLabel": "اسم التطبيق",
     "appVersion": "الإصدار الأول",
     "versionLabel": "الإصدار",
+    "buildLabel": "رقم البناء",
     "contactLabel": "بريد التواصل",
     "contactEmail": "info@nuxapp.de"
   },
@@ -328,6 +331,9 @@
     "companyValue": "Genix Tech"
   },
   "legal": {
+    "close": "إغلاق",
+    "loadError": "تعذر تحميل المستند. تأكد أن السيرفر يعمل.",
+    "empty": "المحتوى غير متوفر بعد.",
     "privacy": {
       "title": "سياسة الخصوصية",
       "intro": "تصف سياسة الخصوصية هذه كيفية جمع تطبيق NUX واستخدامه وحماية بياناتك الشخصية عند استخدام تطبيق المكافآت والولاء.",
@@ -376,6 +382,10 @@
     "processing": "جاري المعالجة",
     "scanSuccess": "تم مسح الكود بنجاح! تم منحك النقاط.",
     "scanSuccessDev": "تم مسح الكود بنجاح! (تطوير)",
+    "scanPendingTitle": "بانتظار موافقة الكاشير",
+    "scanPendingMessage": "ستُضاف النقاط بعد موافقة داشبورد المطعم على هذا المسح.",
+    "scanRejected": "رفض الكاشير هذا المسح. لم تُضف النقاط.",
+    "scanExpired": "انتهت صلاحية الطلب. امسح مرة أخرى واطلب من الكاشير الموافقة.",
     "scanErrorGeneric": "حدث خطأ أثناء مسح الكود",
     "scanErrorNetwork": "خطأ في الشبكة. تحقق من اتصال الإنترنت",
     "scanErrorUnauthorized": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى",
@@ -392,7 +402,8 @@
     "walletPayScannerTitle": "دفع بالمحفظة",
     "walletPayBannerSubtitle": "استخدم كود الدفع الخاص بالمطعم فقط — وليس رابط القائمة.",
     "walletPayPlaceCode": "امسح كود الدفع الخاص بالمطعم (عند الكاشير أو المنضدة)",
-    "walletPayScanSuccess": "{{name}} — أدخل المبلغ في نافذة الدفع ثم اسحب للتأكيد."
+    "walletPayScanSuccess": "{{name}} — أدخل المبلغ في نافذة الدفع ثم اسحب للتأكيد.",
+    "loyaltyCodeNotForPayment": "هذا كود ولاء. امسح كود الدفع."
   },
   "menu": {
     "title": "القائمة",

@@ -40,6 +40,22 @@ export interface MarkAsReadResponse {
   data?: Notification;
 }
 
+type ApiEnvelope<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+};
+
+/** Backend wraps payloads as `{ success, message, data: { ... } }`. */
+function unwrapApiData<T>(body: unknown): T | undefined {
+  if (body == null || typeof body !== "object") return undefined;
+  const record = body as Record<string, unknown>;
+  if (record.data != null && typeof record.data === "object") {
+    return record.data as T;
+  }
+  return body as T;
+}
+
 class NotificationService {
   // Get all notifications with pagination
   async getAllNotifications(
@@ -62,7 +78,22 @@ class NotificationService {
         console.log("📬 Notifications Response:", response.data);
       }
 
-      return response.data;
+      const inner = unwrapApiData<NotificationsResponse["data"]>(response.data);
+      return {
+        success: (response.data as ApiEnvelope<unknown>)?.success ?? true,
+        message:
+          (response.data as ApiEnvelope<unknown>)?.message ??
+          "notifications fetched",
+        data: {
+          notifications: inner?.notifications ?? [],
+          pagination: inner?.pagination ?? {
+            totalItems: 0,
+            totalPages: 0,
+            currentPage: page,
+            pageSize,
+          },
+        },
+      };
     } catch (error: any) {
       console.error("❌ Failed to fetch notifications:", error);
 
@@ -90,7 +121,19 @@ class NotificationService {
         console.log("📊 Unread Count Response:", response.data);
       }
 
-      return response.data;
+      const inner = unwrapApiData<{ count: number }>(response.data);
+      const count =
+        typeof inner?.count === "number"
+          ? inner.count
+          : typeof (response.data as { count?: number })?.count === "number"
+            ? (response.data as { count: number }).count
+            : 0;
+      return {
+        success: (response.data as ApiEnvelope<unknown>)?.success ?? true,
+        message:
+          (response.data as ApiEnvelope<unknown>)?.message ?? "ok",
+        data: { count },
+      };
     } catch (error: any) {
       console.error("❌ Failed to fetch unread count:", error);
       throw error;

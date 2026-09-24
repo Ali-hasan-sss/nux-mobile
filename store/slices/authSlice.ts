@@ -8,6 +8,7 @@ import {
 } from "../types/authTypes";
 import { authService } from "../services/authService";
 import { CrossPlatformStorage } from "../services/crossPlatformStorage";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/networkError";
 
 // Initial state
 const initialState: AuthState = {
@@ -45,8 +46,8 @@ export const loginUser = createAsyncThunk(
 
       let errorMessage = "Login failed";
 
-      if (error.message?.includes("Network Error")) {
-        errorMessage = "Network Error - Please check your internet connection";
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
@@ -78,9 +79,51 @@ export const loginWithGoogle = createAsyncThunk(
 
       let errorMessage = "Google sign-in failed";
 
-      if (error.message?.includes("Network Error")) {
-        errorMessage =
-          "Network Error - Please check your internet connection";
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const loginWithApple = createAsyncThunk(
+  "auth/loginWithApple",
+  async (
+    payload: {
+      identityToken: string;
+      email?: string | null;
+      fullName?: {
+        givenName?: string | null;
+        familyName?: string | null;
+      } | null;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.loginWithApple(payload);
+
+      const role = (response.user?.role ?? "") as string;
+      if (String(role).toUpperCase() === "RESTAURANT_OWNER") {
+        return rejectWithValue(RESTAURANT_OWNER_NOT_ALLOWED);
+      }
+
+      await CrossPlatformStorage.saveTokens(response.tokens);
+      await CrossPlatformStorage.saveUser(response.user);
+
+      return response;
+    } catch (error: any) {
+      console.error("❌ Apple login error in slice:", error);
+
+      let errorMessage = "Apple sign-in failed";
+
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
@@ -108,8 +151,8 @@ export const registerUser = createAsyncThunk(
 
       let errorMessage = "Registration failed";
 
-      if (error.message?.includes("Network Error")) {
-        errorMessage = "Network Error - Please check your internet connection";
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
@@ -146,8 +189,8 @@ export const initializeAuth = createAsyncThunk(
 
       let errorMessage = "Failed to initialize authentication";
 
-      if (error.message?.includes("Network Error")) {
-        errorMessage = "Network Error - Please check your internet connection";
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -171,8 +214,8 @@ export const logout = createAsyncThunk(
 
       let errorMessage = "Logout failed";
 
-      if (error.message?.includes("Network Error")) {
-        errorMessage = "Network Error - Please check your internet connection";
+      if (isNetworkError(error)) {
+        errorMessage = NETWORK_ERROR_MESSAGE;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -283,6 +326,26 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+        state.isAuthenticated = false;
+      });
+
+    builder
+      .addCase(loginWithApple.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+        state.isAuthenticated = false;
+      })
+      .addCase(loginWithApple.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.restaurant = action.payload.restaurant || null;
+        state.tokens = action.payload.tokens;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(loginWithApple.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;

@@ -66,15 +66,13 @@ export function parseEurInputToNumber(
 }
 
 /**
- * POS-style entry: each new digit is the next less-significant digit of the amount in cents.
- * Keystroke order for €5.00 is: 0, 0, 5 (hundredths, tenths, then euros digit).
- * Internal buffer stores digits in that order (LSD first); value = reverse(buffer) as integer cents.
+ * POS-style entry: each keystroke appends a digit; earlier digits shift left (more significant).
+ * Buffer is digits in typing order; amount in cents = integer value of the buffer (e.g. "123" → €1.23).
  */
 export function rtlBufferToCents(buffer: string): number {
   const normalized = buffer.replace(/\D/g, "");
   if (!normalized) return 0;
-  const reversed = normalized.split("").reverse().join("");
-  const n = parseInt(reversed, 10);
+  const n = parseInt(normalized, 10);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -95,24 +93,21 @@ export function rtlMoneyBackspace(buffer: string): string {
 }
 
 /**
- * Build RTL cents buffer from device keyboard input (digits only, in entry order).
- * Keeps the longest prefix whose interpreted cents value does not exceed maxCents.
+ * Rebuild POS buffer from device keyboard text (digits only, in entry order).
+ * Stops when the next digit would exceed maxCents.
  */
 export function rtlDigitsFromDeviceInput(
   raw: string,
   maxCents: number
 ): string {
   const digits = raw.replace(/\D/g, "");
-  let best = "";
-  for (let i = 0; i < digits.length; i++) {
-    const cand = digits.slice(0, i + 1);
-    if (rtlBufferToCents(cand) <= maxCents) {
-      best = cand;
-    } else {
-      break;
-    }
+  let rebuilt = "";
+  for (const d of digits) {
+    const next = appendRtlMoneyDigit(rebuilt, d, maxCents);
+    if (next === rebuilt) break;
+    rebuilt = next;
   }
-  return best;
+  return rebuilt;
 }
 
 const MASK_DASH = "-";
@@ -130,18 +125,15 @@ export function formatRtlMoneyMask(buffer: string): string {
   }
 
   const cents = rtlBufferToCents(buffer);
-  const fracRight =
-    buffer.length >= 1 ? String(cents % 10) : MASK_DASH;
-  const fracLeft =
-    buffer.length >= 2 ? String(Math.floor((cents % 100) / 10)) : MASK_DASH;
+  const fracRight = String(cents % 10);
+  const fracLeft = String(Math.floor((cents % 100) / 10));
 
   let intPart: string;
-  if (buffer.length <= 2) {
+  if (cents < 100) {
     intPart = MASK_DASH.repeat(MASK_INT_SLOTS);
   } else {
-    const euroKeys = buffer.length - 2;
     const whole = Math.floor(cents / 100);
-    const minW = Math.max(MASK_INT_SLOTS, euroKeys, String(whole).length);
+    const minW = Math.max(MASK_INT_SLOTS, String(whole).length);
     let w = String(whole);
     while (w.length < minW) {
       w = MASK_DASH + w;

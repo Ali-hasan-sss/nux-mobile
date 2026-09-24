@@ -1,8 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import {
-  notificationService,
-  Notification,
-} from "../services/notificationService";
+import type { Notification } from "../services/notificationService";
 
 // Types
 export interface NotificationState {
@@ -46,13 +43,17 @@ export const fetchNotifications = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      const { notificationService } = await import(
+        "../services/notificationService"
+      );
       const response = await notificationService.getAllNotifications(
         page || 1,
         pageSize || 10
       );
+      const payload = response.data;
       return {
-        notifications: response.data?.notifications ?? [],
-        pagination: response.data?.pagination ?? {
+        notifications: payload?.notifications ?? [],
+        pagination: payload?.pagination ?? {
           totalItems: 0,
           totalPages: 0,
           currentPage: page || 1,
@@ -73,6 +74,9 @@ export const fetchUnreadCount = createAsyncThunk(
   "notifications/fetchUnreadCount",
   async (_, { rejectWithValue }) => {
     try {
+      const { notificationService } = await import(
+        "../services/notificationService"
+      );
       const response = await notificationService.getUnreadCount();
       return response.data?.count ?? 0;
     } catch (error: any) {
@@ -88,6 +92,9 @@ export const markNotificationAsRead = createAsyncThunk(
   "notifications/markAsRead",
   async (notificationId: number, { rejectWithValue }) => {
     try {
+      const { notificationService } = await import(
+        "../services/notificationService"
+      );
       const response = await notificationService.markAsRead(notificationId);
       return notificationId;
     } catch (error: any) {
@@ -103,6 +110,9 @@ export const markAllNotificationsAsRead = createAsyncThunk(
   "notifications/markAllAsRead",
   async (_, { rejectWithValue }) => {
     try {
+      const { notificationService } = await import(
+        "../services/notificationService"
+      );
       await notificationService.markAllAsRead();
       return true;
     } catch (error: any) {

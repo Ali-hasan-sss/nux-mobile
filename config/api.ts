@@ -1,16 +1,15 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import {
+  PRODUCTION_API_BASE,
+  DEV_API_PORT,
+  normalizeBaseUrl,
+  isProductionBackendUrl,
+  devApiBaseFromWebsiteEnv,
+} from "./runtimeEnv";
 
-/** See `.env.example` — tunnel / odd setups need EXPO_PUBLIC_API_URL. */
+/** See `.env.example` — in dev, production URL from build-time-env.js is ignored. */
 
-const PRODUCTION_API = "https://back.nuxapp.de/api";
-const DEFAULT_DEV_PORT = 5000;
-
-function normalizeApiBase(url: string): string {
-  return url.replace(/\/+$/, "");
-}
-
-/** Same machine IP/hostname Metro uses (LAN mode). Not valid for tunnel-only hosts. */
 function metroBundlerHost(): string | null {
   const hostUri = Constants.expoConfig?.hostUri;
   if (typeof hostUri === "string" && hostUri.length > 0) {
@@ -35,20 +34,22 @@ function isTunnelLikeHost(host: string): boolean {
 }
 
 function defaultDevApiBase(): string {
+  const fromWebsite = devApiBaseFromWebsiteEnv();
+  if (fromWebsite) return fromWebsite;
+
   const h = metroBundlerHost();
   if (h && !isTunnelLikeHost(h) && h !== "localhost" && h !== "127.0.0.1") {
-    return `http://${h}:${DEFAULT_DEV_PORT}/api`;
+    return `http://${h}:${DEV_API_PORT}/api`;
   }
   if (h && isTunnelLikeHost(h) && __DEV__) {
     console.warn(
-      "[API] Metro is using a tunnel URL; your backend on :5000 is not reachable through it. " +
-        "Use LAN in Expo (`Shift+m` → localhost/LAN) or set EXPO_PUBLIC_API_URL to http://<PC_IP>:5000/api"
+      "[API] Metro tunnel detected; set EXPO_PUBLIC_API_URL or EXPO_PUBLIC_WEBSITE_URL to http://<PC_IP>:3000 (API will use :5000 on same host)."
     );
   }
   if (Platform.OS === "android") {
-    return `http://10.0.2.2:${DEFAULT_DEV_PORT}/api`;
+    return `http://10.0.2.2:${DEV_API_PORT}/api`;
   }
-  return `http://127.0.0.1:${DEFAULT_DEV_PORT}/api`;
+  return `http://127.0.0.1:${DEV_API_PORT}/api`;
 }
 
 function resolveApiBaseUrl(): string {
@@ -56,15 +57,21 @@ function resolveApiBaseUrl(): string {
     typeof process.env.EXPO_PUBLIC_API_URL === "string"
       ? process.env.EXPO_PUBLIC_API_URL.trim()
       : "";
-  if (fromEnv) return normalizeApiBase(fromEnv);
-  if (__DEV__) return defaultDevApiBase();
-  return PRODUCTION_API;
+
+  if (__DEV__) {
+    if (fromEnv && !isProductionBackendUrl(fromEnv)) {
+      return normalizeBaseUrl(fromEnv);
+    }
+    return normalizeBaseUrl(defaultDevApiBase());
+  }
+
+  if (fromEnv) return normalizeBaseUrl(fromEnv);
+  return PRODUCTION_API_BASE;
 }
 
 export const API_CONFIG = {
   BASE_URL: resolveApiBaseUrl(),
 
-  // Endpoints
   ENDPOINTS: {
     AUTH: {
       LOGIN: "/auth/login",
@@ -75,10 +82,13 @@ export const API_CONFIG = {
       SEND_VERIFICATION: "/auth/send-verification-code",
       REQUEST_RESET: "/auth/request-password-reset",
       RESET_PASSWORD: "/auth/reset-password",
+      GOOGLE: "/auth/google",
+      APPLE: "/auth/apple",
     },
     CLIENT: {
       BALANCE: "/client/balance/with-restaurants",
       SCAN_QR: "/client/balance/scan-qr",
+      SCAN_APPROVAL: "/client/balance/scan-approval",
       PAY: "/client/balance/pay",
     },
     NOTIFICATIONS: {
@@ -86,6 +96,9 @@ export const API_CONFIG = {
       GET_UNREAD_COUNT: "/notifications/count",
       MARK_AS_READ: "/notifications/read",
       MARK_ALL_AS_READ: "/notifications/read-all",
+    },
+    FIREBASE: {
+      UPDATE_TOKEN: "/firebase/updateFirebaseToken",
     },
     MENU: {
       GET_CATEGORIES: "/customer/menu",
@@ -99,26 +112,18 @@ export const API_CONFIG = {
     },
   },
 
-  // Timeouts
   TIMEOUT: 30000,
 
-  // Development settings
   DEV: {
     LOG_REQUESTS: __DEV__,
     LOG_RESPONSES: __DEV__,
   },
 };
 
-// Helper function to get full endpoint URL
 export const getEndpointUrl = (endpoint: string): string => {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 };
 
-/**
- * Resolve image URL from path stored without domain.
- * If path is already absolute (http/https), return as-is.
- * Otherwise prepend backend domain so /uploads/... loads correctly.
- */
 export function getImageUrl(
   path: string | null | undefined
 ): string | null {
@@ -137,6 +142,7 @@ if (__DEV__) {
     baseUrl: API_CONFIG.BASE_URL,
     metroHost: metroBundlerHost(),
     overrideEnv: process.env.EXPO_PUBLIC_API_URL ?? "(not set)",
+    websiteEnv: process.env.EXPO_PUBLIC_WEBSITE_URL ?? "(not set)",
     isDev: __DEV__,
   });
 }

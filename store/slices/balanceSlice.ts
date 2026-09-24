@@ -1,4 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { isSessionExpiredError } from "@/lib/sessionExpired";
+import { NETWORK_ERROR_MESSAGE, isNetworkError, toNetworkErrorMessage } from "@/lib/networkError";
 import { balanceService } from "../services/balanceService";
 import {
   BalanceState,
@@ -34,8 +36,12 @@ export const fetchUserBalances = createAsyncThunk(
       } else {
         return rejectWithValue(response.message);
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to fetch balances");
+    } catch (error: unknown) {
+      if (isSessionExpiredError(error)) {
+        return rejectWithValue(null);
+      }
+      const message = toNetworkErrorMessage(error);
+      return rejectWithValue(message);
     }
   }
 );
@@ -204,6 +210,12 @@ const balanceSlice = createSlice({
       })
       .addCase(fetchUserBalances.rejected, (state, action) => {
         state.loading.balances = false;
+        if (action.payload == null || isSessionExpiredError(action.payload)) {
+          state.error.balances = null;
+          state.userBalances = [];
+          state.selectedRestaurantBalance = null;
+          return;
+        }
         state.error.balances = action.payload as string;
 
         // If it's an auth error, clear balances
@@ -217,11 +229,10 @@ const balanceSlice = createSlice({
 
         // If it's a network error, show a more user-friendly message
         if (
-          action.payload?.toString().includes("Network Error") ||
-          action.payload?.toString().includes("ENOENT")
+          action.payload &&
+          isNetworkError({ message: String(action.payload) })
         ) {
-          state.error.balances =
-            "خطأ في الاتصال بالشبكة. تحقق من اتصال الإنترنت";
+          state.error.balances = NETWORK_ERROR_MESSAGE;
 
           // Add fallback data for development
           if (__DEV__) {

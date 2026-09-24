@@ -19,6 +19,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { useAlert } from "@/contexts/AlertContext";
 import { sendContactMessage } from "@/api/contactApi";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/networkError";
 
 const TAB_BAR_HEIGHT = 80;
 
@@ -68,14 +69,10 @@ export default function ContactScreen() {
       setMessage("");
     } catch (err: any) {
       const serverMsg = err?.response?.data?.message;
-      const isNetwork =
-        err?.code === "ECONNABORTED" ||
-        err?.message === "Network Error" ||
-        err?.code === "ERR_NETWORK";
       const msg = serverMsg
         ? String(serverMsg)
-        : isNetwork
-          ? t("contact.errorMessage")
+        : isNetworkError(err)
+          ? NETWORK_ERROR_MESSAGE
           : t("contact.errorMessage");
       showToast({ message: msg, type: "error" });
     } finally {

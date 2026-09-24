@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NUX — دليل رفع التطبيق | Google Play &amp; App Store</title>
+  <style>
+    :root {
+      --bg: #f5f0e6;
+      --card: #ffffff;
+      --text: #1a1f3a;
+      --muted: #5c6478;
+      --accent: #1a1f3a;
+      --accent-light: #2d3560;
+      --border: #e2d9c8;
+      --code-bg: #1e2438;
+      --code-text: #e8edf8;
+      --success: #1b7f4a;
+      --warn: #b45309;
+      --info: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; }
+    header {
+      background: linear-gradient(135deg, #1a1f3a 0%, #2d3560 100%);
+      color: #fff;
+      padding: 40px 24px;
+      border-radius: 16px;
+      margin-bottom: 28px;
+    }
+    header h1 { margin: 0 0 8px; font-size: 1.75rem; }
+    header p { margin: 0; opacity: 0.9; }
+    .meta {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px;
+    }
+    .badge {
+      background: rgba(255,255,255,0.15);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    h2 {
+      font-size: 1.35rem;
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+      color: var(--accent);
+    }
+    h3 { font-size: 1.05rem; margin: 24px 0 10px; color: var(--accent-light); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin: 16px 0;
+      box-shadow: 0 2px 8px rgba(26,31,58,0.06);
+    }
+    .card.warn { border-right: 4px solid var(--warn); }
+    .card.info { border-right: 4px solid var(--info); }
+    .card.success { border-right: 4px solid var(--success); }
+    ol, ul { padding-right: 22px; }
+    li { margin: 8px 0; }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      direction: ltr;
+      text-align: left;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 16px 18px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+    .en { color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: right;
+    }
+    th { background: #ede6d6; }
+    a { color: var(--info); }
+    .toc a { text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media print {
+      body { background: #fff; }
+      header { color: #000; background: #eee; }
+      pre { border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>دليل نشر تطبيق NUX</h1>
+      <p>رفع نسخة أندرويد محلياً إلى Google Play — وبناء iOS عبر EAS ثم الرفع إلى App Store</p>
+      <div class="meta">
+        <span class="badge">المجلد: mobile_app_new</span>
+        <span class="badge">Android: com.nuxapp.app</span>
+        <span class="badge">iOS: de.nuxapp.app</span>
+        <span class="badge">EAS: @alihasan_123/nux-app</span>
+      </div>
+    </header>
+
+    <div class="card info toc">
+      <strong>جدول المحتويات</strong>
+      <ol>
+        <li><a href="#prereq">المتطلبات العامة</a></li>
+        <li><a href="#android-build">بناء نسخة إنتاج أندرويد محلياً (AAB)</a></li>
+        <li><a href="#google-play">الرفع إلى Google Play Console</a></li>
+        <li><a href="#ios-eas">بناء iOS للإنتاج عبر EAS</a></li>
+        <li><a href="#app-store">الرفع إلى App Store Connect</a></li>
+        <li><a href="#troubleshoot">استكشاف الأخطاء الشائعة</a></li>
+      </ol>
+    </div>
+
+    <!-- ========== PREREQ ========== -->
+    <h2 id="prereq">1) المتطلبات العامة</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Node.js 20+</strong> و npm</li>
+        <li><strong>JDK 17</strong> (للبناء المحلي لأندرويد)</li>
+        <li><strong>Android SDK</strong> عبر Android Studio (للبناء المحلي)</li>
+        <li>حساب <a href="https://play.google.com/console" target="_blank">Google Play Console</a> (رسوم تسجيل لمرة واحدة)</li>
+        <li>حساب <a href="https://developer.apple.com" target="_blank">Apple Developer</a> (99$/سنة)</li>
+        <li>حساب <a href="https://expo.dev" target="_blank">Expo</a> — للبناء السحابي لـ iOS</li>
+      </ul>
+      <p class="en">Install dependencies once: <code>cd mobile_app_new &amp;&amp; npm ci</code></p>
+    </div>
+
+    <!-- ========== ANDROID BUILD ========== -->
+    <h2 id="android-build">2) بناء نسخة إنتاج أندرويد محلياً (AAB)</h2>
+    <p>Google Play يتطلب ملف <strong>AAB</strong> (Android App Bundle) وليس APK للإنتاج.</p>
+
+    <h3>الخطوة أ — إنشاء مفتاح التوقيع (مرة واحدة فقط)</h3>
+    <div class="card warn">
+      <p>احفظ ملف الـ keystore وكلمات المرور في مكان آمن. <strong>فقدانها يمنعك من تحديث التطبيق على المتجر.</strong></p>
+    </div>
+    <pre>cd mobile_app_new
+npm run keystore:generate</pre>
+    <p>ثم انسخ المثال وعدّل القيم:</p>
+    <pre>copy android\keystore.properties.example android\keystore.properties
+# عدّل المسارات وكلمات المرور في keystore.properties</pre>
+    <p>لطباعة SHA-1 (مطلوب لـ Google Sign-In و Firebase):</p>
+    <pre>npm run keystore:sha1</pre>
+
+    <h3>الخطوة ب — التأكد من google-services.json</h3>
+    <div class="card">
+      <p>يجب وجود <code>mobile_app_new/google-services.json</code> و<code>android/app/google-services.json</code> لتسجيل Google وإشعارات FCM.</p>
+    </div>
+
+    <h3>الخطوة ج — تشغيل البناء</h3>
+    <pre>cd mobile_app_new
+npm run build:android:production</pre>
+    <p class="en">This runs: version bump → icon generation → expo prebuild → gradle bundleRelease</p>
+
+    <div class="card success">
+      <strong>مخرجات البناء:</strong>
+      <pre>android/app/build/outputs/bundle/release/app-release.aab</pre>
+      <p>هذا الملف الذي ترفعه إلى Google Play.</p>
+    </div>
+
+    <table>
+      <tr><th>الأمر</th><th>الغرض</th><th>المخرج</th></tr>
+      <tr>
+        <td><code>npm run build:android:release</code></td>
+        <td>اختبار محلي / توزيع مباشر</td>
+        <td>APK</td>
+      </tr>
+      <tr>
+        <td><code>npm run build:android:production</code></td>
+        <td>Google Play</td>
+        <td>AAB</td>
+      </tr>
+      <tr>
+        <td><code>npm run eas:build:production:android</code></td>
+        <td>بناء سحابي (بديل)</td>
+        <td>AAB من EAS</td>
+      </tr>
+    </table>
+
+    <!-- ========== GOOGLE PLAY ========== -->
+    <h2 id="google-play">3) الرفع إلى Google Play Console</h2>
+
+    <h3>أول مرة — إنشاء التطبيق</h3>
+    <ol>
+      <li>افتح <a href="https://play.google.com/console" target="_blank">Play Console</a> → <strong>إنشاء تطبيق</strong></li>
+      <li>اسم التطبيق: <strong>NUX</strong></li>
+      <li>اختر اللغة الافتراضية والنوع (تطبيق / ألعاب) والفئة المناسبة</li>
+      <li>أكمل <strong>إعداد التطبيق</strong> من القائمة الجانبية:
+        <ul>
+          <li>سياسة الخصوصية (رابط: <code>https://nuxapp.de/privacy</code> أو صفحتكم)</li>
+          <li>إعلان الإعلانات، التصنيف العمري، الجمهور المستهدف</li>
+          <li>أمان البيانات (Data safety)</li>
+          <li>متجر التطبيق: الوصف، لقطات شاشة، أيقونة 512×512</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>رفع الـ AAB</h3>
+    <ol>
+      <li>من القائمة: <strong>الإصدار → الإنتاج</strong> (أو <strong>اختبار داخلي</strong> للتجربة أولاً)</li>
+      <li><strong>إنشاء إصدار جديد</strong></li>
+      <li><strong>رفع</strong> → اختر <code>app-release.aab</code></li>
+      <li>أدخل <strong>ملاحظات الإصدار</strong> (ما الجديد في هذا الإصدار)</li>
+      <li>راجع التحذيرات (التوقيع، الأذونات، targetSdk)</li>
+      <li><strong>مراجعة الإصدار → بدء النشر للإنتاج</strong></li>
+    </ol>
+
+    <div class="card info">
+      <strong>توقيع التطبيق (App signing)</strong>
+      <p>عند أول رفع، Google Play يطلب تفعيل <strong>Play App Signing</strong>. ارفع مفتاح التوقيع المحلي (upload key) أو دع Google تديره حسب الخيار المعروض.</p>
+      <p>إذا بنيت محلياً بـ keystore خاص بك، سجّل SHA-1 من <code>npm run keystore:sha1</code> في Firebase Console و Google Cloud (OAuth Android client).</p>
+    </div>
+
+    <h3>مسار الاختبار الموصى به</h3>
+    <ol>
+      <li><strong>اختبار داخلي</strong> — أضف بريد المختبرين، ارفع AAB، ثبّت عبر رابط الاختبار</li>
+      <li><strong>اختبار مغلق</strong> — مجموعة أكبر</li>
+      <li><strong>الإنتاج</strong> — بعد التأكد من الاستقرار</li>
+    </ol>
+
+    <!-- ========== iOS EAS ========== -->
+    <h2 id="ios-eas">4) بناء iOS للإنتاج عبر EAS</h2>
+    <p>بناء iOS يتطلب macOS و Xcode محلياً؛ الطريقة المعتمدة هنا هي <strong>EAS Build</strong> على خوادم Expo.</p>
+
+    <h3>الخطوة أ — تسجيل الدخول ومتغيرات البيئة</h3>
+    <pre>cd mobile_app_new
+npm run eas:login</pre>
+    <p>تأكد من ضبط الأسرار على <a href="https://expo.dev/accounts/alihasan_123/projects/nux-app/environment-variables" target="_blank">Expo → Project → Environment variables</a> (أو <code>eas env:create</code>):</p>
+    <ul>
+      <li><code>EXPO_PUBLIC_API_URL</code> = <code>https://back.nuxapp.de/api</code></li>
+      <li><code>EXPO_PUBLIC_WEBSITE_URL</code> = <code>https://nuxapp.de</code></li>
+      <li>مفاتيح Stripe و Google و Maps حسب <code>EAS_BUILD.md</code></li>
+    </ul>
+
+    <h3>الخطوة ب — الشهادات (أول مرة)</h3>
+    <div class="card">
+      <p>عند أول بناء iOS، EAS يسأل عن الشهادات. اختر <strong>Let EAS handle credentials</strong> ما لم تكن لديك شهادات جاهزة.</p>
+      <p>تأكد من موافقات Apple Developer واتفاقيات App Store Connect (Agreements, Tax, Banking).</p>
+      <pre>npm run eas:credentials</pre>
+    </div>
+
+    <h3>الخطوة ج — تشغيل البناء</h3>
+    <pre>cd mobile_app_new
+npm run eas:build:production:ios</pre>
+    <p class="en">Equivalent: <code>npx eas build --platform ios --profile production</code></p>
+    <p>انتظر حتى يكتمل البناء على <a href="https://expo.dev" target="_blank">expo.dev</a>. ستحصل على ملف <strong>.ipa</strong> جاهز للرفع.</p>
+
+    <div class="card success">
+      <strong>ملف التعريف production في eas.json</strong>
+      <ul>
+        <li><code>buildType</code>: iOS device build (ليس simulator)</li>
+        <li><code>autoIncrement</code>: يزيد رقم البناء تلقائياً</li>
+        <li>Bundle ID: <code>de.nuxapp.app</code></li>
+      </ul>
+    </div>
+
+    <!-- ========== APP STORE ========== -->
+    <h2 id="app-store">5) الرفع إلى App Store Connect</h2>
+
+    <h3>الطريقة أ — EAS Submit (موصى بها)</h3>
+    <p>بعد نجاح البناء:</p>
+    <pre>cd mobile_app_new
+npm run eas:submit:production:ios</pre>
+    <p class="en">Or: <code>npx eas submit --platform ios --profile production</code></p>
+    <p>اتبع المطالبات: اختر آخر بناء من EAS أو مسار ملف .ipa، وأدخل Apple ID و App-specific password إن طُلب.</p>
+
+    <h3>الطريقة ب — يدوياً عبر App Store Connect</h3>
+    <ol>
+      <li>حمّل <strong>Transporter</strong> من Mac App Store (أو Xcode → Organizer)</li>
+      <li>حمّل ملف <code>.ipa</code> من صفحة البناء على expo.dev</li>
+      <li>ارفعه عبر Transporter إلى App Store Connect</li>
+    </ol>
+
+    <h3>إعداد التطبيق في App Store Connect</h3>
+    <ol>
+      <li><a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a> → <strong>تطبيقاتي</strong> → <strong>+</strong> إذا لم يُنشأ التطبيق</li>
+      <li>Bundle ID: <code>de.nuxapp.app</code> (يجب أن يطابق Xcode/EAS)</li>
+      <li>أكمل: لقطات الشاشة (iPhone 6.7" و 6.5" على الأقل)، الوصف، الكلمات المفتاحية، رابط الدعم والخصوصية</li>
+      <li>من <strong>TestFlight</strong>: اختبر البناء قبل الإنتاج</li>
+      <li>من <strong>App Store → إصدار جديد</strong>: اختر البناء المرفوع، أجب على استبيان التشفير، أرسل للمراجعة</li>
+    </ol>
+
+    <div class="card warn">
+      <strong>قبل المراجعة</strong>
+      <ul>
+        <li>تأكد من عمل تسجيل الدخول و Google Sign-In على جهاز حقيقي</li>
+        <li>أذونات الموقع والكاميرا موضحة في Info.plist</li>
+        <li>حساب تجريبي للمراجع إن كان التطبيق يتطلب تسجيل دخول</li>
+      </ul>
+    </div>
+
+    <!-- ========== TROUBLESHOOT ========== -->
+    <h2 id="troubleshoot">6) استكشاف الأخطاء الشائعة</h2>
+
+    <table>
+      <tr><th>المشكلة</th><th>الحل</th></tr>
+      <tr>
+        <td>فشل البناء المحلي — keystore.properties</td>
+        <td>شغّل <code>npm run keystore:generate</code> وانسخ <code>keystore.properties.example</code></td>
+      </tr>
+      <tr>
+        <td>Google Sign-In لا يعمل على الإصدار</td>
+        <td>أضف SHA-1 من <code>npm run keystore:sha1</code> في Firebase و Google Cloud</td>
+      </tr>
+      <tr>
+        <td>EAS iOS — pod install failed</td>
+        <td>راجع <code>app.config.js</code> و <code>EAS_BUILD.md</code> (إعدادات extraPods)</td>
+      </tr>
+      <tr>
+        <td>Apple — agreements pending</td>
+        <td>App Store Connect → Agreements, Tax, and Banking</td>
+      </tr>
+      <tr>
+        <td>رفض المراجعة — crash عند الفتح</td>
+        <td>اختبر بناء production على جهاز حقيقي؛ تحقق من متغيرات البيئة على Expo</td>
+      </tr>
+      <tr>
+        <td>رسالة شبكة بالعربية</td>
+        <td>تم توحيدها بالإنجليزية: <em>No internet connection. Please check your network and try again.</em></td>
+      </tr>
+    </table>
+
+    <h3>مرجع سريع للأوامر</h3>
+    <pre># Android — Google Play (محلي)
+npm run build:android:production
+
+# iOS — بناء سحابي
+npm run eas:build:production:ios
+
+# iOS — رفع إلى App Store
+npm run eas:submit:production:ios
+
+# معاينة APK للاختبار
+npm run eas:build:preview:android</pre>
+
+    <footer>
+      NUX App · mobile_app_new · آخر تحديث: يونيو 2026<br />
+      للتفاصيل التقنية الإضافية راجع <code>EAS_BUILD.md</code> في نفس المجلد.
+    </footer>
+  </div>
+</body>
+</html>

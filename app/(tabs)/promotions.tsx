@@ -360,7 +360,7 @@ export default function PromotionsScreen() {
   return (
     <>
       <View
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[styles.container, { backgroundColor: "transparent" }]}
       >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }, font]}>

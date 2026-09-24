@@ -14,7 +14,7 @@ import { WalletPaymentApprovalModal } from "@/components/WalletPaymentApprovalMo
 import { GiftVoucherApprovalModal } from "@/components/GiftVoucherApprovalModal";
 
 function getSocketUrl(): string {
-  const baseUrl = API_CONFIG.BASE_URL || "https://back.nuxapp.de/api";
+  const baseUrl = API_CONFIG.BASE_URL;
   const base = baseUrl.replace(/\/api\/?$/, "");
   if (base.startsWith("https")) return base.replace(/^https/, "wss");
   return base.replace(/^http/, "ws");
@@ -117,6 +117,15 @@ export function NotificationSocketProvider({
     newSocket.on("PAYMENT_REQUEST_RESOLVED", onResolved);
     newSocket.on("NEW_GIFT_VOUCHER_REQUEST", onNewGift);
     newSocket.on("GIFT_VOUCHER_REQUEST_RESOLVED", onGiftResolved);
+    newSocket.on(
+      "loyalty:scan-resolved",
+      (payload: { id?: string; status?: string }) => {
+        DeviceEventEmitter.emit("loyalty:scan-resolved", payload);
+        if (payload?.status === "approved" || payload?.status === "APPROVED") {
+          DeviceEventEmitter.emit("wallet:balanceChanged");
+        }
+      }
+    );
 
     return () => {
       newSocket.off("notification");
@@ -124,6 +133,7 @@ export function NotificationSocketProvider({
       newSocket.off("PAYMENT_REQUEST_RESOLVED", onResolved);
       newSocket.off("NEW_GIFT_VOUCHER_REQUEST", onNewGift);
       newSocket.off("GIFT_VOUCHER_REQUEST_RESOLVED", onGiftResolved);
+      newSocket.off("loyalty:scan-resolved");
       newSocket.off("connect");
       newSocket.off("disconnect");
       newSocket.disconnect();

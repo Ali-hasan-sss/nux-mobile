@@ -150,80 +150,72 @@ export function AnimatedBackground({
   // Calculate full height including safe area insets
   const fullHeight = SCREEN_HEIGHT + insets.bottom + insets.top;
 
-  // If children provided, use flex layout, otherwise use absolute positioning
-  const containerStyle = children
-    ? { flex: 1, position: "relative" as const, zIndex: 0 }
-    : [
-        styles.container,
-        {
-          height: fullHeight,
-          width: SCREEN_WIDTH,
-          bottom: -insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-      ];
-
   return (
-    <View style={containerStyle}>
-      {/* Base gradient background */}
-      <LinearGradient
-        colors={colors.backgroundGradient || ["#0A0E27", "#1A1F3A", "#2D1B4E"]}
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            height: fullHeight,
-            bottom: -insets.bottom,
-          },
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+    <View style={styles.root}>
+      <View style={styles.backdrop} pointerEvents="none">
+        <LinearGradient
+          colors={colors.backgroundGradient || ["#0A0E27", "#1A1F3A", "#2D1B4E"]}
+          style={[StyleSheet.absoluteFill, { height: fullHeight }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
 
-      {/* Bubbles - فقاعات (تبدأ من خارج الشاشة من الأسفل) */}
-      <Bubble
-        size={80}
-        initialX={SCREEN_WIDTH * 0.2}
-        initialY={fullHeight + 80}
-        duration={25000}
-        delay={0}
-        driftAmount={25}
-      />
-      <Bubble
-        size={70}
-        initialX={SCREEN_WIDTH * 0.5}
-        initialY={fullHeight + 70}
-        duration={30000}
-        delay={5000}
-        driftAmount={-20}
-      />
-      <Bubble
-        size={90}
-        initialX={SCREEN_WIDTH * 0.75}
-        initialY={fullHeight + 90}
-        duration={28000}
-        delay={10000}
-        driftAmount={30}
-      />
-      <Bubble
-        size={60}
-        initialX={SCREEN_WIDTH * 0.4}
-        initialY={fullHeight + 60}
-        duration={32000}
-        delay={15000}
-        driftAmount={-15}
-      />
+        <Bubble
+          size={80}
+          initialX={SCREEN_WIDTH * 0.2}
+          initialY={fullHeight + 80}
+          duration={25000}
+          delay={0}
+          driftAmount={25}
+        />
+        <Bubble
+          size={70}
+          initialX={SCREEN_WIDTH * 0.5}
+          initialY={fullHeight + 70}
+          duration={30000}
+          delay={5000}
+          driftAmount={-20}
+        />
+        <Bubble
+          size={90}
+          initialX={SCREEN_WIDTH * 0.75}
+          initialY={fullHeight + 90}
+          duration={28000}
+          delay={10000}
+          driftAmount={30}
+        />
+        <Bubble
+          size={60}
+          initialX={SCREEN_WIDTH * 0.4}
+          initialY={fullHeight + 60}
+          duration={32000}
+          delay={15000}
+          driftAmount={-15}
+        />
+      </View>
 
-      {/* Render children if provided */}
-      {children && (
-        <View style={{ flex: 1, position: "relative", zIndex: 10 }}>
-          {children}
-        </View>
-      )}
+      {children ? <View style={styles.content}>{children}</View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "transparent",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+    zIndex: 0,
+  },
+  content: {
+    flex: 1,
+    zIndex: 1,
+    backgroundColor: "transparent",
+  },
   container: {
     ...StyleSheet.absoluteFillObject,
     position: "absolute",

@@ -234,7 +234,7 @@ export default function PurchaseScreen() {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }, font]}>
             {t("purchase.title")}
@@ -365,10 +365,10 @@ export default function PurchaseScreen() {
             </View>
 
             <ScrollView
-              style={[styles.content, { backgroundColor: colors.background }]}
+              style={[styles.content, { backgroundColor: "transparent" }]}
               contentContainerStyle={[
                 styles.scrollContent,
-                { backgroundColor: colors.background },
+                { backgroundColor: "transparent" },
               ]}
             >
               {selectedRestaurant && (
@@ -537,7 +537,7 @@ export default function PurchaseScreen() {
             style={[
               styles.walletTabRoot,
               {
-                backgroundColor: colors.background,
+                backgroundColor: "transparent",
                 paddingBottom: tabBarClearance + 16,
               },
             ]}

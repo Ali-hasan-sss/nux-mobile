@@ -5,19 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   Animated,
   Easing,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { I18nManager } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/AppText";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "@/store/store";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "@/hooks/useAppTranslation";
 import {
-  Settings,
   Globe,
   FileText,
   Shield,
@@ -27,6 +25,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  LogOut,
 } from "lucide-react-native";
 import { RootState } from "@/store/store";
 import { setLanguage } from "@/store/slices/languageSlice";
@@ -37,52 +36,81 @@ import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal";
 import { TermsOfUseModal } from "@/components/TermsOfUseModal";
 import { AboutAppModal } from "@/components/AboutAppModal";
 
+const DRAWER_WIDTH = 300;
+
 interface DrawerMenuProps {
   onClose: () => void;
+}
+
+function MenuRow({
+  icon: Icon,
+  label,
+  onPress,
+  colors,
+}: {
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  label: string;
+  onPress: () => void;
+  colors: ReturnType<typeof useTheme>["colors"];
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.menuRow, { backgroundColor: colors.surface }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
+        <Icon size={18} color={colors.primary} />
+      </View>
+      <Text style={[styles.menuRowText, { color: colors.text }]}>{label}</Text>
+    </TouchableOpacity>
+  );
 }
 
 export function DrawerMenu({ onClose }: DrawerMenuProps) {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const { t, i18n } = useTranslation();
-  const { colors, mode } = useTheme();
+  const { t, i18n } = useAppTranslation();
+  const { colors, mode, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { currentLanguage } = useSelector((state: RootState) => state.language);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [aboutModalVisible, setAboutModalVisible] = useState(false);
 
-  const handleContactUs = () => {
-    onClose();
-    router.push("/contact");
-  };
+  const slideX = useRef(new Animated.Value(-DRAWER_WIDTH - 24)).current;
 
-  const slideX = useRef(new Animated.Value(-300)).current;
+  const verticalMargin = Math.max(insets.top, 12);
 
   useEffect(() => {
     Animated.timing(slideX, {
       toValue: 0,
-      duration: 300,
-      easing: Easing.out(Easing.ease),
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [slideX]);
 
   const handleCloseAnimated = () => {
     Animated.timing(slideX, {
-      toValue: -300,
-      duration: 250,
-      easing: Easing.in(Easing.ease),
+      toValue: -DRAWER_WIDTH - 24,
+      duration: 260,
+      easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) onClose();
     });
   };
 
+  const handleContactUs = () => {
+    handleCloseAnimated();
+    setTimeout(() => router.push("/contact"), 280);
+  };
+
   const handleLanguageChange = async (language: string) => {
     dispatch(setLanguage(language));
     await i18n.changeLanguage(language);
     await AsyncStorage.setItem("user-language", language);
-    // Direction is forced to LTR globally; no RTL toggling here
   };
 
   const handleThemeChange = (themeMode: "light" | "dark" | "system") => {
@@ -91,123 +119,156 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
 
   const handleLogout = () => {
     dispatch(logout());
-    onClose();
+    handleCloseAnimated();
   };
 
   return (
     <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={handleCloseAnimated} />
+      <Pressable
+        style={[
+          styles.backdrop,
+          {
+            backgroundColor: isDark
+              ? "rgba(0, 0, 0, 0.72)"
+              : "rgba(0, 0, 0, 0.45)",
+          },
+        ]}
+        onPress={handleCloseAnimated}
+      />
       <Animated.View
         style={[
           styles.drawer,
           {
             backgroundColor: colors.background,
+            width: DRAWER_WIDTH,
+            top: verticalMargin,
+            bottom: Math.max(insets.bottom, 12),
             transform: [{ translateX: slideX }],
-            left: 0,
+            borderColor: `${colors.primary}30`,
+            shadowColor: colors.primary,
           },
         ]}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: colors.border,
+              backgroundColor: `${colors.primary}12`,
+            },
+          ]}
+        >
           <Text style={[styles.title, { color: colors.text }]}>
-            {t("drawer.title")}
+            {t("drawer.title", "Menu")}
           </Text>
-          <TouchableOpacity onPress={handleCloseAnimated}>
-            <X size={24} color={colors.text} />
+          <TouchableOpacity
+            onPress={handleCloseAnimated}
+            style={[styles.closeBtn, { backgroundColor: colors.surface }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <X size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
-          <View style={styles.section}>
-            <View style={styles.menuItem}>
-              <Globe size={20} color={colors.primary} />
-              <Text style={[styles.menuText, { color: colors.text }]}>
-                {t("drawer.language")}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentInner}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.sectionCard, { borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Globe size={18} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t("drawer.language", "Language")}
               </Text>
             </View>
-            <View style={styles.optionsContainer}>
+            <View style={styles.chipRow}>
               {[
                 { code: "en", label: "English" },
                 { code: "ar", label: "العربية" },
                 { code: "de", label: "Deutsch" },
-              ].map((lang) => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.option,
-                    {
-                      backgroundColor:
-                        currentLanguage === lang.code
+              ].map((lang) => {
+                const selected = currentLanguage === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: selected
                           ? colors.primary
                           : colors.surface,
-                    },
-                  ]}
-                  onPress={() => handleLanguageChange(lang.code)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      {
-                        color:
-                          currentLanguage === lang.code ? "white" : colors.text,
+                        borderColor: selected ? colors.primary : colors.border,
                       },
                     ]}
+                    onPress={() => handleLanguageChange(lang.code)}
                   >
-                    {lang.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: selected ? "#fff" : colors.text },
+                      ]}
+                    >
+                      {lang.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
-          <View style={styles.section}>
-            <View style={styles.menuItem}>
+          <View style={[styles.sectionCard, { borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
               {mode === "dark" ? (
-                <Moon size={20} color={colors.primary} />
+                <Moon size={18} color={colors.primary} />
               ) : mode === "light" ? (
-                <Sun size={20} color={colors.primary} />
+                <Sun size={18} color={colors.primary} />
               ) : (
-                <Monitor size={20} color={colors.primary} />
+                <Monitor size={18} color={colors.primary} />
               )}
-              <Text style={[styles.menuText, { color: colors.text }]}>
-                {t("drawer.theme")}
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t("drawer.theme", "Theme")}
               </Text>
             </View>
-            <View style={styles.optionsContainer}>
+            <View style={styles.chipRow}>
               {[
-                { code: "dark", label: t("drawer.dark"), icon: Moon },
-                { code: "light", label: t("drawer.light"), icon: Sun },
-                { code: "system", label: t("drawer.system"), icon: Monitor },
+                { code: "dark", label: t("drawer.dark", "Dark"), icon: Moon },
+                { code: "light", label: t("drawer.light", "Light"), icon: Sun },
+                {
+                  code: "system",
+                  label: t("drawer.system", "System"),
+                  icon: Monitor,
+                },
               ].map((theme) => {
                 const Icon = theme.icon;
-                const isSelected = mode === theme.code;
+                const selected = mode === theme.code;
                 return (
                   <TouchableOpacity
                     key={theme.code}
                     style={[
-                      styles.option,
+                      styles.chip,
+                      styles.chipWithIcon,
                       {
-                        backgroundColor: isSelected
+                        backgroundColor: selected
                           ? colors.primary
                           : colors.surface,
+                        borderColor: selected ? colors.primary : colors.border,
                       },
                     ]}
                     onPress={() =>
                       handleThemeChange(
-                        theme.code as "light" | "dark" | "system",
+                        theme.code as "light" | "dark" | "system"
                       )
                     }
                   >
                     <Icon
                       size={14}
-                      color={isSelected ? "white" : colors.text}
-                      style={{ marginRight: 4 }}
+                      color={selected ? "#fff" : colors.text}
                     />
                     <Text
                       style={[
-                        styles.optionText,
-                        {
-                          color: isSelected ? "white" : colors.text,
-                        },
+                        styles.chipText,
+                        { color: selected ? "#fff" : colors.text },
                       ]}
                     >
                       {theme.label}
@@ -218,48 +279,42 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => setTermsModalVisible(true)}
-          >
-            <FileText size={20} color={colors.primary} />
-            <Text style={[styles.menuText, { color: colors.text }]}>
-              {t("drawer.termsOfUse")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => setPrivacyModalVisible(true)}
-          >
-            <Shield size={20} color={colors.primary} />
-            <Text style={[styles.menuText, { color: colors.text }]}>
-              {t("drawer.privacyPolicy")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => setAboutModalVisible(true)}
-          >
-            <Info size={20} color={colors.primary} />
-            <Text style={[styles.menuText, { color: colors.text }]}>
-              {t("drawer.aboutApp")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={handleContactUs}>
-            <MessageCircle size={20} color={colors.primary} />
-            <Text style={[styles.menuText, { color: colors.text }]}>
-              {t("drawer.contactUs")}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.linksGroup}>
+            <MenuRow
+              icon={FileText}
+              label={t("drawer.termsOfUse", "Terms of Use")}
+              onPress={() => setTermsModalVisible(true)}
+              colors={colors}
+            />
+            <MenuRow
+              icon={Shield}
+              label={t("drawer.privacyPolicy", "Privacy Policy")}
+              onPress={() => setPrivacyModalVisible(true)}
+              colors={colors}
+            />
+            <MenuRow
+              icon={Info}
+              label={t("drawer.aboutApp", "About App")}
+              onPress={() => setAboutModalVisible(true)}
+              colors={colors}
+            />
+            <MenuRow
+              icon={MessageCircle}
+              label={t("drawer.contactUs", "Contact Us")}
+              onPress={handleContactUs}
+              colors={colors}
+            />
+          </View>
 
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: colors.error }]}
             onPress={handleLogout}
+            activeOpacity={0.85}
           >
-            <Text style={styles.logoutText}>{t("account.logout")}</Text>
+            <LogOut size={18} color="#fff" />
+            <Text style={styles.logoutText}>
+              {t("account.logout", "Logout")}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -267,12 +322,10 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
           visible={privacyModalVisible}
           onClose={() => setPrivacyModalVisible(false)}
         />
-
         <TermsOfUseModal
           visible={termsModalVisible}
           onClose={() => setTermsModalVisible(false)}
         />
-
         <AboutAppModal
           visible={aboutModalVisible}
           onClose={() => setAboutModalVisible(false)}
@@ -282,80 +335,131 @@ export function DrawerMenu({ onClose }: DrawerMenuProps) {
   );
 }
 
+const OUTER_RADIUS = 28;
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     position: "relative",
+    backgroundColor: "transparent",
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   drawer: {
     position: "absolute",
     left: 0,
-    top: 0,
-    bottom: 0,
-    width: 280,
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    borderTopRightRadius: OUTER_RADIUS,
+    borderBottomRightRadius: OUTER_RADIUS,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderWidth: 1,
+    borderLeftWidth: 0,
+    overflow: "hidden",
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 12,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     flex: 1,
-    padding: 20,
   },
-  section: {
-    marginBottom: 20,
+  contentInner: {
+    padding: 16,
+    paddingBottom: 24,
   },
-  menuItem: {
+  sectionCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  chipWithIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  linksGroup: {
+    gap: 8,
+    marginBottom: 8,
+  },
+  menuRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
-  },
-  menuText: {
-    marginLeft: 12,
-    fontSize: 16,
-  },
-  optionsContainer: {
-    flexDirection: "row",
-    marginLeft: 32,
-    marginTop: 8,
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 14,
+    gap: 12,
   },
-  optionText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  logoutButton: {
-    marginTop: 40,
-    padding: 16,
+  iconWrap: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
+  },
+  menuRowText: {
+    fontSize: 15,
+    fontWeight: "500",
+    flex: 1,
+  },
+  logoutButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   logoutText: {
-    color: "white",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },

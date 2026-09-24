@@ -6,6 +6,7 @@ import { X, CreditCard, Star, Package } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import api from "@/api/axiosInstance";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NETWORK_ERROR_MESSAGE, isNetworkError } from "@/lib/networkError";
 
 interface TopUpPackage {
   id: number;
@@ -71,14 +72,12 @@ export default function PackagesModal({
       }
     } catch (err: any) {
       console.error("Error fetching packages:", err);
-      if (err.response) {
-        // Server responded with error
-        setError(err.response.data?.message || "حدث خطأ في جلب الباقات");
-      } else if (err.request) {
-        // No response received
-        setError("حدث خطأ في الشبكة. يرجى المحاولة مرة أخرى");
+      if (isNetworkError(err)) {
+        setError(NETWORK_ERROR_MESSAGE);
+      } else if (err.response) {
+        setError(err.response.data?.message || "Failed to load packages");
       } else {
-        setError("حدث خطأ غير متوقع");
+        setError("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);

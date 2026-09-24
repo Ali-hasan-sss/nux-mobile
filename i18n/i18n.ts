@@ -44,6 +44,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
+    lng: "en",
     fallbackLng: "en",
     compatibilityJSON: "v4",
     debug: __DEV__,
@@ -52,7 +53,11 @@ i18n
     },
     react: {
       useSuspense: false,
+      bindI18n: "languageChanged loaded",
+      bindI18nStore: "added removed",
     },
+    returnNull: false,
+    returnEmptyString: false,
   });
 
 export default i18n;

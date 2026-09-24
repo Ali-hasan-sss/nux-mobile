@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useRef } from "react";
 import {
   View,
   TextInput,
+  Pressable,
   StyleSheet,
   Platform,
   type StyleProp,
@@ -11,7 +12,6 @@ import { Text } from "@/components/AppText";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/useTheme";
 import {
-  rtlBufferToCents,
   rtlDigitsFromDeviceInput,
   formatRtlMoneyMask,
   localizeMoneyMaskVisual,
@@ -28,8 +28,8 @@ export type RtlMoneyAmountFieldProps = {
 };
 
 /**
- * Shows amount always as X.XX (two decimals). Device keypad edits an invisible RTL
- * digit buffer (cents-first); digits shift left until they move past the decimal.
+ * Shows amount as X.XX. Each keypad digit enters at the hundredths place; prior digits
+ * shift left (POS/cash-register style).
  */
 export function RtlMoneyAmountField({
   buffer,
@@ -40,9 +40,16 @@ export function RtlMoneyAmountField({
   compact = false,
   containerStyle,
 }: RtlMoneyAmountFieldProps) {
+  const inputRef = useRef<TextInput>(null);
   const { i18n } = useTranslation();
   const { colors, defaultFontFamily, isDark } = useTheme();
   const font = { fontFamily: defaultFontFamily, fontWeight: "400" as const };
+
+  const focusInput = useCallback(() => {
+    if (!disabled) {
+      inputRef.current?.focus();
+    }
+  }, [disabled]);
 
   const maskDisplay = useMemo(
     () =>
@@ -62,7 +69,9 @@ export function RtlMoneyAmountField({
   const fontSize = compact ? 17 : 19;
 
   return (
-    <View
+    <Pressable
+      onPress={focusInput}
+      disabled={disabled}
       style={[
         styles.wrap,
         {
@@ -74,8 +83,12 @@ export function RtlMoneyAmountField({
         containerStyle,
       ]}
     >
-      {/* Formatted amount underneath; invisible TextInput on top captures taps & keyboard. */}
-      <View style={styles.overlayCenter} collapsable={false}>
+      {/* Mask only — must not intercept touches (iOS keyboard needs hits on TextInput). */}
+      <View
+        style={styles.overlayCenter}
+        pointerEvents="none"
+        collapsable={false}
+      >
         <Text style={[styles.overlayRow, font]}>
           <Text style={{ flexDirection: "row", writingDirection: "ltr" }}>
             {maskDisplay.split("").map((ch, i) => {
@@ -106,9 +119,11 @@ export function RtlMoneyAmountField({
         </Text>
       </View>
       <TextInput
+        ref={inputRef}
         style={[
           StyleSheet.absoluteFillObject,
           styles.ghostInput,
+          Platform.OS === "ios" ? styles.ghostInputIos : styles.ghostInputAndroid,
           {
             fontSize,
             fontFamily: defaultFontFamily,
@@ -127,11 +142,12 @@ export function RtlMoneyAmountField({
         placeholder=""
         placeholderTextColor="transparent"
         selectionColor="transparent"
+        showSoftInputOnFocus
         {...(Platform.OS === "android"
           ? { textAlignVertical: "center" as const }
           : {})}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -143,13 +159,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   ghostInput: {
-    // Fully hide native buffer text (transparent alone still paints on some Android builds).
-    color: "rgba(0,0,0,0)",
-    opacity: 0,
     textAlign: "center",
     padding: 0,
     margin: 0,
     zIndex: 1,
+  },
+  // opacity: 0 blocks the iOS keyboard from opening on focus.
+  ghostInputIos: {
+    color: "transparent",
+    backgroundColor: "transparent",
+  },
+  ghostInputAndroid: {
+    color: "rgba(0,0,0,0)",
+    opacity: 0,
   },
   overlayCenter: {
     ...StyleSheet.absoluteFillObject,
